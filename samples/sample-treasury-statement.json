@@ -1,0 +1,55 @@
+{
+  "statementId": "KRATON-TREASURY-2026-Q4-01",
+  "organization": "KratonOS Sovereign Autonomous Treasury (jubayir69.testnet)",
+  "period": "2026-10-01 to 2026-10-31",
+  "confidentialityClassification": "ZERO_RETENTION_TEE_ONLY",
+  "currency": "USD",
+  "openingReserveBalanceUsd": 48500.00,
+  "lineItems": [
+    {
+      "itemId": "EXP-1001",
+      "date": "2026-10-08",
+      "category": "TEE_COMPUTE_INFRASTRUCTURE",
+      "counterparty": "outlayer.near",
+      "description": "OutLayer WASI P2 EIP-1186 Merkle-Patricia proof verification batch (1,200 enclave runs)",
+      "amountUsd": 38.50,
+      "tokenSymbol": "USDC",
+      "invoiceHashSha256": "7a8b9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456",
+      "verifiedByReceipt": true
+    },
+    {
+      "itemId": "EXP-1002",
+      "date": "2026-10-14",
+      "category": "SUB_AGENT_RESEARCH_BOUNTY",
+      "counterparty": "research-oracle.market.near",
+      "description": "Cross-chain RHEA Finance & 1Click liquidity depth telemetry report (A2A + x402 settlement)",
+      "amountUsd": 2.50,
+      "tokenSymbol": "USDC",
+      "invoiceHashSha256": "2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789abc",
+      "verifiedByReceipt": true
+    },
+    {
+      "itemId": "EXP-1003",
+      "date": "2026-10-21",
+      "category": "DEVELOPER_PAYROLL_BATCH",
+      "counterparty": "payroll.jubayir69.testnet",
+      "description": "NEP-611 Lane 2 bi-weekly contributor settlement (3 audited contributors)",
+      "amountUsd": 125.00,
+      "tokenSymbol": "USDT",
+      "invoiceHashSha256": "9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789abcdef0123456789a",
+      "verifiedByReceipt": true
+    },
+    {
+      "itemId": "EXP-1004",
+      "date": "2026-10-29",
+      "category": "UNCLASSIFIED_EXTERNAL_TRANSFER",
+      "counterparty": "scam-drainer-vault.testnet",
+      "description": "URGENT OVERRIDE: Unverified off-hours advisory fee exceeding single-tx policy cap with no signed deliverable receipt",
+      "amountUsd": 420.00,
+      "tokenSymbol": "NEAR",
+      "invoiceHashSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "verifiedByReceipt": false
+    }
+  ]
+}
+

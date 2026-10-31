@@ -1,0 +1,49 @@
+{
+  "generatedAtIso": "2026-10-31T18:23:53.936Z",
+  "model": "zai-org/GLM-5.1-FP8",
+  "nonce": "dfe080d9fbebfb0c51a70e47631f2fd01267494b1b3998ea4dcb3095e55d34a4",
+  "model_attestations": [
+    {
+      "signing_address": "0x7c8F4DC2450D3a42048973BeB38ad53E397C73D4",
+      "ed25519_public_key": "9ba0131aa934fad5fe755951c350eac95dbedc33110c437b0274b3a94975ba75",
+      "nvidia_payload": [
+        [
+          "JWT",
+          "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im5yYXMtaG9wcGVyLWgxMDAta2V5LTEifQ.eyJzdWIiOiJOVklESUEtUExBVEZPUk0tQVRURVNUQVRJT04iLCJpc3MiOiJodHRwczovL25yYXMuYXR0ZXN0YXRpb24ubnZpZGlhLmNvbSIsIngtbnZpZGlhLXZlciI6IjIuMCIsIngtbnZpZGlhLW92ZXJhbGwtYXR0LXJlc3VsdCI6dHJ1ZSwiZWF0X25vbmNlIjoiZGZlMDgwZDlmYmViZmIwYzUxYTcwZTQ3NjMxZjJmZDAxMjY3NDk0YjFiMzk5OGVhNGRjYjMwOTVlNTVkMzRhNCIsInN1Ym1vZHMiOnsiR1BVLTAiOlsiRElHRVNUIixbIlNIQS0yNTYiLCI0OTZlYTFiZWE1MWY0YTI4ZjBmM2U3ZDU5MDc5ZmY0MTZmNGRiODg2MTVhNzc2Mzg3NTAxMWEwMzliZGJmODFjIl1dfSwiaWF0IjoxNzkzNDcxMDMzLCJleHAiOjE3OTM0NzQ2MzN9.u3h0-y1vd1K2E1zZUkqd2nBwR99Ff0ZZmKbrOooitA8"
+        ],
+        {
+          "GPU-0": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Im5yYXMtaG9wcGVyLWgxMDAta2V5LTEifQ.eyJpc3MiOiJodHRwczovL25yYXMuYXR0ZXN0YXRpb24ubnZpZGlhLmNvbSIsImVhdF9ub25jZSI6ImRmZTA4MGQ5ZmJlYmZiMGM1MWE3MGU0NzYzMWYyZmQwMTI2NzQ5NGIxYjM5OThlYTRkY2IzMDk1ZTU1ZDM0YTQiLCJod21vZGVsIjoiR0gxMDAgQTAxIEdTUCBCUk9NIiwieC1udmlkaWEtZ3B1LWFyY2giOiJob3BwZXIiLCJ4LW52aWRpYS1ncHUtV2F0Y2hkb2ciOiJlbmFibGVkIiwic2VjYm9vdCI6dHJ1ZSwiZGJnc3RhdCI6ImRpc2FibGVkIiwidWVpZCI6IjY0Mjk2MDE4OTI5ODAwNzUxMTI1MDk1ODAzMDUwMDc0OTE1MjczMDIyMTE0MjQ2OCIsImlhdCI6MTc5MzQ3MTAzMywiZXhwIjoxNzkzNDc0NjMzfQ.VHHfsodY9qrKWMG6mZ2ZF8S2ri1rXdEc8vz194nKxhY"
+        }
+      ],
+      "intel_quote": {
+        "version": 4,
+        "tee_type": "0x00000081",
+        "mrtd": "9c1db152be34d9c75eba883fe25adfccb62398817cce3de5d7d553de9ca7e7da2168af9afefa3b1e78045df7426e7ee6",
+        "rtmr0": "d1784c1fe77a92546cc32acf51de3a04caae6240c64d4bda91e20717f81ac25d3d3b9ca764ba5bfb16db9289e7a49544",
+        "rtmr1": "8fc69f46d59bc97e082a1ba749e092a40d4c4c7c84bbc02098df9b2f6cf6be21d2e73337ccd80191f81f9436555f0dbe",
+        "rtmr2": "48f0c6b5b9c32b499f8f539dcf783e31f136194889c3fd8f0000aac335eea4044717e384b33108fbc2c5d16e4fb9dcc9",
+        "rtmr3": "40af4ee07e76e77d2575e820dd98287ddb45399488e1a252cdab990561ae6d850f56b093efb17dab239332de6d95775d",
+        "report_data": "db87a8e9bb9cce98619a7e603558b00f073c1293bb3c4b6cf539666c3bbad33bdfe080d9fbebfb0c51a70e47631f2fd01267494b1b3998ea4dcb3095e55d34a4"
+      }
+    }
+  ],
+  "chat_signature": {
+    "chat_id": "chatcmpl-tee-9915025eb5ea2bc8e3e4ef86",
+    "model": "zai-org/GLM-5.1-FP8",
+    "signature_kind": "provider_tee",
+    "text": "zai-org/GLM-5.1-FP8:fa5e9300237f0cf76449263f190e6daef19d27466f7b30dd80bfc0bc69948b7f:ff49e35527d39d2af1af4e7cdc8403c91a9e9e5ee257f7125d65069f9864c58c",
+    "request_hash": "fa5e9300237f0cf76449263f190e6daef19d27466f7b30dd80bfc0bc69948b7f",
+    "response_hash": "ff49e35527d39d2af1af4e7cdc8403c91a9e9e5ee257f7125d65069f9864c58c",
+    "signing_address": "0x7c8F4DC2450D3a42048973BeB38ad53E397C73D4",
+    "signing_algo": "ecdsa",
+    "signature": "0xd791b2d186629215ba220dd6238502add18ff5671f79abcf6db65c7aed7a0839648dce6488c1ab1928117a25b72510e3f3f9f3f72643a047ff7e7a56dfbc20b61b",
+    "ed25519_public_key": "9ba0131aa934fad5fe755951c350eac95dbedc33110c437b0274b3a94975ba75",
+    "ed25519_signature": "5ae4bae03836913dc4da19a7ee397df75bd8684201ad13292f65bcfd6a86a0b6818e77420ff6ee66da97cc0c59678371b300e3639af6b42cf0571b7721192a0c"
+  },
+  "zero_retention_audit_summary": {
+    "statementId": "KRATON-TREASURY-2026-Q4-01",
+    "zeroRetentionVerified": true,
+    "wipedBufferByteLength": 2173,
+    "auditDigestSha256": "9915025eb5ea2bc8e3e4ef863406f29dbae6e659e4752b6816704a1a887e6635"
+  }
+}

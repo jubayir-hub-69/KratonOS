@@ -1,0 +1,62 @@
+# ============================================================================
+# KratonOS — Human Constraints & Autonomous Treasury Policy (config.yaml)
+# NEAR Hackathon 2026 — Autonomous Business & Sovereign Treasury Track
+# ============================================================================
+
+treasury_account: "jubayir69.testnet"
+emergency_kill_switch: false
+
+# --- Financial Spend & Pricing Guardrails (USD) ---
+daily_spend_limit_usd: 500.00
+max_single_tx_usd: 150.00
+max_daily_inference_spend_usd: 5.00
+min_report_or_task_price_usd: 2.50
+
+# --- DeFi Execution, Oracle & Fee Bounds ---
+max_slippage_bps: 100
+max_oracle_deviation_percent: 5.0
+app_fee_bps: 40
+max_total_fee_bps: 500
+limit_order_confidentiality: "basic"
+
+# --- Autonomous Revenue Split (Must Sum to 100%) ---
+revenue_split_percentages:
+  treasury_reserve: 70
+  sub_agent_bounty_pool: 20
+  compute_refill_pool: 10
+
+# --- NEP-611 Parallel Gas-Key Execution Lanes (Zero Nonce Collisions) ---
+nep611_gas_key_lanes_count: 4
+nep611_gas_key_lanes:
+  count: 4
+  lane_0: "scout.jubayir69.testnet"
+  lane_1: "executor.jubayir69.testnet"
+  lane_2: "payroll.jubayir69.testnet"
+  lane_3: "yield.jubayir69.testnet"
+
+# --- Whitelisted Cross-Chain & Native Assets ---
+allowed_tokens:
+  - "USDC"
+  - "USDT"
+  - "DAI"
+  - "NEAR"
+  - "wNEAR"
+  - "ETH"
+  - "WBTC"
+  - "SOL"
+  - "ZEC"
+
+# --- 3-Tier Earned-Trust Governance Thresholds (Sputnik DAO V2 & Trezu) ---
+governance_tiers:
+  tier_1_auto_approve_max_usd: 50.00
+  tier_2_single_council_max_usd: 150.00
+  tier_3_sputnik_dao_proposal_bond_near: "1.0"
+  sputnik_dao_contract_id: "kratonos-dao.sputnikv2.testnet"
+
+# --- Protocol Runtime Constraints ---
+protocol_rules:
+  rust_toolchain_version: "1.86.0"
+  near_rpc_batching_allowed: false
+  oneclick_swap_settlement: "near_private_shard_confidential"
+  post_quantum_audit_scheme: "ml-dsa-65"
+

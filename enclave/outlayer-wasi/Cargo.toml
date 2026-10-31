@@ -1,0 +1,26 @@
+[package]
+name = "kratonos-outlayer-wasi"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.86.0"
+authors = ["KratonOS Autonomous Treasury Team"]
+description = "OutLayer Confidential Enclave Modules — WASI P2 EIP-1186 eth_getProof + Multi-Source Median Oracle & WASI P1 Ed25519 VRF Anti-MEV Slicer"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+sha3 = "0.10"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+overflow-checks = true
+

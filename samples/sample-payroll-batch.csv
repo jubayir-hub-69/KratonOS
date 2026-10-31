@@ -1,0 +1,14 @@
+recipient_id,role,origin_asset,destination_asset,amount_usdc,invoice_ref
+jubayir69.testnet,Core Treasury Lead,USDC,USDC,45.00,PAY-2026-101
+scout.jubayir69.testnet,Swarm Discovery Agent,USDC,USDC,18.50,PAY-2026-102
+executor.jubayir69.testnet,PoC-4 Intent Executor,USDC,USDC,24.00,PAY-2026-103
+payroll.jubayir69.testnet,Batch Settlement Relayer,USDC,USDC,15.00,PAY-2026-104
+yield.jubayir69.testnet,RHEA Farming Harvester,USDC,USDC,22.00,PAY-2026-105
+outlayer.testnet,WASI P2 Enclave Verifier,USDC,USDC,30.00,PAY-2026-106
+worker.outlayer.testnet,WASI P1 VRF Node,USDC,USDC,19.75,PAY-2026-107
+ref-finance.testnet,RHEA Liquidity Provider,USDC,USDC,28.00,PAY-2026-108
+wrap.testnet,wNEAR Wrapper Gateway,USDC,USDC,12.25,PAY-2026-109
+buyer-1.jubayir69.testnet,Swarm Pool Coordinator,USDC,USDC,14.50,PAY-2026-110
+seller-1.jubayir69.testnet,Hopper GPU Capacity Node,USDC,USDC,35.00,PAY-2026-111
+scam-drainer-vault.testnet,Quarantined Malicious Sink,USDC,USDC,99.00,PAY-2026-112-MALFORMED
+
