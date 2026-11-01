@@ -23,6 +23,7 @@ export interface ExactOutputInvoiceInput {
   payerRefundAddress: string;
   requestedNetOutputAtomic: bigint | string; // e.g., 250_000_000n (250.000000 USDC)
   originAssetId?: string;
+  originChainLabel?: string;
   destinationAssetId?: string;
   decimals?: number;
   appFeeBps?: number;
@@ -146,8 +147,18 @@ export function execute_ceil_exact_output_invoice(
   const grossFormatted = (Number(grossInputCeiling) / scale).toFixed(decimals);
   const netSettledFormatted = (Number(netSettled) / scale).toFixed(decimals);
 
+  const chainLabel = input.originChainLabel ?? "Ethereum Mainnet (USDC)";
+  const originChainAssetMap: Record<string, string> = {
+    "Ethereum Mainnet (USDC)": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "Arbitrum One (USDC)": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+    "Base Mainnet (USDC)": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",
+    "Solana Mainnet (USDC)": "nep141:sol-epjfwdd5aufqssqem2qn1xzybapc8g4weggkzwytdt1v.omft.near",
+  };
   const originAssetId =
-    input.originAssetId ?? "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near";
+    input.originAssetId ??
+    originChainAssetMap[chainLabel] ??
+    "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near";
+  const originChainShort = chainLabel.split(" ")[0].toLowerCase();
   const destinationAssetId =
     input.destinationAssetId ?? `nep141:${NEAR_MAINNET_USDC_CONTRACT}`;
   const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near";
@@ -204,7 +215,11 @@ export function execute_ceil_exact_output_invoice(
 
   return {
     invoiceId,
-    shareableInvoiceUrl: `https://kratonos.near.page/invoice/${invoiceId}?net=${requestedFormatted}&asset=USDC`,
+    shareableInvoiceUrl: `https://kratonos.near.page/invoice/${invoiceId}?recipient=${encodeURIComponent(
+      input.freelancerAccountId
+    )}&net=${requestedFormatted}&gross=${grossFormatted}&origin=${encodeURIComponent(
+      originChainShort
+    )}&asset=USDC`,
     freelancerAccountId: input.freelancerAccountId,
     originAssetId,
     destinationAssetId,
@@ -231,21 +246,53 @@ export function execute_ceil_exact_output_invoice(
 // 2. Fault-Isolated Batch Payroll (`NEAR-fast-ft-transfer` Pattern) & CSV Export
 // ============================================================================
 
-export function parsePayrollCsvFile(csvPath: string): PayrollCsvRow[] {
-  const raw = fs.readFileSync(csvPath, "utf8").trim();
-  const lines = raw.split(/\r?\n/);
+export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
+  const lines = rawCsv.trim().split(/\r?\n/);
   const rows: PayrollCsvRow[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    const [recipientId, role, originAsset, destinationAsset, amountUsdcStr, invoiceRef] =
-      line.split(",").map((s) => s.trim());
-    const amountUsdc = Number(amountUsdcStr);
-    const amountAtomicUsdc = BigInt(Math.round(amountUsdc * 1_000_000)).toString();
+    const cols = line.split(",").map((s) => s.trim());
+
+    // Skip header row if first line contains header labels
+    if (
+      i === 0 &&
+      (/recipient|account|address/i.test(cols[0] ?? "") ||
+        cols.some((c) => /amount|usdc|role|invoice/i.test(c)))
+    ) {
+      continue;
+    }
+
+    let recipientId = cols[0] || `contributor-${rows.length + 1}.testnet`;
+    let role = "Contributor";
+    let originAsset = "USDC";
+    let destinationAsset = "USDC";
+    let amountUsdc = 25;
+    let invoiceRef = `INV-CSV-${String(rows.length + 1).padStart(3, "0")}`;
+
+    if (cols.length >= 6) {
+      [recipientId, role, originAsset, destinationAsset] = cols;
+      amountUsdc = Number(cols[4]) || 25;
+      invoiceRef = cols[5] || invoiceRef;
+    } else if (cols.length >= 2) {
+      recipientId = cols[0];
+      const numericCol = cols.slice(1).find((c) => !Number.isNaN(Number(c)) && Number(c) > 0);
+      if (numericCol) {
+        amountUsdc = Number(numericCol);
+      }
+      if (cols.length >= 3 && Number.isNaN(Number(cols[1]))) {
+        role = cols[1];
+      }
+      if (cols.length >= 4) {
+        invoiceRef = cols[cols.length - 1];
+      }
+    }
+
+    const amountAtomicUsdc = BigInt(Math.max(1, Math.round(amountUsdc * 1_000_000))).toString();
 
     rows.push({
-      rowNumber: i,
+      rowNumber: rows.length + 1,
       recipientId,
       role,
       originAsset,
@@ -256,6 +303,11 @@ export function parsePayrollCsvFile(csvPath: string): PayrollCsvRow[] {
     });
   }
   return rows;
+}
+
+export function parsePayrollCsvFile(csvPath: string): PayrollCsvRow[] {
+  const raw = fs.readFileSync(csvPath, "utf8").trim();
+  return parsePayrollCsvContent(raw);
 }
 
 /**
@@ -270,6 +322,7 @@ export function parsePayrollCsvFile(csvPath: string): PayrollCsvRow[] {
  */
 export async function executeFaultIsolatedBatchPayroll(params?: {
   csvInputPath?: string;
+  customCsvContent?: string;
   csvOutputPath?: string;
   tokenContractId?: string;
   rpcClient?: NearRpcClient;
@@ -284,7 +337,10 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
   const csvOutputPath =
     params?.csvOutputPath ?? path.join(workspaceRoot, "samples", "exported-bookkeeper-ledger.csv");
 
-  const rows = parsePayrollCsvFile(csvInputPath);
+  const rows =
+    params?.customCsvContent && params.customCsvContent.trim().length > 0
+      ? parsePayrollCsvContent(params.customCsvContent)
+      : parsePayrollCsvFile(csvInputPath);
   const outcomes: PayrollRecipientOutcome[] = [];
 
   let storageDepositsAutoInjectedCount = 0;

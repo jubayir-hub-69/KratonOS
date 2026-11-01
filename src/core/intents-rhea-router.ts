@@ -262,6 +262,48 @@ export async function fetchLiveOneClickTokens(): Promise<{
         price: 4.33,
         contractAddress: "wrap.near",
       },
+      {
+        assetId: "nep141:near.native",
+        symbol: "NEAR",
+        decimals: 24,
+        blockchain: "near",
+        price: 4.33,
+      },
+      {
+        assetId: "nep141:eth.omft.near",
+        symbol: "ETH",
+        decimals: 18,
+        blockchain: "eth",
+        price: 2219.86,
+      },
+      {
+        assetId: "nep141:2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near",
+        symbol: "WBTC",
+        decimals: 8,
+        blockchain: "btc",
+        price: 86450.0,
+      },
+      {
+        assetId: "nep141:sol.omft.near",
+        symbol: "SOL",
+        decimals: 9,
+        blockchain: "sol",
+        price: 178.4,
+      },
+      {
+        assetId: "nep141:6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near",
+        symbol: "DAI",
+        decimals: 18,
+        blockchain: "near",
+        price: 1.0,
+      },
+      {
+        assetId: "nep141:zec.omft.near",
+        symbol: "ZEC",
+        decimals: 8,
+        blockchain: "zec",
+        price: 41.25,
+      },
     ],
   };
 }
@@ -274,6 +316,8 @@ export async function findOptimalTriVenueRoute(params: {
   originSymbol?: string;
   destinationSymbol?: string;
   amountInHuman?: number;
+  slippageBps?: number;
+  recipient?: string;
   rpcClient?: NearRpcClient;
 }): Promise<TriVenueRouteResult> {
   const runtime = loadKratonConfig();
@@ -281,6 +325,7 @@ export async function findOptimalTriVenueRoute(params: {
   const originSym = (params.originSymbol ?? "USDC").toUpperCase();
   const destSym = (params.destinationSymbol ?? "USDT").toUpperCase();
   const amountInHuman = params.amountInHuman ?? 100.0; // $100.00 swap
+  const effectiveSlippageBps = params.slippageBps ?? runtime.constraints.max_slippage_bps;
 
   const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near";
   const hasOneClickApiKey = Boolean(runtime.env.ONECLICK_API_KEY && runtime.env.ONECLICK_API_KEY.trim());
@@ -330,6 +375,11 @@ export async function findOptimalTriVenueRoute(params: {
     Math.round(amountInHuman * 10 ** Math.min(originToken.decimals, 6))
   ) * (originToken.decimals > 6 ? 10n ** BigInt(originToken.decimals - 6) : 1n);
 
+  const originPriceUsd = originToken.price && originToken.price > 0 ? originToken.price : 1.0;
+  const destPriceUsd = destToken.price && destToken.price > 0 ? destToken.price : 1.0;
+  const priceRatio = isStableOrSameAsset ? 1.0 : originPriceUsd / destPriceUsd;
+  const grossDestHuman = amountInHuman * priceRatio;
+
   // 2. Execute live `dry: true` quote on `https://1click.chaindefuser.com/v0/quote`
   let oneClickOutAtomic = "";
   let oneClickOutFormatted = "";
@@ -353,7 +403,7 @@ export async function findOptimalTriVenueRoute(params: {
     recipientType: "DESTINATION_CHAIN",
     refundTo: mainnetQuoteAccount,
     refundType: "ORIGIN_CHAIN",
-    slippageTolerance: runtime.constraints.max_slippage_bps,
+    slippageTolerance: effectiveSlippageBps,
     deadline: deadlineIso,
     appFees: [{ recipient: feeRecipient, fee: safeAppFeeBps }],
   };
@@ -394,11 +444,15 @@ export async function findOptimalTriVenueRoute(params: {
   }
 
   if (!oneClickOutAtomic) {
-    // Deterministic 1-bp stablecoin + 40 bps appFee deduction
+    // Deterministic 1-bp stablecoin (or 20/25 bps cross-asset) + 40 bps appFee deduction scaled by priceRatio
     const netMultiplierBps = BigInt(10_000 - totalOneClickFeeBps);
-    const outUnits = (BigInt(Math.round(amountInHuman * 1_000_000)) * netMultiplierBps) / 10_000n;
-    oneClickOutAtomic = outUnits.toString();
-    oneClickOutFormatted = (Number(outUnits) / 1_000_000).toFixed(6);
+    const outUnitsMicro = (BigInt(Math.round(grossDestHuman * 1_000_000)) * netMultiplierBps) / 10_000n;
+    const outAtomicScaled =
+      destToken.decimals > 6
+        ? outUnitsMicro * 10n ** BigInt(destToken.decimals - 6)
+        : outUnitsMicro;
+    oneClickOutAtomic = outAtomicScaled.toString();
+    oneClickOutFormatted = (Number(outUnitsMicro) / 1_000_000).toFixed(6);
   }
 
   // 3. Query Live RHEA Finance V1 AMM (`ref-finance.testnet`) on-chain pools
@@ -420,7 +474,7 @@ export async function findOptimalTriVenueRoute(params: {
   const rheaV1TotalFeeBps = rheaV1ProtocolFeeBps + safeAppFeeBps;
   const rheaV1PriceImpactBps = 8;
   const rheaV1OutUnits =
-    (BigInt(Math.round(amountInHuman * 1_000_000)) *
+    (BigInt(Math.round(grossDestHuman * 1_000_000)) *
       BigInt(10_000 - rheaV1TotalFeeBps - rheaV1PriceImpactBps)) /
     10_000n;
 
@@ -429,14 +483,16 @@ export async function findOptimalTriVenueRoute(params: {
   const rheaV2TotalFeeBps = rheaV2ProtocolFeeBps + safeAppFeeBps;
   const rheaV2PriceImpactBps = 2;
   const rheaV2OutUnits =
-    (BigInt(Math.round(amountInHuman * 1_000_000)) *
+    (BigInt(Math.round(grossDestHuman * 1_000_000)) *
       BigInt(10_000 - rheaV2TotalFeeBps - rheaV2PriceImpactBps)) /
     10_000n;
 
   // For 1-bp stablecoin routes, 1Click Intents solver provides zero-impact 1-bp spread
   const oneClickEffectiveOutForComparison = isStableOrSameAsset
-    ? (BigInt(Math.round(amountInHuman * 1_000_000)) * BigInt(10_000 - (1 + safeAppFeeBps))) / 10_000n
+    ? (BigInt(Math.round(grossDestHuman * 1_000_000)) * BigInt(10_000 - (1 + safeAppFeeBps))) / 10_000n
     : BigInt(oneClickOutAtomic.slice(0, 12) || "0");
+
+  const targetRecipientLabel = params.recipient ? `, recipient=${params.recipient}` : "";
 
   const candidates: VenueQuoteCandidate[] = [
     {
@@ -456,7 +512,7 @@ export async function findOptimalTriVenueRoute(params: {
       priceImpactBps: 0,
       isOneBpStableRoute: isStableOrSameAsset,
       liveSourceVerified: oneClickLiveQuoteVerified || tokenRegistry.liveFetched,
-      details: `1Click Confidential Private Shard quote (correlationId=${oneClickCorrelationId ?? "dry-preview"}, liveQuote=${oneClickLiveQuoteVerified}, 1-bp stablecoin optimizer=${isStableOrSameAsset})`,
+      details: `1Click Confidential Private Shard quote (correlationId=${oneClickCorrelationId ?? "dry-preview"}, liveQuote=${oneClickLiveQuoteVerified}, slippage=${effectiveSlippageBps}bps${targetRecipientLabel}, 1-bp stablecoin optimizer=${isStableOrSameAsset})`,
     },
     {
       venue: "RHEA_V2_DCL",
@@ -471,7 +527,7 @@ export async function findOptimalTriVenueRoute(params: {
       priceImpactBps: rheaV2PriceImpactBps,
       isOneBpStableRoute: false,
       liveSourceVerified: rheaLiveVerified,
-      details: `RHEA V2 Discretized Concentrated Liquidity (5 bps tier bin, 2 bps tick impact)`,
+      details: `RHEA V2 Discretized Concentrated Liquidity (5 bps tier bin, 2 bps tick impact, slippage=${effectiveSlippageBps}bps${targetRecipientLabel})`,
     },
     {
       venue: "RHEA_V1_AMM",
@@ -486,7 +542,7 @@ export async function findOptimalTriVenueRoute(params: {
       priceImpactBps: rheaV1PriceImpactBps,
       isOneBpStableRoute: false,
       liveSourceVerified: rheaLiveVerified,
-      details: `RHEA V1 Constant-Product AMM on ${runtime.env.RHEA_EXCHANGE_CONTRACT_ID} (${rheaPoolCountOnChain} active on-chain pools)`,
+      details: `RHEA V1 Constant-Product AMM on ${runtime.env.RHEA_EXCHANGE_CONTRACT_ID} (${rheaPoolCountOnChain} active on-chain pools, slippage=${effectiveSlippageBps}bps${targetRecipientLabel})`,
     },
   ];
 
@@ -680,7 +736,7 @@ export function createConfidentialLimitOrder(params: {
   const vrf = computeProvableVrfJitter({
     requestId: params.vrfRequestId ?? 2002,
     senderId: recipient,
-    seed: `limit-order-${params.baseAsset}-${params.quoteAsset}-${params.priceHuman}`,
+    seed: `limit-order-${params.baseAsset}-${params.quoteAsset}-${params.quantityBaseAtomic}-${params.priceHuman}`,
     sliceCount: 4,
   });
 

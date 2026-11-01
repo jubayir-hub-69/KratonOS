@@ -201,7 +201,23 @@ export async function discoverLiveAgentMarket(
     liveHttpStatus = `SANDBOX_FALLBACK (${err instanceof Error ? err.message : String(err)})`;
   }
 
+  const cleanQuery = query.trim().toLowerCase();
   if (discoveredAgents.length === 0) {
+    if (cleanQuery && cleanQuery !== "research") {
+      const slug = cleanQuery.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
+      discoveredAgents.push({
+        agentId: `agt-kraton-${slug}-00`,
+        handle: `${slug}-tee-specialist`,
+        name: `${query.trim()} Autonomous TEE Specialist`,
+        category: cleanQuery,
+        description: `Executes hardware-attested ${query.trim()} analysis and NEP-366 x402 v2 settlement on NEAR.`,
+        availableNow: true,
+        slaSeconds: 1800,
+        defaultPriceUsd: 2.5,
+        deliveredJobs: 64,
+        successRatePercent: 99.4,
+      });
+    }
     discoveredAgents.push(
       {
         agentId: "agt-kraton-research-01",

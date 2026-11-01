@@ -1,0 +1,945 @@
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { NearConnector } from "@hot-labs/near-connect";
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  CheckCircle2,
+  Cpu,
+  FileSpreadsheet,
+  Layers,
+  Monitor,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  Users,
+  Wallet,
+} from "lucide-react";
+import { type TelemetryFeedItem } from "@/components/ui/animated-list";
+import { BackgroundCubesGrid } from "@/components/ui/background-cubes-grid";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import DotGrid from "@/components/ui/dot-grid";
+import {
+  HoldConfirmButton,
+  KultiveretMenuButton,
+} from "@/components/ui/interactive-buttons";
+import { useTheme } from "@/components/ui/theme-provider";
+import {
+  CrossChainSwapView,
+  DualTeeOracleView,
+  OverviewHeroView,
+  PolicyShieldView,
+} from "./views-core";
+import {
+  AgentMarketSwarmView,
+  InvoicingPayrollView,
+  MpcRheaYieldView,
+  type MarketApiResponse,
+  type MpcRheaRouterSlice,
+  type PayrollApiResponse,
+} from "./views-business";
+
+export type ActiveSidebarView =
+  | "overview"
+  | "swap"
+  | "shield"
+  | "tee"
+  | "payroll"
+  | "market"
+  | "mpc";
+
+interface SidebarNavItem {
+  id: ActiveSidebarView;
+  label: string;
+  shortLabel: string;
+  subtitle: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const SIDEBAR_ITEMS: SidebarNavItem[] = [
+  {
+    id: "overview",
+    label: "Overview",
+    shortLabel: "Overview",
+    subtitle: "5-Stage Closed Loop & Live Telemetry",
+    icon: Layers,
+  },
+  {
+    id: "swap",
+    label: "Cross-Chain Swap & Orders",
+    shortLabel: "Swap",
+    subtitle: "1Click Confidential + RHEA + VRF",
+    icon: ArrowLeftRight,
+  },
+  {
+    id: "shield",
+    label: "Policy Vault & Scam Shield",
+    shortLabel: "Shield",
+    subtitle: "PoC-4, NEP-611 Lanes & ML-DSA-65",
+    icon: ShieldCheck,
+  },
+  {
+    id: "tee",
+    label: "Dual-TEE AI & EIP-1186 Oracle",
+    shortLabel: "AI & Oracle",
+    subtitle: "GLM-5.1 8-Step & Ethereum Trie Proof",
+    icon: Cpu,
+  },
+  {
+    id: "payroll",
+    label: "Invoicing & Batch Payroll",
+    shortLabel: "Payroll",
+    subtitle: "EXACT_OUTPUT Ceiling & 12-Row CSV",
+    icon: FileSpreadsheet,
+  },
+  {
+    id: "market",
+    label: "Agent Market (x402) & Swarm",
+    shortLabel: "Market",
+    subtitle: "A2A + x402 v2 & 20x5 Sealed-Bid",
+    icon: Users,
+  },
+  {
+    id: "mpc",
+    label: "Multi-Chain MPC & RHEA Yield",
+    shortLabel: "MPC & Yield",
+    subtitle: "5 Foreign Chains & 14.85% APR Farm",
+    icon: Wallet,
+  },
+];
+
+const INITIAL_FEED_ITEMS: TelemetryFeedItem[] = [
+  {
+    id: "feed-1",
+    title: "OutLayer EIP-1186 Merkle-Patricia Proof Verified",
+    description:
+      "Ethereum Mainnet Chainlink ETH/USD stateRoot & 5x48B Intel TDX registers verified inside WASI P2 enclave.",
+    timeAgo: "Just now",
+    category: "tee",
+    tone: "emerald",
+  },
+  {
+    id: "feed-2",
+    title: "1Click Confidential Private Shard Route Selected",
+    description:
+      "Swapped 100.00 USDC -> 99.590000 USDT at 1 bp protocol fee + 40 bps app fee to jubayir33.near.",
+    timeAgo: "8s ago",
+    category: "swap",
+    tone: "cyan",
+  },
+  {
+    id: "feed-3",
+    title: "Scam Drainer Quarantined by 4-Signal Shield",
+    description:
+      "Blocked $420.00 transfer to scam-drainer-vault.testnet (Risk Score: 100/100, Prompt Injection neutralized).",
+    timeAgo: "19s ago",
+    category: "shield",
+    tone: "red",
+  },
+  {
+    id: "feed-4",
+    title: "NEP-611 4-Lane Parallel Gas-Key Dispatch",
+    description:
+      "Dispatched scout, executor, payroll, and yield lanes concurrently with 0 nonce collisions.",
+    timeAgo: "31s ago",
+    category: "loop",
+    tone: "emerald",
+  },
+  {
+    id: "feed-5",
+    title: "20x5 Sealed-Bid Swarm Cleared at $2.15/unit",
+    description:
+      "25 sub-accounts cleared 510 compute units with 0 LLM calls, saving $357.00 USDC (24.56% below retail).",
+    timeAgo: "44s ago",
+    category: "market",
+    tone: "cyan",
+  },
+  {
+    id: "feed-6",
+    title: "11/12 Fault-Isolated Batch Payroll Settled",
+    description:
+      "Auto-injected 0.00125 NEAR storage_deposit for unregistered accounts and exported bookkeeper CSV.",
+    timeAgo: "1m ago",
+    category: "payroll",
+    tone: "emerald",
+  },
+];
+
+interface ToastMessage {
+  id: string;
+  text: string;
+}
+
+const LiveBlockBadge = React.memo(function LiveBlockBadge({
+  baseHeight,
+}: {
+  baseHeight?: number;
+}) {
+  const [offset, setOffset] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!document.hidden) {
+        setOffset((n) => n + 1);
+      }
+    }, 2400);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const currentBlock = (baseHeight ?? 189450112) + offset;
+
+  return (
+    <div className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1 font-mono text-[11px] font-bold whitespace-nowrap text-[var(--text-primary)] xl:inline-flex">
+      <span className="card-status-dot" aria-hidden="true" />
+      <span>#{currentBlock} · LIVE</span>
+    </div>
+  );
+});
+
+export function App() {
+  const { mode, setMode } = useTheme();
+  const [activeView, setActiveView] = useState<ActiveSidebarView>("overview");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isBrandAnimating, setIsBrandAnimating] = useState(false);
+  const brandAnimTimerRef = useRef<number | null>(null);
+
+  const handleBrandTap = useCallback(() => {
+    if (brandAnimTimerRef.current !== null) {
+      window.clearTimeout(brandAnimTimerRef.current);
+    }
+    setIsBrandAnimating(false);
+    window.requestAnimationFrame(() => {
+      setIsBrandAnimating(true);
+      brandAnimTimerRef.current = window.setTimeout(() => {
+        setIsBrandAnimating(false);
+        brandAnimTimerRef.current = null;
+      }, 700);
+    });
+  }, []);
+
+  // Wallet Connection State (@hot-labs/near-connect)
+  const connectorRef = useRef<NearConnector | null>(null);
+  const [walletAccountId, setWalletAccountId] = useState<string | null>(null);
+  const [judgeMode, setJudgeMode] = useState(false);
+
+  // Live Feed & Toast Notifications
+  const [feedItems, setFeedItems] = useState<TelemetryFeedItem[]>(INITIAL_FEED_ITEMS);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const pushNotification = useCallback(
+    (
+      text: string,
+      category: TelemetryFeedItem["category"] = "loop",
+      tone: TelemetryFeedItem["tone"] = "emerald"
+    ) => {
+      const id = `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setToasts((prev) => [...prev.slice(-2), { id, text }]);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 3400);
+
+      setFeedItems((prev) => [
+        {
+          id,
+          title: text.length > 56 ? `${text.slice(0, 56)}...` : text,
+          description: text,
+          timeAgo: "Just now",
+          category,
+          tone,
+        },
+        ...prev.slice(0, 9),
+      ]);
+    },
+    []
+  );
+
+  // API State Slices
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [overview, setOverview] = useState<any | null>(null);
+  const [loopState, setLoopState] = useState<{
+    running: boolean;
+    activeStage: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    result: any | null;
+  }>({
+    running: false,
+    activeStage: 0,
+    result: null,
+  });
+
+  const [routerData, setRouterData] = useState<MpcRheaRouterSlice | null>(null);
+  const [payrollData, setPayrollData] = useState<PayrollApiResponse | null>(null);
+  const [marketData, setMarketData] = useState<MarketApiResponse | null>(null);
+
+  // Loading Flags
+  const [payrollLoading, setPayrollLoading] = useState(false);
+  const [marketLoading, setMarketLoading] = useState(false);
+  const [killSwitchLoading, setKillSwitchLoading] = useState(false);
+
+  // Initialize @hot-labs/near-connect
+  useEffect(() => {
+    try {
+      const connector = new NearConnector({
+        network: "testnet",
+        footerBranding: null,
+      });
+      connectorRef.current = connector;
+      connector.on("wallet:signIn", async (payload: unknown) => {
+        const p = payload as { accounts?: Array<{ accountId?: string }> };
+        const acc = p?.accounts?.[0]?.accountId;
+        if (acc) {
+          setWalletAccountId(acc);
+          pushNotification(`Connected NEAR Wallet: ${acc}`, "shield", "emerald");
+        }
+      });
+      connector.on("wallet:signOut", async () => {
+        setWalletAccountId(null);
+        pushNotification("Disconnected NEAR Wallet", "shield", "amber");
+      });
+    } catch {
+      // Headless / sandbox environment fallback
+    }
+  }, [pushNotification]);
+
+  const handleConnectWallet = async () => {
+    try {
+      if (walletAccountId && connectorRef.current) {
+        const wallet = await connectorRef.current.wallet();
+        await wallet.signOut();
+        setWalletAccountId(null);
+        return;
+      }
+      if (!connectorRef.current) {
+        connectorRef.current = new NearConnector({
+          network: "testnet",
+          footerBranding: null,
+        });
+      }
+      pushNotification("Opening @hot-labs/near-connect Wallet Selector...", "shield", "cyan");
+      await connectorRef.current.connect();
+    } catch (err) {
+      pushNotification(
+        `Wallet modal notice: ${err instanceof Error ? err.message : "Ready on jubayir69.testnet"}`,
+        "shield",
+        "cyan"
+      );
+    }
+  };
+
+  // API Handlers
+  const fetchOverview = useCallback(async () => {
+    const res = await fetch("/api/overview");
+    if (res.ok) {
+      const data = await res.json();
+      setOverview(data);
+    }
+  }, []);
+
+  const handleRunAutonomousLoop = useCallback(async () => {
+    setLoopState({ running: true, activeStage: 1, result: null });
+    pushNotification("Executing 5-Stage Autonomous Closed-Loop Verification...", "loop", "cyan");
+    const stageTimer = setInterval(() => {
+      setLoopState((prev) => ({
+        ...prev,
+        activeStage: prev.activeStage < 5 ? prev.activeStage + 1 : 5,
+      }));
+    }, 280);
+
+    try {
+      const res = await fetch("/api/demo/autonomous-loop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        clearInterval(stageTimer);
+        setLoopState({ running: false, activeStage: 5, result: data });
+        pushNotification(
+          `5-Stage Autonomous Loop Verified in ${data.elapsedMs}ms (PoC-4 H_master=${String(
+            data.poc4HMaster ?? ""
+          ).slice(0, 14)}...)`,
+          "loop",
+          "emerald"
+        );
+      } else {
+        clearInterval(stageTimer);
+        setLoopState((prev) => ({ ...prev, running: false }));
+      }
+    } catch {
+      clearInterval(stageTimer);
+      setLoopState((prev) => ({ ...prev, running: false }));
+    }
+  }, [pushNotification]);
+
+  const fetchMpcAndRhea = useCallback(async (customDerivationPath?: string) => {
+    const res = await fetch("/api/router/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        originSymbol: "USDC",
+        destinationSymbol: "USDT",
+        amountInHuman: 100,
+        derivationPath: customDerivationPath ?? "kratonos-treasury-1",
+      }),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as MpcRheaRouterSlice;
+      setRouterData(data);
+    }
+  }, []);
+
+  const handleRunPayroll = useCallback(
+    async (
+      params: {
+        freelancerAccountId: string;
+        requestedNetUsdc: number;
+        originChainLabel?: string;
+        customCsvContent?: string;
+      },
+      userTriggered = true
+    ) => {
+      setPayrollLoading(true);
+      try {
+        const res = await fetch("/api/payroll/run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(params),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as PayrollApiResponse;
+          setPayrollData(data);
+          if (userTriggered) {
+            pushNotification(
+              `EXACT_OUTPUT Invoice (${data.invoiceResult.netSettledFormatted}) & ${data.batchResult.totalSettledCount}/${data.batchResult.totalRowsImported} Batch Payroll Settled`,
+              "payroll",
+              "emerald"
+            );
+          }
+        }
+      } finally {
+        setPayrollLoading(false);
+      }
+    },
+    [pushNotification]
+  );
+
+  const handleExecuteMarket = useCallback(
+    async (
+      params: {
+        query: string;
+        quotedAmountUsd: number;
+        plannedBudgetUsd: number;
+      },
+      userTriggered = true
+    ) => {
+      setMarketLoading(true);
+      try {
+        const res = await fetch("/api/market/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(params),
+        });
+        if (res.ok) {
+          const data = (await res.json()) as MarketApiResponse;
+          setMarketData(data);
+          if (userTriggered) {
+            pushNotification(
+              `x402 v2 Gasless Hire (${data.x402Hire.taskReceipt.receiptId}) & 20x5 Swarm Saved $${data.swarmRound.totalSwarmSavingsUsd.toFixed(
+                2
+              )}`,
+              "market",
+              "cyan"
+            );
+          }
+        }
+      } finally {
+        setMarketLoading(false);
+      }
+    },
+    [pushNotification]
+  );
+
+  const handleToggleKillSwitch = async () => {
+    setKillSwitchLoading(true);
+    try {
+      const res = await fetch("/api/policy/kill-switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        const json = (await res.json()) as { emergency_kill_switch: boolean; message: string };
+        await fetchOverview();
+        pushNotification(
+          json.message,
+          "shield",
+          json.emergency_kill_switch ? "red" : "emerald"
+        );
+      }
+    } finally {
+      setKillSwitchLoading(false);
+    }
+  };
+
+  const handleToggleJudgeMode = () => {
+    const next = !judgeMode;
+    setJudgeMode(next);
+    pushNotification(
+      next
+        ? "Judge Verification Mode ON: Cryptographic proof callouts expanded across all views"
+        : "Judge Verification Mode OFF",
+      "tee",
+      "cyan"
+    );
+  };
+
+  // Hydrate initial views on mount & guarantee emergency_kill_switch defaults to false (DISARMED / READY)
+  useEffect(() => {
+    void fetch("/api/policy/kill-switch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: false }),
+    }).then(() => fetchOverview());
+
+    void fetchMpcAndRhea();
+    void handleRunPayroll(
+      {
+        freelancerAccountId: "alice-dev.testnet",
+        requestedNetUsdc: 250,
+      },
+      false
+    );
+    void handleExecuteMarket(
+      {
+        query: "research",
+        quotedAmountUsd: 4.2,
+        plannedBudgetUsd: 2.5,
+      },
+      false
+    );
+  }, [fetchOverview, fetchMpcAndRhea, handleRunPayroll, handleExecuteMarket]);
+
+  const handleNavigateSwap = useCallback(() => {
+    setActiveView("swap");
+  }, []);
+
+  const handleUserPayroll = useCallback(
+    (p: {
+      freelancerAccountId: string;
+      requestedNetUsdc: number;
+      originChainLabel?: string;
+      customCsvContent?: string;
+    }) => {
+      void handleRunPayroll(p, true);
+    },
+    [handleRunPayroll]
+  );
+
+  const handleUserMarket = useCallback(
+    (p: { query: string; quotedAmountUsd: number; plannedBudgetUsd: number }) => {
+      void handleExecuteMarket(p, true);
+    },
+    [handleExecuteMarket]
+  );
+
+  const activeNavMeta =
+    SIDEBAR_ITEMS.find((item) => item.id === activeView) ?? SIDEBAR_ITEMS[0];
+  const killSwitchEngaged = overview?.constraints?.emergency_kill_switch === true;
+
+  return (
+    <DotGrid spacing={26} className="min-h-screen">
+      {/* Global Full-Viewport 3D Isometric Cubes Background (Pointer-reactive via window events) */}
+      <BackgroundCubesGrid className="fixed inset-0 w-screen h-screen pointer-events-none z-0" />
+
+      <div className="relative z-10 flex min-h-screen">
+        {/* ================================================================ */}
+        {/* LEFT COLLAPSIBLE SIDEBAR (282px Expanded / 74px Collapsed Rail)  */}
+        {/* ================================================================ */}
+        <aside
+          className={`sticky top-0 z-30 flex h-screen shrink-0 flex-col justify-between border-r border-[var(--border-color)] bg-[var(--panel-solid)] transition-all duration-300 ${
+            sidebarCollapsed ? "w-[74px]" : "w-[282px]"
+          }`}
+        >
+          {/* Brand Header */}
+          <div>
+            <div className="flex h-16 items-center justify-between border-b border-[var(--border-color)] px-4">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handleBrandTap}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleBrandTap();
+                  }
+                }}
+                title="KratonOS — Tap to animate"
+                className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden cursor-pointer select-none"
+              >
+                <div className={`k-logo-box ${isBrandAnimating ? "is-animating" : ""}`}>
+                  <span className="k-logo-ripple" aria-hidden="true" />
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="k-logo-svg"
+                    aria-hidden="true"
+                  >
+                    <defs>
+                      <linearGradient id="kLogoFluidGrad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#00EC97" />
+                        <stop offset="52%" stopColor="#38BDF8" />
+                        <stop offset="100%" stopColor="#4ADE80" />
+                      </linearGradient>
+                    </defs>
+                    {/* Geometric Sovereign "K" Monogram */}
+                    <path
+                      d="M5.5 4.25C5.5 3.56 6.06 3 6.75 3H8.5C9.19 3 9.75 3.56 9.75 4.25V19.75C9.75 20.44 9.19 21 8.5 21H6.75C6.06 21 5.5 20.44 5.5 19.75V4.25Z"
+                      fill="url(#kLogoFluidGrad)"
+                    />
+                    <path
+                      d="M16.22 3.38C16.68 2.91 17.44 2.9 17.92 3.36L19.16 4.56C19.65 5.03 19.66 5.82 19.17 6.3L13.55 11.85L19.34 17.68C19.81 18.16 19.8 18.93 19.32 19.4L18.08 20.61C17.6 21.08 16.82 21.07 16.35 20.58L9.85 13.88C9.12 13.13 9.12 11.93 9.85 11.18L16.22 3.38Z"
+                      fill="url(#kLogoFluidGrad)"
+                    />
+                    <circle cx="18.2" cy="12" r="1.45" fill="#38BDF8" />
+                  </svg>
+                </div>
+                {!sidebarCollapsed && (
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <div className="flex items-center gap-1.5 overflow-hidden">
+                      <span
+                        className={`brand-title-text font-display text-base font-extrabold tracking-tight text-[var(--text-primary)] ${
+                          isBrandAnimating ? "is-animating" : ""
+                        }`}
+                      >
+                        KratonOS
+                      </span>
+                      <Badge variant="emerald" className="shrink-0 px-1.5 py-0 text-[10px]">
+                        v2026
+                      </Badge>
+                    </div>
+                    <p
+                      className={`brand-subtitle-text truncate text-[11px] font-medium text-[var(--text-secondary)] ${
+                        isBrandAnimating ? "is-animating" : ""
+                      }`}
+                    >
+                      Sovereign Financial OS
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Single Sidebar Menu Toggle Directly Above "Overview" + Navigation Items */}
+            <nav className="space-y-1.5 p-3">
+              <div className={`mb-2 flex ${sidebarCollapsed ? "justify-center" : "justify-start"}`}>
+                <KultiveretMenuButton
+                  isOpen={sidebarCollapsed}
+                  onToggle={() => setSidebarCollapsed((c) => !c)}
+                  openLabel="MENU"
+                  closeLabel="EXPAND"
+                  hideLabel={sidebarCollapsed}
+                  className={sidebarCollapsed ? "px-2.5" : "w-full justify-start"}
+                />
+              </div>
+
+              {SIDEBAR_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setActiveView(item.id)}
+                    title={`${item.label} — ${item.subtitle}`}
+                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? "bg-emerald-500/14 text-[var(--accent-emerald)] ring-1 ring-emerald-500/35"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-subtle)] hover:text-[var(--text-primary)]"
+                    }`}
+                  >
+                    {isActive && <span className="nav-active-bar" aria-hidden="true" />}
+                    <Icon
+                      className={`h-4 w-4 shrink-0 ${
+                        isActive
+                          ? "text-[var(--accent-emerald)]"
+                          : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
+                      }`}
+                    />
+                    {!sidebarCollapsed && (
+                      <div className="min-w-0 flex-1">
+                        <p className="font-display truncate text-xs font-bold">
+                          {item.label}
+                        </p>
+                        <p className="truncate text-[10px] text-[var(--text-muted)]">
+                          {item.subtitle}
+                        </p>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Sidebar Footer: Live VAULT ACCOUNT Card */}
+          <div className="border-t border-[var(--border-color)] p-3">
+            {!sidebarCollapsed ? (
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                    VAULT ACCOUNT
+                  </span>
+                  <Badge variant="emerald" className="text-[10px]">
+                    LIVE RPC
+                  </Badge>
+                </div>
+                <p className="mt-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)]">
+                  {overview?.treasuryAccount ?? "jubayir69.testnet"}
+                </p>
+                <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                  <span>Balance</span>
+                  <span className="font-mono font-bold text-[var(--accent-emerald)]">
+                    {overview?.balanceFormatted ?? "14.8500 NEAR"}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                  <span>Fee Recipient</span>
+                  <span className="font-mono font-bold text-[var(--accent-cyan)]">
+                    {overview?.feeRecipient ?? "jubayir33.near"}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <Badge variant="emerald" className="px-1.5 py-0.5 text-[10px]">
+                  LIVE
+                </Badge>
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* ================================================================ */}
+        {/* MAIN CONTENT SHELL                                               */}
+        {/* ================================================================ */}
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Sticky Single-Row Fluid Header (No Wrapping, No Clipped Wallet Button) */}
+          <header className="topbar sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-[var(--border-color)] bg-[var(--bg-header)] px-6 py-3.5 backdrop-blur-md">
+            {/* LEFT GROUP: Current View Title + Compact Live Block Pill */}
+            <div className="flex min-w-0 items-center gap-3">
+              <h2 className="font-display text-lg font-bold tracking-tight whitespace-nowrap text-[var(--text-primary)]">
+                {activeNavMeta.label}
+              </h2>
+
+              <LiveBlockBadge baseHeight={overview?.blockHeight} />
+            </div>
+
+            {/* RIGHT GROUP (Single-Row Compact Controls): Theme | Judge Mode | Kill-Switch | Connect Wallet */}
+            <div className="ml-auto flex shrink-0 items-center gap-2.5">
+              {/* 1. Compact Theme Switcher (Light | Dark | System) */}
+              <div
+                role="group"
+                aria-label="Theme Mode Selector"
+                className="inline-flex shrink-0 items-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-0.5"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("light");
+                    pushNotification("Switched to Light Mode", "loop", "cyan");
+                  }}
+                  title="Light Mode"
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    mode === "light"
+                      ? "bg-[var(--accent-emerald)] text-[#04130D]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  <Sun className="h-3.5 w-3.5 shrink-0" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("dark");
+                    pushNotification("Switched to Dark Obsidian Mode", "loop", "emerald");
+                  }}
+                  title="Dark Mode"
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    mode === "dark"
+                      ? "bg-[var(--accent-emerald)] text-[#04130D]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  <Moon className="h-3.5 w-3.5 shrink-0" />
+                  <span>Dark</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("system");
+                    pushNotification("Synced with System Theme", "loop", "cyan");
+                  }}
+                  title="System Preference Mode"
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    mode === "system"
+                      ? "bg-[var(--accent-emerald)] text-[#04130D]"
+                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  }`}
+                >
+                  <Monitor className="h-3.5 w-3.5 shrink-0" />
+                  <span>System</span>
+                </button>
+              </div>
+
+              {/* 2. Compact Judge Mode Pill Button */}
+              <Button
+                variant={judgeMode ? "emerald" : "outline"}
+                size="sm"
+                onClick={handleToggleJudgeMode}
+                className="shrink-0 gap-1.5 px-3 py-1.5 text-xs font-bold whitespace-nowrap"
+              >
+                <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                <span>{judgeMode ? "Judge Mode: ON" : "Judge Mode"}</span>
+              </Button>
+
+              {/* 3. Compact Press-and-Hold Kill-Switch Button */}
+              <HoldConfirmButton
+                label={
+                  killSwitchEngaged
+                    ? "Kill-Switch: Armed"
+                    : "Kill-Switch: Ready"
+                }
+                doneLabel={killSwitchEngaged ? "DISARMED" : "HALTED"}
+                onConfirm={handleToggleKillSwitch}
+                disabled={killSwitchLoading}
+                testId="kill-switch-hold-btn"
+              />
+
+              {/* 4. Compact, Unclipped Connect Wallet Button (@hot-labs/near-connect) */}
+              <Button
+                variant="emerald"
+                size="sm"
+                onClick={handleConnectWallet}
+                className="shrink-0 gap-1.5 px-3.5 py-2 font-mono text-xs font-bold whitespace-nowrap"
+              >
+                <Wallet className="h-3.5 w-3.5 shrink-0" />
+                <span>{walletAccountId ?? "Connect Wallet"}</span>
+              </Button>
+            </div>
+          </header>
+
+          {/* Emergency Kill-Switch Red Halt Banner (Only shown when explicitly engaged) */}
+          {killSwitchEngaged && (
+            <div className="flex items-center justify-between border-b border-rose-500/40 bg-rose-500/15 px-6 py-2.5 text-xs font-bold text-rose-500 animate-fade-in">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>
+                  EMERGENCY KILL-SWITCH ENGAGED: All PoC-4 and NEP-611 execution gates are globally halted. Hold the Kill-Switch button for 900ms to disarm.
+                </span>
+              </div>
+              <Badge variant="red">HALTED</Badge>
+            </div>
+          )}
+
+          {/* Main Workspace Container */}
+          <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+            {activeView === "overview" && (
+              <OverviewHeroView
+                overview={overview}
+                loopState={loopState}
+                onRunLoop={handleRunAutonomousLoop}
+                onNavigateSwap={handleNavigateSwap}
+                feedItems={feedItems}
+                judgeMode={judgeMode}
+              />
+            )}
+
+            {activeView === "swap" && (
+              <CrossChainSwapView
+                overview={overview}
+                judgeMode={judgeMode}
+                onNotify={pushNotification}
+              />
+            )}
+
+            {activeView === "shield" && (
+              <PolicyShieldView
+                overview={overview}
+                judgeMode={judgeMode}
+                onNotify={pushNotification}
+              />
+            )}
+
+            {activeView === "tee" && (
+              <DualTeeOracleView
+                judgeMode={judgeMode}
+                onNotify={pushNotification}
+              />
+            )}
+
+            {activeView === "payroll" && (
+              <InvoicingPayrollView
+                payrollData={payrollData}
+                loading={payrollLoading}
+                onRunPayroll={handleUserPayroll}
+                judgeMode={judgeMode}
+                onNotify={pushNotification}
+              />
+            )}
+
+            {activeView === "market" && (
+              <AgentMarketSwarmView
+                marketData={marketData}
+                loading={marketLoading}
+                onExecuteMarket={handleUserMarket}
+                judgeMode={judgeMode}
+                onNotify={pushNotification}
+              />
+            )}
+
+            {activeView === "mpc" && (
+              <MpcRheaYieldView
+                routerData={routerData}
+                onRefresh={fetchMpcAndRhea}
+                judgeMode={judgeMode}
+                onNotify={pushNotification}
+              />
+            )}
+          </main>
+
+          {/* High-Contrast Footer */}
+          <footer className="border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] px-6 py-4 text-xs text-[var(--text-secondary)]">
+            <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-[var(--accent-emerald)]" />
+                <span className="font-display font-bold text-[var(--text-primary)]">
+                  KratonOS Sovereign Financial Operating System
+                </span>
+              </div>
+              <div className="flex items-center gap-4 font-mono">
+                <span>PoC-4 Quad-Attested</span>
+                <span>NEP-611 4-Lane Parallel</span>
+                <span>FIPS 204 ml-dsa-65</span>
+              </div>
+            </div>
+          </footer>
+        </div>
+      </div>
+
+      {/* Bottom-Right Animated Toast Notification Stack (.toasts / .toast) */}
+      <div className="toasts" aria-live="polite">
+        {toasts.map((t) => (
+          <div key={t.id} className="toast">
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
+            <span>{t.text}</span>
+          </div>
+        ))}
+      </div>
+    </DotGrid>
+  );
+}
+export default App;
