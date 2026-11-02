@@ -639,10 +639,15 @@ export async function handleKratonHttpRequest(
           "samples",
           "exported-bookkeeper-ledger.csv"
         );
-        if (!fs.existsSync(csvPath)) {
-          await executeFaultIsolatedBatchPayroll({ rpcClient });
+        let csvContent: string;
+        if (fs.existsSync(csvPath)) {
+          csvContent = fs.readFileSync(csvPath, "utf8");
+        } else {
+          const batch = await executeFaultIsolatedBatchPayroll({ rpcClient });
+          csvContent =
+            batch.exportedBookkeeperCsvContent ??
+            (fs.existsSync(csvPath) ? fs.readFileSync(csvPath, "utf8") : "");
         }
-        const csvContent = fs.readFileSync(csvPath, "utf8");
         res.writeHead(200, {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition": 'attachment; filename="kratonos-bookkeeper-ledger.csv"',
@@ -970,13 +975,31 @@ export async function handleKratonHttpRequest(
       // 10. Static UI & Compiled Vite Asset Server (`dist/ui/*` & `src/ui/*`)
       // ======================================================================
       const rootDir = resolveWorkspaceRoot();
-      const distUiDir = path.join(rootDir, "dist", "ui");
-      const srcUiDir = path.join(rootDir, "src", "ui");
+      const cwdDir = process.cwd();
+      const distUiCandidates = [
+        path.join(rootDir, "dist", "ui"),
+        path.join(cwdDir, "dist", "ui"),
+      ];
+      const srcUiCandidates = [
+        path.join(rootDir, "src", "ui"),
+        path.join(cwdDir, "src", "ui"),
+      ];
+      const distUiDir =
+        distUiCandidates.find((d) => fs.existsSync(d)) ?? distUiCandidates[0];
+      const srcUiDir =
+        srcUiCandidates.find((d) => fs.existsSync(d)) ?? srcUiCandidates[0];
 
       let filePath = "";
-      if (pathname === "/" || pathname === "/index.html" || pathname === "/docs") {
+      if (
+        pathname === "/" ||
+        pathname === "/index.html" ||
+        pathname === "/docs" ||
+        pathname.startsWith("/docs/")
+      ) {
         const compiledHtml = path.join(distUiDir, "index.html");
-        filePath = fs.existsSync(compiledHtml) ? compiledHtml : path.join(srcUiDir, "index.html");
+        filePath = fs.existsSync(compiledHtml)
+          ? compiledHtml
+          : path.join(srcUiDir, "index.html");
       } else if (pathname.startsWith("/assets/")) {
         const safeRel = path.normalize(pathname.replace(/^\/assets\//, ""));
         if (!safeRel.startsWith("..")) {

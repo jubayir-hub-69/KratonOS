@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { loadKratonConfig, resolveWorkspaceRoot } from "./config.js";
 import { buildX402SignedDelegatePaymentHeader, NEAR_MAINNET_USDC_CONTRACT } from "./agent-market.js";
@@ -99,6 +100,7 @@ export interface FaultIsolatedPayrollBatchResult {
   totalSettledUsdc: number;
   outcomes: PayrollRecipientOutcome[];
   exportedBookkeeperCsvPath: string;
+  exportedBookkeeperCsvContent?: string;
   poc4HMaster: string;
 }
 
@@ -305,8 +307,26 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
   return rows;
 }
 
+const DEFAULT_SAMPLE_PAYROLL_CSV = [
+  "recipient_id,role,origin_asset,destination_asset,amount_usdc,invoice_ref",
+  "jubayir69.testnet,Core Treasury Lead,USDC,USDC,45.00,PAY-2026-101",
+  "scout.jubayir69.testnet,Swarm Discovery Agent,USDC,USDC,18.50,PAY-2026-102",
+  "executor.jubayir69.testnet,PoC-4 Intent Executor,USDC,USDC,24.00,PAY-2026-103",
+  "payroll.jubayir69.testnet,Batch Settlement Relayer,USDC,USDC,15.00,PAY-2026-104",
+  "yield.jubayir69.testnet,RHEA Farming Harvester,USDC,USDC,22.00,PAY-2026-105",
+  "outlayer.testnet,WASI P2 Enclave Verifier,USDC,USDC,30.00,PAY-2026-106",
+  "worker.outlayer.testnet,WASI P1 VRF Node,USDC,USDC,19.75,PAY-2026-107",
+  "ref-finance.testnet,RHEA Liquidity Provider,USDC,USDC,28.00,PAY-2026-108",
+  "wrap.testnet,wNEAR Wrapper Gateway,USDC,USDC,12.25,PAY-2026-109",
+  "buyer-1.jubayir69.testnet,Swarm Pool Coordinator,USDC,USDC,14.50,PAY-2026-110",
+  "seller-1.jubayir69.testnet,Hopper GPU Capacity Node,USDC,USDC,35.00,PAY-2026-111",
+  "scam-drainer-vault.testnet,Quarantined Malicious Sink,USDC,USDC,99.00,PAY-2026-112-MALFORMED",
+].join("\n");
+
 export function parsePayrollCsvFile(csvPath: string): PayrollCsvRow[] {
-  const raw = fs.readFileSync(csvPath, "utf8").trim();
+  const raw = fs.existsSync(csvPath)
+    ? fs.readFileSync(csvPath, "utf8").trim()
+    : DEFAULT_SAMPLE_PAYROLL_CSV;
   return parsePayrollCsvContent(raw);
 }
 
@@ -473,7 +493,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     oneClickFeeBps: 1,
   });
 
-  exportBookkeeperCsv({
+  const exportedBookkeeperCsvContent = exportBookkeeperCsv({
     outcomes,
     poc4HMaster: poc4.hMaster,
     outputPath: csvOutputPath,
@@ -491,18 +511,20 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     totalSettledUsdc,
     outcomes,
     exportedBookkeeperCsvPath: csvOutputPath,
+    exportedBookkeeperCsvContent,
     poc4HMaster: poc4.hMaster,
   };
 }
 
 /**
  * Exports the accountant-ready Bookkeeper `.csv` ledger (`08-realworld.md`).
+ * Safely handles read-only serverless filesystems (e.g., Vercel `/var/task`) by falling back to `os.tmpdir()`.
  */
 export function exportBookkeeperCsv(params: {
   outcomes: PayrollRecipientOutcome[];
   poc4HMaster: string;
   outputPath: string;
-}): void {
+}): string {
   const header = [
     "Timestamp",
     "Record_Type",
@@ -542,8 +564,21 @@ export function exportBookkeeperCsv(params: {
     );
   }
 
-  fs.mkdirSync(path.dirname(params.outputPath), { recursive: true });
-  fs.writeFileSync(params.outputPath, "\uFEFF" + lines.join("\n") + "\n", "utf8");
+  const csvContent = "\uFEFF" + lines.join("\n") + "\n";
+
+  try {
+    fs.mkdirSync(path.dirname(params.outputPath), { recursive: true });
+    fs.writeFileSync(params.outputPath, csvContent, "utf8");
+  } catch {
+    try {
+      const tmpFallbackPath = path.join(os.tmpdir(), "exported-bookkeeper-ledger.csv");
+      fs.writeFileSync(tmpFallbackPath, csvContent, "utf8");
+    } catch {
+      // Serverless memory-only fallback
+    }
+  }
+
+  return csvContent;
 }
 
 /**

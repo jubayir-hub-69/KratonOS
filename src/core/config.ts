@@ -1,6 +1,7 @@
 import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import YAML from "yaml";
 
@@ -91,17 +92,31 @@ export interface KratonRuntimeConfig {
 // ============================================================================
 
 export function resolveWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = path.resolve(startDir);
-  while (true) {
-    if (fs.existsSync(path.join(current, "config.yaml")) && fs.existsSync(path.join(current, "package.json"))) {
-      return current;
-    }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      return path.resolve(startDir);
-    }
-    current = parent;
+  const candidates = [startDir];
+  try {
+    const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+    candidates.push(moduleDir, path.resolve(moduleDir, "..", ".."));
+  } catch {
+    // Fallback if import.meta.url is unavailable
   }
+
+  for (const candidate of candidates) {
+    let current = path.resolve(candidate);
+    while (true) {
+      if (
+        fs.existsSync(path.join(current, "config.yaml")) ||
+        fs.existsSync(path.join(current, "package.json"))
+      ) {
+        return current;
+      }
+      const parent = path.dirname(current);
+      if (parent === current) {
+        break;
+      }
+      current = parent;
+    }
+  }
+  return path.resolve(startDir);
 }
 
 export function loadEnvironmentConfig(workspaceRoot: string = resolveWorkspaceRoot()): EnvironmentConfig {

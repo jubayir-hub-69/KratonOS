@@ -1,10 +1,18 @@
 {
   "version": 2,
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api"
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/ui",
+  "functions": {
+    "api/index.ts": {
+      "includeFiles": "{config.yaml,samples/**,contracts/**,enclave/**,dist/ui/**}"
     }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/llms.txt", "destination": "/api/index" },
+    { "source": "/openapi.json", "destination": "/api/index" },
+    { "source": "/docs", "destination": "/index.html" },
+    { "source": "/docs/(.*)", "destination": "/index.html" },
+    { "source": "/((?!api/|assets/|llms\\.txt|openapi\\.json).*)", "destination": "/index.html" }
   ]
 }
-
