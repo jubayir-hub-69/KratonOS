@@ -1260,13 +1260,25 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
               )}
 
-              {/* Public On-Chain Explorer Verification Links */}
+              {/* Public On-Chain Explorer & Official Reference Links */}
               <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4 space-y-2.5">
                 <div className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
-                  Public On-Chain Explorer Verification Links (NEARBlocks &amp; Etherscan)
+                  Live Production URLs, Public On-Chain Explorers &amp; Official Protocol Reference Links
                 </div>
                 <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
                   {[
+                    {
+                      label: "Live App: kraton-os-taupe.vercel.app",
+                      href: "https://kraton-os-taupe.vercel.app",
+                    },
+                    {
+                      label: "GitHub: jubayir-hub-69/KratonOS",
+                      href: "https://github.com/jubayir-hub-69/KratonOS",
+                    },
+                    {
+                      label: "Track Specs: near-hackathon-prompt-examples",
+                      href: "https://github.com/nearai/near-hackathon-prompt-examples",
+                    },
                     {
                       label: "Vault: jubayir69.testnet",
                       href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
@@ -1280,8 +1292,16 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       href: "https://testnet.nearblocks.io/address/outlayer.testnet",
                     },
                     {
+                      label: "OutLayer Worker: worker.outlayer.testnet",
+                      href: "https://testnet.nearblocks.io/address/worker.outlayer.testnet",
+                    },
+                    {
                       label: "RHEA DEX: ref-finance.testnet",
                       href: "https://testnet.nearblocks.io/address/ref-finance.testnet",
+                    },
+                    {
+                      label: "RHEA Farming: ref-farming.testnet",
+                      href: "https://testnet.nearblocks.io/address/ref-farming.testnet",
                     },
                     {
                       label: "MPC Signer: v1.signer-prod.testnet",
@@ -1290,6 +1310,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     {
                       label: "Chainlink ETH/USD: 0x5f4e...8419",
                       href: "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+                    },
+                    {
+                      label: "1Click Docs: docs.near-intents.org",
+                      href: "https://docs.near-intents.org",
+                    },
+                    {
+                      label: "NEAR AI Cloud: docs.near.ai",
+                      href: "https://docs.near.ai",
+                    },
+                    {
+                      label: "Agent Market: market.near.ai",
+                      href: "https://market.near.ai",
                     },
                   ].map((link) => (
                     <a

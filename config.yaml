@@ -10,6 +10,7 @@ emergency_kill_switch: false
 daily_spend_limit_usd: 500.00
 max_single_tx_usd: 150.00
 max_daily_inference_spend_usd: 5.00
+min_report_price_usd: 1.50
 min_report_or_task_price_usd: 2.50
 
 # --- DeFi Execution, Oracle & Fee Bounds ---

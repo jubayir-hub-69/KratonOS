@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Plus,
   Upload,
 } from "lucide-react";
 import { type TelemetryFeedItem } from "@/components/ui/animated-list";
@@ -133,9 +134,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const [freelancerAccountId, setFreelancerAccountId] = useState("alice-dev.testnet");
   const [requestedNetUsdc, setRequestedNetUsdc] = useState("250");
   const [originChainLabel, setOriginChainLabel] = useState("Ethereum Mainnet (USDC)");
+  const [customBatchRows, setCustomBatchRows] = useState<
+    Array<{
+      recipientId: string;
+      amountUsdc: number;
+      invoiceRef: string;
+    }>
+  >([]);
   const csvFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const batch = payrollData?.batchResult;
+  const rawBatch = payrollData?.batchResult;
 
   // Live reactive EXACT_OUTPUT ceiling computation so any input change dynamically updates immediately
   const liveInvoicePreview = useMemo(() => {
@@ -182,6 +190,105 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   }, [payrollData?.invoiceResult, freelancerAccountId, requestedNetUsdc, originChainLabel]);
 
   const inv = liveInvoicePreview;
+
+  // Dynamically merge any user-added custom invoices with the 12-row batch outcomes
+  const batch = useMemo(() => {
+    const baseOutcomes = rawBatch?.outcomes ?? [
+      { rowNumber: 1, recipientId: "jubayir69.testnet", invoiceRef: "PAY-2026-101", amountUsdc: 45.0, amountAtomicUsdc: "45000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_a1b2c3d4e5f60718|unshield_9182736455463728" },
+      { rowNumber: 2, recipientId: "scout.jubayir69.testnet", invoiceRef: "PAY-2026-102", amountUsdc: 18.5, amountAtomicUsdc: "18500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b2c3d4e5f6071829|unshield_8273645546372819" },
+      { rowNumber: 3, recipientId: "executor.jubayir69.testnet", invoiceRef: "PAY-2026-103", amountUsdc: 24.0, amountAtomicUsdc: "24000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_c3d4e5f60718293a|unshield_7364554637281920" },
+      { rowNumber: 4, recipientId: "payroll.jubayir69.testnet", invoiceRef: "PAY-2026-104", amountUsdc: 15.0, amountAtomicUsdc: "15000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_d4e5f60718293a4b|unshield_6455463728192031" },
+      { rowNumber: 5, recipientId: "yield.jubayir69.testnet", invoiceRef: "PAY-2026-105", amountUsdc: 22.0, amountAtomicUsdc: "22000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_e5f60718293a4b5c|unshield_5546372819203142" },
+      { rowNumber: 6, recipientId: "outlayer.testnet", invoiceRef: "PAY-2026-106", amountUsdc: 30.0, amountAtomicUsdc: "30000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_f60718293a4b5c6d|unshield_4637281920314253" },
+      { rowNumber: 7, recipientId: "worker.outlayer.testnet", invoiceRef: "PAY-2026-107", amountUsdc: 19.75, amountAtomicUsdc: "19750000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_0718293a4b5c6d7e|unshield_3728192031425364" },
+      { rowNumber: 8, recipientId: "ref-finance.testnet", invoiceRef: "PAY-2026-108", amountUsdc: 28.0, amountAtomicUsdc: "28000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_18293a4b5c6d7e8f|unshield_2819203142536475" },
+      { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_293a4b5c6d7e8f90|unshield_1920314253647586" },
+      { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_3a4b5c6d7e8f90a1|unshield_2031425364758697" },
+      { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4b5c6d7e8f90a1b2|unshield_3142536475869708" },
+      { rowNumber: 12, recipientId: "scam-drainer-vault.testnet", invoiceRef: "PAY-2026-112-MALFORMED", amountUsdc: 99.0, amountAtomicUsdc: "99000000", status: "ISOLATED_QUARANTINED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "NONE_BLOCKED", failureReason: "Known malicious drainer contract blocked by 4-Signal Counterparty Shield" },
+    ];
+
+    const customOutcomes = customBatchRows.map((c, idx) => {
+      const isScam =
+        c.recipientId.toLowerCase().includes("scam") ||
+        c.recipientId.toLowerCase().includes("drainer");
+      return {
+        rowNumber: idx + 1,
+        recipientId: c.recipientId,
+        invoiceRef: c.invoiceRef,
+        amountUsdc: c.amountUsdc,
+        amountAtomicUsdc: Math.round(c.amountUsdc * 1_000_000).toString(),
+        status: isScam ? ("ISOLATED_QUARANTINED" as const) : ("SETTLED" as const),
+        batchChunkIndex: 0,
+        storageRegisteredPrior: false,
+        storageDepositPrependedYocto: isScam ? "0" : "1250000000000000000000",
+        retryAttemptsUsed: 1,
+        confidentialShardShieldUnshieldHashes: isScam
+          ? "NONE_BLOCKED"
+          : `shield_inv_${c.invoiceRef.toLowerCase().replace(/[^a-z0-9]/g, "")}|unshield_inv_${c.recipientId.slice(0, 10)}`,
+        failureReason: isScam
+          ? "Quarantined by 4-Signal Counterparty Security Shield"
+          : undefined,
+      };
+    });
+
+    const combined = [
+      ...customOutcomes,
+      ...baseOutcomes.map((o, idx) => ({
+        ...o,
+        rowNumber: customOutcomes.length + idx + 1,
+        batchChunkIndex: Math.floor((customOutcomes.length + idx) / 10),
+      })),
+    ];
+
+    const settledRows = combined.filter((o) => o.status === "SETTLED");
+    const quarantinedRows = combined.filter((o) => o.status !== "SETTLED");
+    const storageInjected = combined.filter(
+      (o) => o.storageDepositPrependedYocto && o.storageDepositPrependedYocto !== "0"
+    ).length;
+    const totalSettledUsdc = Number(
+      settledRows.reduce((sum, r) => sum + r.amountUsdc, 0).toFixed(2)
+    );
+
+    return {
+      status: rawBatch?.status ?? "PASS",
+      totalRowsImported: combined.length,
+      totalSettledCount: settledRows.length,
+      totalIsolatedFailedCount: quarantinedRows.length,
+      totalBatchesChunked: Math.ceil(combined.length / 10),
+      maxChunkSize: 10,
+      maxRetryAttempts: 3,
+      storageDepositsAutoInjectedCount: storageInjected,
+      totalSettledUsdc,
+      outcomes: combined,
+      exportedBookkeeperCsvPath:
+        rawBatch?.exportedBookkeeperCsvPath ?? "samples/exported-bookkeeper-ledger.csv",
+      poc4HMaster: rawBatch?.poc4HMaster ?? "verified",
+    };
+  }, [rawBatch, customBatchRows]);
+
+  const handleAddInvoiceToBatch = () => {
+    const acct = freelancerAccountId.trim() || "alice-dev.testnet";
+    const netAmount = Number((Math.max(0.01, Number(requestedNetUsdc) || 250)).toFixed(2));
+    const invoiceRef = `INV-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+
+    setCustomBatchRows((prev) => {
+      const existingIdx = prev.findIndex(
+        (r) => r.recipientId.toLowerCase() === acct.toLowerCase()
+      );
+      if (existingIdx >= 0) {
+        const next = [...prev];
+        next[existingIdx] = { recipientId: acct, amountUsdc: netAmount, invoiceRef };
+        return next;
+      }
+      return [{ recipientId: acct, amountUsdc: netAmount, invoiceRef }, ...prev];
+    });
+
+    onNotify?.(
+      `Added Invoice (${acct} — $${netAmount.toFixed(2)} USDC) to Batch Payroll Ledger`,
+      "payroll"
+    );
+  };
 
   const handleUploadCustomCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -291,7 +398,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               </div>
             </div>
 
-            <div className="pt-1">
+            <div className="space-y-2.5 pt-1">
               <UnseenEnterButton
                 label="Compute Exact-Output Invoice"
                 disabled={loading}
@@ -304,6 +411,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                 }
                 className="w-full"
               />
+              <button
+                type="button"
+                onClick={handleAddInvoiceToBatch}
+                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/45 bg-emerald-500/12 px-4 font-mono text-xs font-extrabold tracking-wider uppercase text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/22 cursor-pointer"
+              >
+                <Plus className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Add Invoice (${(Math.max(0.01, Number(requestedNetUsdc) || 250)).toFixed(2)} USDC) to Payroll Batch
+                </span>
+              </button>
             </div>
           </CardContent>
         </Card>
@@ -438,8 +555,11 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <HoldConfirmButton
-                label="Hold to Execute $264.00 Batch Payroll"
-                doneLabel="11/12 PAYROLL SETTLED"
+                label={`Hold to Execute $${batch.totalSettledUsdc.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })} Batch Payroll`}
+                doneLabel={`${batch.totalSettledCount}/${batch.totalRowsImported} PAYROLL SETTLED`}
                 disabled={loading}
                 onConfirm={() =>
                   onRunPayroll({

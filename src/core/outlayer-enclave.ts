@@ -1596,8 +1596,12 @@ export function writeOfflineOutLayerBundle(params: {
   const targetPath =
     params.outputPath ??
     path.join(resolveWorkspaceRoot(), "samples", "outlayer-execution-proof.json");
-  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  fs.writeFileSync(targetPath, JSON.stringify(fullBundle, null, 2), "utf8");
+  try {
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.writeFileSync(targetPath, JSON.stringify(fullBundle, null, 2), "utf8");
+  } catch {
+    // Read-only serverless filesystem fallback
+  }
 
   return { bundlePath: targetPath, bundle: fullBundle };
 }

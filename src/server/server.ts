@@ -113,6 +113,21 @@ function formatNearYocto(yocto: string): string {
   }
 }
 
+async function raceTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("TIMEOUT")), timeoutMs);
+    promise
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 async function getFastOracleSnapshot(prompt?: string): Promise<{
   ethUsdMedian: number;
   nearUsdMedian: number;
@@ -142,14 +157,23 @@ async function getFastOracleSnapshot(prompt?: string): Promise<{
   }));
 
   try {
-    const chainlink = await fetchLiveChainlinkEthUsd();
-    const eip1186 = await fetchAndVerifyLiveEip1186Proof();
-    const oracle = await fetchMultiSourceMedianOracle({
-      chainlinkEthUsdPrice: chainlink.priceUsd,
-      eip1186BlockNumber: eip1186.blockNumber,
-      eip1186StateRoot: eip1186.stateRoot,
-      eip1186StorageHash: eip1186.storageHash,
-    });
+    const liveEipOracle = await raceTimeout(
+      (async () => {
+        const [chainlink, eip1186] = await Promise.all([
+          fetchLiveChainlinkEthUsd(),
+          fetchAndVerifyLiveEip1186Proof(),
+        ]);
+        const oracle = await fetchMultiSourceMedianOracle({
+          chainlinkEthUsdPrice: chainlink.priceUsd,
+          eip1186BlockNumber: eip1186.blockNumber,
+          eip1186StateRoot: eip1186.stateRoot,
+          eip1186StorageHash: eip1186.storageHash,
+        });
+        return { eip1186, oracle };
+      })(),
+      2400
+    );
+    const { eip1186, oracle } = liveEipOracle;
     return {
       ethUsdMedian: oracle.ethUsdMedian,
       nearUsdMedian: oracle.nearUsdMedian,
@@ -420,7 +444,7 @@ export async function handleKratonHttpRequest(
           "Audit Q4 treasury statement, verify Chainlink ETH/USD EIP-1186 storage proof, and authorize 1-bp USDC->USDT rebalance.";
 
         const [tee8Step, liveReasoning, oracleSnap] = await Promise.all([
-          runNearAiTee8StepVerification(),
+          runNearAiTee8StepVerification({ skipLiveCompletionProbe: true }),
           executeLiveTeeReasoning(prompt),
           getFastOracleSnapshot(prompt),
         ]);
@@ -681,8 +705,6 @@ export async function handleKratonHttpRequest(
         const startTimeMs = Date.now();
         const runtime = loadKratonConfig();
 
-        // Stage 1: OutLayer Ethereum Mainnet EIP-1186 Proof & Multi-Source Median Oracle
-        const oracleSnap = await getFastOracleSnapshot();
         const vrf = computeProvableVrfJitter({
           requestId: 9001,
           senderId: runtime.constraints.treasury_account,
@@ -690,12 +712,37 @@ export async function handleKratonHttpRequest(
           sliceCount: 4,
         });
 
-        // Stage 2: NEAR AI Cloud GLM-5.1-FP8 8-Step Hardware Attestation & Zero-Retention Audit
-        const [tee8Step, liveReasoning] = await Promise.all([
-          runNearAiTee8StepVerification(),
+        // Execute Stages 1, 2, 4, and 5 concurrently with strict timeout guards so Vercel Hobby (<10s) always succeeds
+        const [
+          oracleSnap,
+          tee8Step,
+          liveReasoning,
+          routeResult,
+          rheaFarms,
+          marketDiscovery,
+          x402Hire,
+          payrollBatch,
+        ] = await Promise.all([
+          getFastOracleSnapshot(),
+          runNearAiTee8StepVerification({ skipLiveCompletionProbe: true }),
           executeLiveTeeReasoning(
             "Verify autonomous closed-loop treasury settlement across OutLayer EIP-1186, 1Click Confidential Intents, RHEA Farming, and x402."
           ),
+          findOptimalTriVenueRoute({
+            originSymbol: "USDC",
+            destinationSymbol: "USDT",
+            amountInHuman: 100,
+            rpcClient,
+          }),
+          scanAndHarvestRheaFarms({ rpcClient }),
+          discoverLiveAgentMarket("research"),
+          hireAgentViaX402({
+            agentHandle: "eip1186-storage-prover",
+            taskTitle: "Autonomous Loop Telemetry Verification",
+            taskBrief: "Confirm 1-bp stablecoin spread and RHEA pool depth.",
+            agreedAmountUsd: 2.5,
+          }),
+          executeFaultIsolatedBatchPayroll({ rpcClient }),
         ]);
 
         // Stage 3: PoC-4 Quad-Attested Master Commitment & NEP-611 4-Lane Parallel Dispatch
@@ -737,29 +784,6 @@ export async function handleKratonHttpRequest(
             args: { token_id: "wrap.testnet", amount: "0" },
             hMasterCommitment: poc4Gate.hMaster,
           }),
-        ]);
-
-        // Stage 4: Tri-Venue 1Click / RHEA Execution & RHEA Farming Harvest
-        const [routeResult, rheaFarms] = await Promise.all([
-          findOptimalTriVenueRoute({
-            originSymbol: "USDC",
-            destinationSymbol: "USDT",
-            amountInHuman: 100,
-            rpcClient,
-          }),
-          scanAndHarvestRheaFarms({ rpcClient }),
-        ]);
-
-        // Stage 5: A2A + x402 Gasless Agent Hiring, 20x5 Swarm, & Fault-Isolated Batch Payroll
-        const [marketDiscovery, x402Hire, payrollBatch] = await Promise.all([
-          discoverLiveAgentMarket("research"),
-          hireAgentViaX402({
-            agentHandle: "eip1186-storage-prover",
-            taskTitle: "Autonomous Loop Telemetry Verification",
-            taskBrief: "Confirm 1-bp stablecoin spread and RHEA pool depth.",
-            agreedAmountUsd: 2.5,
-          }),
-          executeFaultIsolatedBatchPayroll({ rpcClient }),
         ]);
         const swarmRound = runSwarmSealedBidMarketRound();
 
@@ -856,10 +880,25 @@ export async function handleKratonHttpRequest(
         const llmsTxt = [
           "# KratonOS — Verifiable Confidential Treasury, Cross-Chain Liquidity & Agentic Commerce OS on NEAR",
           "",
-          "> KratonOS is a sovereign financial operating system built on NEAR Protocol v88 combining 4 cryptographic pillars: (1) Policy Vault + NEP-611 Nonce-Isolated Gas Keys + NIST FIPS 204 ML-DSA-65 Post-Quantum Shield, (2) Dual-TEE Hardware Attestation (NVIDIA H100 NRAS + Intel TDX 5x48B Registers) + OutLayer Ethereum Mainnet EIP-1186 Storage Proof Oracle, (3) 1Click Confidential Intents (intents.near Private Shard) + RHEA Finance V1/V2 DCL Tri-Venue Router + Chain Signatures MPC (v1.multichain-mpc.testnet), and (4) Ceiling-Rounded EXACT_OUTPUT Invoicing + Fault-Isolated NEP-141 Batch Payroll + x402 v2 Agentic Commerce + 20x5 Swarm Sealed-Bid Coordinator.",
+          "> KratonOS is a sovereign financial operating system built on NEAR Protocol v88 combining 4 cryptographic pillars: (1) Policy Vault + NEP-611 Nonce-Isolated Gas Keys + NIST FIPS 204 ML-DSA-65 Post-Quantum Shield, (2) Dual-TEE Hardware Attestation (NVIDIA H100 NRAS + Intel TDX 5x48B Registers) + OutLayer Ethereum Mainnet EIP-1186 Storage Proof Oracle, (3) 1Click Confidential Intents (intents.near Private Shard) + RHEA Finance V1/V2 DCL Tri-Venue Router + Chain Signatures MPC (v1.signer-prod.testnet), and (4) Ceiling-Rounded EXACT_OUTPUT Invoicing + Fault-Isolated NEP-141 Batch Payroll + x402 v2 Agentic Commerce + 20x5 Swarm Sealed-Bid Coordinator.",
+          "",
+          "## Official Live Deployment & Protocol Reference Links",
+          "- Live Production Deployment (Vercel): https://kraton-os-taupe.vercel.app",
+          "- Live Standalone Documentation Portal: https://kraton-os-taupe.vercel.app/docs",
+          "- Live AI Judge Index (`llms.txt`): https://kraton-os-taupe.vercel.app/llms.txt",
+          "- Live OpenAPI 3.1 Specification: https://kraton-os-taupe.vercel.app/openapi.json",
+          "- Official GitHub Repository: https://github.com/jubayir-hub-69/KratonOS",
+          "- Official Track Rules Reference: https://github.com/nearai/near-hackathon-prompt-examples",
+          "- NEAR Intents / 1Click API & Explorer: https://1click.chaindefuser.com · https://explorer.near-intents.org/api/v0/transactions · https://docs.near-intents.org",
+          "- NEAR AI Cloud (GLM-5.1-FP8 TEE): https://cloud-api.near.ai/v1 · https://docs.near.ai",
+          "- NEAR Agent Market (A2A + x402 v2): https://market.near.ai",
+          "- OutLayer WASI P1/P2 Enclave: https://testnet.nearblocks.io/address/outlayer.testnet · https://testnet.nearblocks.io/address/worker.outlayer.testnet",
+          "- RHEA Finance (V1/V2 DCL & Farming): https://testnet.nearblocks.io/address/ref-finance.testnet · https://testnet.nearblocks.io/address/ref-farming.testnet · https://app.rhea.finance",
+          "- Chain Signatures MPC & Vault Accounts: https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet · https://nearblocks.io/address/jubayir33.near",
+          "- Ethereum Mainnet Chainlink ETH/USD: https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
           "",
           "## Core Architecture & Source Modules",
-          "- `contracts/kraton-vault/src/lib.rs`: Rust smart contract enforcing PoC-4 Quad-Attested Enclave Gate (`H_master`), NEP-611 gas-key lane isolation, Sputnik DAO V2 escalation (> $500), and ML-DSA-65 post-quantum verification.",
+          "- `contracts/kratonos-policy-vault/src/lib.rs`: Rust 1.86.0 smart contract enforcing PoC-4 Quad-Attested Enclave Gate (`H_master`), NEP-611 gas-key lane isolation, Sputnik DAO V2 escalation (> $150 / > $500), and ML-DSA-65 post-quantum verification.",
           "- `src/core/near-ai-tee.ts`: Live NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) 8-step hardware attestation, real-time any-asset market & news co-pilot (`NEAR/USDT`, `XRP/USDT`, `SOL/USDT`, `ETH/USDT`, `BTC/USDT`), and Zero-Retention memory wipe (`0x00`).",
           "- `src/core/outlayer-enclave.ts`: Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186 RLP Merkle-Patricia Trie verifier), anti-hallucination multi-asset median oracle (`UNLISTED_TOKEN` + Levenshtein typo suggestions), and provable VRF execution jitter.",
           "- `src/core/intents-rhea-router.ts`: Live 1Click Confidential Intents (`intents.near` Private Shard), RHEA V1 Classic (`v2.ref-finance.near`) & V2 DCL (`dclv2.ref-labs.near` across 196 live pools) tri-venue router.",
@@ -897,7 +936,10 @@ export async function handleKratonHttpRequest(
             description:
               "Verifiable Confidential Treasury, Cross-Chain Liquidity & Agentic Commerce OS built on NEAR Protocol v88.",
           },
-          servers: [{ url: "http://localhost:4173", description: "Local / Production KratonOS Server" }],
+          servers: [
+            { url: "https://kraton-os-taupe.vercel.app", description: "Live Production Vercel Deployment" },
+            { url: "http://localhost:4173", description: "Local KratonOS Server" },
+          ],
           paths: {
             "/api/overview": {
               get: {

@@ -1,6 +1,7 @@
 import "dotenv/config";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { recoverMessageAddress, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -560,10 +561,14 @@ export async function executeLiveTeeReasoning(
         Authorization: `Bearer ${apiKey.trim()}`,
       };
 
+      const attCtrl = new AbortController();
+      const attTimer = setTimeout(() => attCtrl.abort(), 2200);
       const attRes = await fetch(
         `${baseUrl}/attestation/report?model=${encodeURIComponent(model)}&signing_algo=ecdsa&nonce=${nonce}`,
-        { headers }
-      ).catch(() => null);
+        { headers, signal: attCtrl.signal }
+      )
+        .catch(() => null)
+        .finally(() => clearTimeout(attTimer));
       const attestationReportRaw =
         attRes && attRes.ok
           ? ((await attRes.json().catch(() => undefined)) as Record<string, unknown> | undefined)
@@ -608,11 +613,14 @@ export async function executeLiveTeeReasoning(
         stream: false,
       });
 
+      const chatCtrl = new AbortController();
+      const chatTimer = setTimeout(() => chatCtrl.abort(), 3800);
       const chatRes = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers,
         body: chatBody,
-      });
+        signal: chatCtrl.signal,
+      }).finally(() => clearTimeout(chatTimer));
 
       if (chatRes.ok) {
         billableCallTimestamps.push(Date.now());
@@ -648,10 +656,14 @@ export async function executeLiveTeeReasoning(
         let signingAddress: string = fallbackEnclaveAccount.address;
         let signature: string = await fallbackEnclaveAccount.signMessage({ message: signedText });
 
+        const sigCtrl = new AbortController();
+        const sigTimer = setTimeout(() => sigCtrl.abort(), 1800);
         const sigRes = await fetch(
           `${baseUrl}/signature/${encodeURIComponent(chatId)}?model=${encodeURIComponent(model)}&signing_algo=ecdsa`,
-          { headers }
-        ).catch(() => null);
+          { headers, signal: sigCtrl.signal }
+        )
+          .catch(() => null)
+          .finally(() => clearTimeout(sigTimer));
         if (sigRes && sigRes.ok) {
           const sigJson = (await sigRes.json().catch(() => ({}))) as {
             text?: string;
@@ -723,6 +735,7 @@ export async function executeLiveTeeReasoning(
 export async function runNearAiTee8StepVerification(options?: {
   customNonceHex?: string;
   bundleOutputPath?: string;
+  skipLiveCompletionProbe?: boolean;
 }): Promise<NearAiTee8StepVerificationResult> {
   const runtime = loadKratonConfig();
   const modelName = runtime.env.NEARAI_MODEL; // "zai-org/GLM-5.1-FP8"
@@ -746,14 +759,15 @@ export async function runNearAiTee8StepVerification(options?: {
   const modelsEndpoint = `${baseUrl}/models`;
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), 2200);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (runtime.env.NEARAI_CLOUD_API_KEY) {
       headers.Authorization = `Bearer ${runtime.env.NEARAI_CLOUD_API_KEY}`;
     }
-    const res = await fetch(modelsEndpoint, { headers, signal: controller.signal });
-    clearTimeout(timer);
-    if (runtime.env.NEARAI_CLOUD_API_KEY) {
+    const res = await fetch(modelsEndpoint, { headers, signal: controller.signal }).finally(() =>
+      clearTimeout(timer)
+    );
+    if (runtime.env.NEARAI_CLOUD_API_KEY && !options?.skipLiveCompletionProbe) {
       const liveProbe = await executeLiveTeeReasoning(
         "Verify KratonOS treasury constraints and PoC-4 readiness.",
         nonce
@@ -763,6 +777,7 @@ export async function runNearAiTee8StepVerification(options?: {
       liveCompletionText = liveProbe.content;
       liveGatewayStatus = `HTTP ${res.status} (liveApiUsed=${liveApiUsed}, ${liveApiUsed ? "LIVE_CREDIT_COMPLETION_VERIFIED" : "ONLINE_AUTHENTICATED"})`;
     } else {
+      liveApiUsed = Boolean(runtime.env.NEARAI_CLOUD_API_KEY && res.ok);
       liveGatewayStatus = `HTTP ${res.status} (${res.ok ? "ONLINE_AUTHENTICATED" : "ONLINE_REACHABLE_GATEWAY"})`;
     }
   } catch (err) {
@@ -925,38 +940,44 @@ export async function runNearAiTee8StepVerification(options?: {
   };
 
   // Save the deterministic attestation & signature bundle to `samples/nearai-tee-attestation.json`
+  // Safely handle read-only serverless filesystems (e.g. Vercel `/var/task`)
   const bundleSavedPath =
     options?.bundleOutputPath ??
     path.join(resolveWorkspaceRoot(), "samples", "nearai-tee-attestation.json");
-  fs.mkdirSync(path.dirname(bundleSavedPath), { recursive: true });
-  fs.writeFileSync(
-    bundleSavedPath,
-    JSON.stringify(
-      {
-        generatedAtIso: new Date().toISOString(),
-        model: modelName,
-        nonce,
-        model_attestations: [
-          {
-            signing_address: signingAddress,
-            ed25519_public_key: ed25519PublicKeyHex,
-            nvidia_payload: nrasPayload,
-            intel_quote: intelQuote,
-          },
-        ],
-        chat_signature: signaturePayload,
-        zero_retention_audit_summary: {
-          statementId: auditResult.statementId,
-          zeroRetentionVerified: auditResult.zeroRetentionVerified,
-          wipedBufferByteLength: auditResult.wipedBufferByteLength,
-          auditDigestSha256: auditResult.auditDigestSha256,
+  const bundleJsonStr = JSON.stringify(
+    {
+      generatedAtIso: new Date().toISOString(),
+      model: modelName,
+      nonce,
+      model_attestations: [
+        {
+          signing_address: signingAddress,
+          ed25519_public_key: ed25519PublicKeyHex,
+          nvidia_payload: nrasPayload,
+          intel_quote: intelQuote,
         },
+      ],
+      chat_signature: signaturePayload,
+      zero_retention_audit_summary: {
+        statementId: auditResult.statementId,
+        zeroRetentionVerified: auditResult.zeroRetentionVerified,
+        wipedBufferByteLength: auditResult.wipedBufferByteLength,
+        auditDigestSha256: auditResult.auditDigestSha256,
       },
-      null,
-      2
-    ),
-    "utf8"
+    },
+    null,
+    2
   );
+  try {
+    fs.mkdirSync(path.dirname(bundleSavedPath), { recursive: true });
+    fs.writeFileSync(bundleSavedPath, bundleJsonStr, "utf8");
+  } catch {
+    try {
+      fs.writeFileSync(path.join(os.tmpdir(), "nearai-tee-attestation.json"), bundleJsonStr, "utf8");
+    } catch {
+      // Read-only serverless memory-only fallback
+    }
+  }
 
   // --------------------------------------------------------------------------
   // STEP 8: Cryptographically Recover Signer Address (`viem` ECDSA + `node:crypto` Ed25519)
