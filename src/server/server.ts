@@ -37,6 +37,7 @@ import {
 import {
   execute_ceil_exact_output_invoice,
   executeFaultIsolatedBatchPayroll,
+  generateVisualAuditStatementHtml,
 } from "../core/payroll-and-invoicing.js";
 import {
   computePolicyHash,
@@ -113,8 +114,12 @@ function formatNearYocto(yocto: string): string {
 async function getFastOracleSnapshot(): Promise<{
   ethUsdMedian: number;
   nearUsdMedian: number;
+  solUsdMedian: number;
+  btcUsdMedian: number;
   ethMaxDeviationPercent: number;
   nearMaxDeviationPercent: number;
+  solMaxDeviationPercent: number;
+  btcMaxDeviationPercent: number;
   stateRoot: string;
   blockNumber: number;
   rtmr3MeasurementHex: string;
@@ -133,8 +138,12 @@ async function getFastOracleSnapshot(): Promise<{
     return {
       ethUsdMedian: oracle.ethUsdMedian,
       nearUsdMedian: oracle.nearUsdMedian,
+      solUsdMedian: oracle.solUsdMedian,
+      btcUsdMedian: oracle.btcUsdMedian,
       ethMaxDeviationPercent: oracle.ethMaxDeviationPercent,
       nearMaxDeviationPercent: oracle.nearMaxDeviationPercent,
+      solMaxDeviationPercent: oracle.solMaxDeviationPercent,
+      btcMaxDeviationPercent: oracle.btcMaxDeviationPercent,
       stateRoot: eip1186.stateRoot,
       blockNumber: eip1186.blockNumber,
       rtmr3MeasurementHex: oracle.rtmr3MeasurementHex,
@@ -146,16 +155,24 @@ async function getFastOracleSnapshot(): Promise<{
         medianOracle: {
           ethUsdMedian: number;
           nearUsdMedian: number;
+          solUsdMedian?: number;
+          btcUsdMedian?: number;
           ethMaxDeviationPercent: number;
           nearMaxDeviationPercent: number;
+          solMaxDeviationPercent?: number;
+          btcMaxDeviationPercent?: number;
         };
         tdxMeasurements: { rtmr3: string };
       };
       return {
         ethUsdMedian: bundle.medianOracle.ethUsdMedian,
         nearUsdMedian: bundle.medianOracle.nearUsdMedian,
+        solUsdMedian: bundle.medianOracle.solUsdMedian ?? 86.25,
+        btcUsdMedian: bundle.medianOracle.btcUsdMedian ?? 71642.5,
         ethMaxDeviationPercent: bundle.medianOracle.ethMaxDeviationPercent,
         nearMaxDeviationPercent: bundle.medianOracle.nearMaxDeviationPercent,
+        solMaxDeviationPercent: bundle.medianOracle.solMaxDeviationPercent ?? 0.14,
+        btcMaxDeviationPercent: bundle.medianOracle.btcMaxDeviationPercent ?? 0.09,
         stateRoot: bundle.ethereumEip1186Proof.stateRoot,
         blockNumber: bundle.ethereumEip1186Proof.blockNumber,
         rtmr3MeasurementHex: bundle.tdxMeasurements.rtmr3,
@@ -164,8 +181,12 @@ async function getFastOracleSnapshot(): Promise<{
     return {
       ethUsdMedian: 2219.86,
       nearUsdMedian: 4.18,
+      solUsdMedian: 86.25,
+      btcUsdMedian: 71642.5,
       ethMaxDeviationPercent: 0.12,
       nearMaxDeviationPercent: 0.18,
+      solMaxDeviationPercent: 0.14,
+      btcMaxDeviationPercent: 0.09,
       stateRoot: "0xc25483d42ef1e65678e41fa5aa790a293ab8e77f7d5b102f706b57e5086a7600",
       blockNumber: 24757766,
       rtmr3MeasurementHex: "b7ca0be244673873a1374832b57863718691e52a16d268c8d71c0a3a109c7b67a00b2d1f49b5c3e10982736455667788",
@@ -601,7 +622,24 @@ export async function handleKratonHttpRequest(
           "Content-Disposition": 'attachment; filename="kratonos-bookkeeper-ledger.csv"',
           "Cache-Control": "no-store",
         });
-        res.end(csvContent);
+        res.end(csvContent.startsWith("\uFEFF") ? csvContent : "\uFEFF" + csvContent);
+        return;
+      }
+
+      if (method === "GET" && pathname === "/api/payroll/export-statement") {
+        const runtime = loadKratonConfig();
+        const batchResult = await executeFaultIsolatedBatchPayroll({ rpcClient });
+        const htmlContent = generateVisualAuditStatementHtml({
+          outcomes: batchResult.outcomes,
+          poc4HMaster: batchResult.poc4HMaster,
+          treasuryAccount: runtime.constraints.treasury_account,
+          feeRecipient: runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near",
+        });
+        res.writeHead(200, {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        });
+        res.end(htmlContent);
         return;
       }
 
@@ -748,7 +786,122 @@ export async function handleKratonHttpRequest(
       }
 
       // ======================================================================
-      // 9. Static UI & Compiled Vite Asset Server (`dist/ui/*` & `src/ui/*`)
+      // 9. Machine-Readable LLM & OpenAPI Specification Endpoints
+      // ======================================================================
+      if (method === "GET" && pathname === "/llms.txt") {
+        const llmsTxt = [
+          "# KratonOS — Verifiable Confidential Treasury, Cross-Chain Liquidity & Agentic Commerce OS on NEAR",
+          "",
+          "> KratonOS is a sovereign financial operating system built on NEAR Protocol v88 combining 4 cryptographic pillars: (1) Policy Vault + NEP-611 Nonce-Isolated Gas Keys + NIST FIPS 204 ML-DSA-65 Post-Quantum Shield, (2) Dual-TEE Hardware Attestation (NVIDIA H100 NRAS + Intel TDX 5x48B Registers) + OutLayer Ethereum Mainnet EIP-1186 Storage Proof Oracle, (3) 1Click Confidential Intents (intents.near Private Shard) + RHEA Finance V1/V2 DCL Tri-Venue Router + Chain Signatures MPC (v1.multichain-mpc.testnet), and (4) Ceiling-Rounded EXACT_OUTPUT Invoicing + Fault-Isolated NEP-141 Batch Payroll + x402 v2 Agentic Commerce + 20x5 Swarm Sealed-Bid Coordinator.",
+          "",
+          "## Core Architecture & Source Modules",
+          "- `contracts/kraton-vault/src/lib.rs`: Rust smart contract enforcing PoC-4 Quad-Attested Enclave Gate (`H_master`), NEP-611 gas-key lane isolation, Sputnik DAO V2 escalation (> $500), and ML-DSA-65 post-quantum verification.",
+          "- `src/core/near-ai-tee.ts`: Live NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) 8-step hardware attestation, real-time 4-asset market & news co-pilot (`NEAR/USDT`, `SOL/USDT`, `ETH/USDT`, `BTC/USDT`), and Zero-Retention memory wipe (`0x00`).",
+          "- `src/core/outlayer-enclave.ts`: Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186 RLP Merkle-Patricia Trie verifier), 4-asset multi-source median oracle, and provable VRF execution jitter.",
+          "- `src/core/intents-rhea-router.ts`: Live 1Click Confidential Intents (`intents.near` Private Shard), RHEA V1 Classic (`v2.ref-finance.near`) & V2 DCL (`dclv2.ref-labs.near` across 196 live pools) tri-venue router.",
+          "- `src/core/payroll-and-invoicing.ts`: Ceiling-rounded `EXACT_OUTPUT` merchant invoicing, 12-row fault-isolated NEP-141 batch payroll, GAAP/IFRS Bookkeeper CSV (`UTF-8 BOM`), and Printable HTML/PDF Audit Statement.",
+          "- `src/core/agent-market.ts` & `src/core/swarm-coordinator.ts`: Live `market.near.ai` worker discovery, HTTP `402 Payment Required` (`x402 v2`) escrow settlement, and 20-sub-agent x 5-provider sealed-bid clearing.",
+          "",
+          "## Live REST API Endpoints",
+          "- `GET /api/overview`: Full-stack telemetry across NEAR Testnet/Mainnet RPC, PoC-4 vault policy, 4-lane NEP-611 gas multiplexer, and 4-asset OutLayer median oracle.",
+          "- `POST /api/policy/kill-switch`: Toggle or inspect the emergency vault freeze switch.",
+          "- `POST /api/security/evaluate`: Evaluate 4-signal counterparty scam/prompt-injection risk, Sputnik DAO V2 escalation (> $500), and NIST FIPS 204 ML-DSA-65 post-quantum signature.",
+          "- `POST /api/tee/verify`: Execute live NEAR AI Cloud `GLM-5.1-FP8` TEE reasoning + 8-step NRAS/TDX verification + EIP-1186 proof.",
+          "- `POST /api/router/quote`: Compute optimal tri-venue cross-chain route (1Click Confidential vs RHEA V1 vs RHEA V2 DCL) + 5-chain MPC custody addresses + limit order & dust sweep.",
+          "- `POST /api/payroll/run`: Settle ceiling-rounded `EXACT_OUTPUT` invoice and run 12-row fault-isolated NEP-141 batch payroll.",
+          "- `GET /api/payroll/export-csv`: Download UTF-8 BOM Bookkeeper `.csv` reconciliation ledger.",
+          "- `GET /api/payroll/export-statement`: View/Print executive HTML/PDF Bookkeeper Audit & Reconciliation Statement.",
+          "- `POST /api/market/execute`: Run x402 v2 agent hire, worker loop, and 20x5 sealed-bid swarm market round.",
+          "- `POST /api/demo/autonomous-loop`: Execute the complete 5-stage closed-loop autonomous treasury cycle in < 2 minutes.",
+          "- `GET /openapi.json`: OpenAPI 3.1.0 machine-readable specification.",
+        ].join("\n");
+        res.writeHead(200, {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-store",
+        });
+        res.end(llmsTxt);
+        return;
+      }
+
+      if (method === "GET" && pathname === "/openapi.json") {
+        const openApiSpec = {
+          openapi: "3.1.0",
+          info: {
+            title: "KratonOS Sovereign Financial Operating System API",
+            version: "1.0.0",
+            description:
+              "Verifiable Confidential Treasury, Cross-Chain Liquidity & Agentic Commerce OS built on NEAR Protocol v88.",
+          },
+          servers: [{ url: "http://localhost:4173", description: "Local / Production KratonOS Server" }],
+          paths: {
+            "/api/overview": {
+              get: {
+                summary: "Live Vault, RPC, NEP-611 & 4-Asset Oracle Telemetry",
+                responses: { "200": { description: "Live status snapshot" } },
+              },
+            },
+            "/api/policy/kill-switch": {
+              post: {
+                summary: "Toggle or inspect emergency PoC-4 vault kill-switch",
+                responses: { "200": { description: "Updated kill-switch state" } },
+              },
+            },
+            "/api/security/evaluate": {
+              post: {
+                summary: "Evaluate 4-signal counterparty risk, Sputnik DAO V2 escalation & ML-DSA-65 PQ signature",
+                responses: { "200": { description: "Risk verdict, Sputnik proposal & PQ verification" } },
+              },
+            },
+            "/api/tee/verify": {
+              post: {
+                summary: "Execute live GLM-5.1-FP8 TEE market/policy co-pilot & 8-step attestation",
+                responses: { "200": { description: "Signed TEE verdict + EIP-1186 proof + 4-asset oracle" } },
+              },
+            },
+            "/api/router/quote": {
+              post: {
+                summary: "Compare 1Click Confidential Intents vs RHEA V1 Classic vs RHEA V2 DCL & derive 5-chain MPC addresses",
+                responses: { "200": { description: "Winning venue quote, 5-chain MPC addresses, limit order & dust sweep" } },
+              },
+            },
+            "/api/payroll/run": {
+              post: {
+                summary: "Execute EXACT_OUTPUT invoice & fault-isolated NEP-141 batch payroll",
+                responses: { "200": { description: "Invoice math + 12-row batch outcomes" } },
+              },
+            },
+            "/api/payroll/export-csv": {
+              get: {
+                summary: "Download GAAP/IFRS Bookkeeper CSV ledger (UTF-8 BOM)",
+                responses: { "200": { description: "CSV file attachment" } },
+              },
+            },
+            "/api/payroll/export-statement": {
+              get: {
+                summary: "Render printable HTML/PDF Executive Bookkeeper Audit Statement",
+                responses: { "200": { description: "Printable HTML document" } },
+              },
+            },
+            "/api/market/execute": {
+              post: {
+                summary: "Execute x402 v2 escrow settlement & 20x5 sealed-bid swarm round",
+                responses: { "200": { description: "x402 task receipt + swarm clearing prices" } },
+              },
+            },
+            "/api/demo/autonomous-loop": {
+              post: {
+                summary: "Run full 5-stage autonomous treasury closed loop (< 2 minutes)",
+                responses: { "200": { description: "5-stage cryptographic execution proof" } },
+              },
+            },
+          },
+        };
+        sendJson(res, 200, openApiSpec);
+        return;
+      }
+
+      // ======================================================================
+      // 10. Static UI & Compiled Vite Asset Server (`dist/ui/*` & `src/ui/*`)
       // ======================================================================
       const rootDir = resolveWorkspaceRoot();
       const distUiDir = path.join(rootDir, "dist", "ui");

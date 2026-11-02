@@ -3,6 +3,7 @@ import { NearConnector } from "@hot-labs/near-connect";
 import {
   AlertTriangle,
   ArrowLeftRight,
+  BookOpen,
   CheckCircle2,
   Cpu,
   FileSpreadsheet,
@@ -39,6 +40,7 @@ import {
   type MpcRheaRouterSlice,
   type PayrollApiResponse,
 } from "./views-business";
+import { DocsPortalView } from "./views-docs";
 
 export type ActiveSidebarView =
   | "overview"
@@ -47,7 +49,8 @@ export type ActiveSidebarView =
   | "tee"
   | "payroll"
   | "market"
-  | "mpc";
+  | "mpc"
+  | "docs";
 
 interface SidebarNavItem {
   id: ActiveSidebarView;
@@ -106,6 +109,13 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
     shortLabel: "MPC & Yield",
     subtitle: "5 Foreign Chains & 14.85% APR Farm",
     icon: Wallet,
+  },
+  {
+    id: "docs",
+    label: "Docs & API Spec",
+    shortLabel: "Docs",
+    subtitle: "Mintlify Docs · /llms.txt · OpenAPI",
+    icon: BookOpen,
   },
 ];
 
@@ -234,10 +244,10 @@ export function App() {
       tone: TelemetryFeedItem["tone"] = "emerald"
     ) => {
       const id = `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      setToasts((prev) => [...prev.slice(-2), { id, text }]);
+      setToasts([{ id, text }]);
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
-      }, 3400);
+      }, 2200);
 
       setFeedItems((prev) => [
         {
@@ -795,7 +805,18 @@ export function App() {
                 </button>
               </div>
 
-              {/* 2. Compact Judge Mode Pill Button */}
+              {/* 2. Compact Docs Portal Quick-Switch Button */}
+              <Button
+                variant={activeView === "docs" ? "emerald" : "outline"}
+                size="sm"
+                onClick={() => setActiveView("docs")}
+                className="shrink-0 gap-1.5 px-3 py-1.5 text-xs font-bold whitespace-nowrap"
+              >
+                <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                <span>Docs</span>
+              </Button>
+
+              {/* 3. Compact Judge Mode Pill Button */}
               <Button
                 variant={judgeMode ? "emerald" : "outline"}
                 size="sm"
@@ -908,6 +929,10 @@ export function App() {
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
+            )}
+
+            {activeView === "docs" && (
+              <DocsPortalView onNotify={pushNotification} />
             )}
           </main>
 

@@ -468,6 +468,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                 label="Download Bookkeeper CSV"
                 href="/api/payroll/export-csv"
               />
+              <UnseenEnterButton
+                label="Visual Audit Statement (HTML / PDF)"
+                href="/api/payroll/export-statement"
+              />
             </div>
           </div>
         </CardHeader>
@@ -1200,8 +1204,34 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
   const [derivationPath, setDerivationPath] = useState("kratonos-treasury-1");
+  const [flashDerived, setFlashDerived] = useState(false);
   const mpc = routerData?.mpcSuite;
   const rhea = routerData?.rheaFarms;
+
+  const triggerDerivation = (targetPath: string) => {
+    setDerivationPath(targetPath);
+    setFlashDerived(true);
+    setTimeout(() => setFlashDerived(false), 1200);
+    onRefresh?.(targetPath);
+    onNotify?.(
+      `Derived 5 Multi-Chain MPC addresses for path '${targetPath}' & refreshed RHEA Farming`,
+      "swap"
+    );
+  };
+
+  const handleRotateOrDerive = () => {
+    let nextPath = derivationPath.trim() || "kratonos-treasury-1";
+    if (mpc?.derivationPath === nextPath) {
+      const match = nextPath.match(/^(.*-)(\d+)$/);
+      if (match) {
+        const nextNum = (Number(match[2]) % 9) + 1;
+        nextPath = `${match[1]}${nextNum}`;
+      } else {
+        nextPath = `${nextPath}-2`;
+      }
+    }
+    triggerDerivation(nextPath);
+  };
 
   const chainCards = mpc
     ? [
@@ -1280,6 +1310,27 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {[
+                  "kratonos-treasury-1",
+                  "stealth-swap-vault-2",
+                  "invoice-escrow-3",
+                  "agent-bounty-4",
+                ].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => triggerDerivation(preset)}
+                    className={`rounded-md border px-2 py-1 font-mono text-[10px] font-bold transition-colors cursor-pointer ${
+                      derivationPath === preset
+                        ? "border-[var(--accent-emerald)] bg-emerald-500/15 text-[var(--accent-emerald)]"
+                        : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] hover:border-[var(--accent-emerald)]"
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
               <div className="flex items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                   Derivation Path:
@@ -1302,14 +1353,8 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
               )}
               {onRefresh && (
                 <UnseenEnterButton
-                  label="Refresh Multi-Chain MPC & RHEA Yield"
-                  onClick={() => {
-                    onRefresh(derivationPath);
-                    onNotify?.(
-                      `Derived Multi-Chain MPC addresses for path '${derivationPath}' & refreshed RHEA Farming`,
-                      "swap"
-                    );
-                  }}
+                  label="Rotate & Refresh MPC Derivation Path"
+                  onClick={handleRotateOrDerive}
                 />
               )}
             </div>
@@ -1320,7 +1365,11 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
             {chainCards.map((item) => (
               <div
                 key={item.chain}
-                className="flex flex-col justify-between rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4"
+                className={`flex flex-col justify-between rounded-xl border p-4 transition-all duration-300 ${
+                  flashDerived
+                    ? "border-[var(--accent-emerald)] bg-emerald-500/10 shadow-[0_0_20px_rgba(0,236,151,0.18)]"
+                    : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">

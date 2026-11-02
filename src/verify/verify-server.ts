@@ -134,30 +134,67 @@ async function runServerSmokeTest(): Promise<void> {
     `  ✓ Kill-Switch Toggle API      : HTTP 200 (Armed=true -> Disarmed=false verified)\n`
   );
 
-  // 3. Test Pillar Endpoints (/api/security/evaluate, /api/payroll/export-csv)
-  console.log("[3/4] Probing POST /api/security/evaluate & GET /api/payroll/export-csv...");
-  const [secRes, csvRes] = await Promise.all([
+  // 3. Test Pillar Endpoints (/api/security/evaluate, /api/payroll/export-csv, /api/payroll/export-statement, /llms.txt, /openapi.json)
+  console.log("[3/4] Probing Security, Printable Audit Statement, /llms.txt, /openapi.json & 4-Asset TEE Co-Pilot...");
+  const [secRes, csvRes, stmtRes, llmsRes, openApiRes, teeMarketRes] = await Promise.all([
     invokeServerEndpoint("POST", "/api/security/evaluate", {
       receiverId: "scam-drainer-vault.testnet",
       amountUsd: 420,
     }),
     invokeServerEndpoint("GET", "/api/payroll/export-csv"),
+    invokeServerEndpoint("GET", "/api/payroll/export-statement"),
+    invokeServerEndpoint("GET", "/llms.txt"),
+    invokeServerEndpoint("GET", "/openapi.json"),
+    invokeServerEndpoint("POST", "/api/tee/verify", {
+      prompt: "NEAR/USDT, SOL/USDT CURRENT MARKET PRICE. Besides that, share some of today's crypto news as well.",
+    }),
   ]);
 
   assert.equal(secRes.statusCode, 200);
   assert.equal(csvRes.statusCode, 200);
+  assert.equal(stmtRes.statusCode, 200);
+  assert.equal(llmsRes.statusCode, 200);
+  assert.equal(openApiRes.statusCode, 200);
+  assert.equal(teeMarketRes.statusCode, 200);
+
   const secJson = JSON.parse(secRes.bodyText) as {
     riskVerdict: { decision: string; riskScore: number };
     governanceEscalation: { tier: string };
   };
   assert.equal(secJson.riskVerdict.decision, "block");
   assert.ok(csvRes.bodyText.includes("scam-drainer-vault.testnet"));
+  assert.ok(stmtRes.bodyText.includes("Executive Bookkeeper Reconciliation Statement"));
+  assert.ok(llmsRes.bodyText.includes("# KratonOS"));
+
+  const openApiJson = JSON.parse(openApiRes.bodyText) as { openapi: string; paths: Record<string, unknown> };
+  assert.equal(openApiJson.openapi, "3.1.0");
+  assert.ok(openApiJson.paths["/api/payroll/export-statement"]);
+
+  const teeMarketJson = JSON.parse(teeMarketRes.bodyText) as {
+    liveReasoning: { content: string };
+    oracleSnap: { ethUsdMedian: number; nearUsdMedian: number; solUsdMedian: number; btcUsdMedian: number };
+  };
+  assert.ok(teeMarketJson.oracleSnap.solUsdMedian > 0, "solUsdMedian must be > 0");
+  assert.ok(teeMarketJson.oracleSnap.btcUsdMedian > 0, "btcUsdMedian must be > 0");
+  assert.ok(
+    !teeMarketJson.liveReasoning.content.includes("Enclave evaluated custom directive"),
+    "TEE Co-Pilot must answer market/news query directly without generic template"
+  );
 
   console.log(
     `  ✓ POST /api/security/evaluate : HTTP ${secRes.statusCode} | Decision=${secJson.riskVerdict.decision.toUpperCase()} (Score=${secJson.riskVerdict.riskScore}/100)`
   );
   console.log(
-    `  ✓ GET /api/payroll/export-csv : HTTP ${csvRes.statusCode} (${csvRes.bodyText.split("\n").length} CSV ledger lines)\n`
+    `  ✓ GET /api/payroll/export-csv : HTTP ${csvRes.statusCode} (${csvRes.bodyText.split("\n").length} CSV ledger lines, UTF-8 BOM)`
+  );
+  console.log(
+    `  ✓ GET /api/payroll/export-statement: HTTP ${stmtRes.statusCode} (${stmtRes.bodyText.length} bytes Printable HTML/PDF Audit Statement)`
+  );
+  console.log(
+    `  ✓ GET /llms.txt & /openapi.json: HTTP 200 (OpenAPI ${openApiJson.openapi}, ${Object.keys(openApiJson.paths).length} paths documented)`
+  );
+  console.log(
+    `  ✓ POST /api/tee/verify (4-Asset): ETH=$${teeMarketJson.oracleSnap.ethUsdMedian.toFixed(2)}, NEAR=$${teeMarketJson.oracleSnap.nearUsdMedian.toFixed(2)}, SOL=$${teeMarketJson.oracleSnap.solUsdMedian.toFixed(2)}, BTC=$${teeMarketJson.oracleSnap.btcUsdMedian.toFixed(0)}\n`
   );
 
   // 4. Test POST /api/demo/autonomous-loop
