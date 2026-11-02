@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Copy,
+  ExternalLink,
   Upload,
 } from "lucide-react";
 import { type TelemetryFeedItem } from "@/components/ui/animated-list";
@@ -1282,9 +1283,35 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
             5 foreign chain addresses derived from v1.signer-prod.testnet plus autonomous RHEA LP farming with single-tx reward sweep
           </p>
         </div>
-        <Badge variant="emerald" className="font-mono">
-          v1.signer-prod.testnet // 14.85% APR
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="https://testnet.nearblocks.io/address/v1.signer-prod.testnet"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 font-mono text-xs font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/20"
+          >
+            <span>v1.signer-prod.testnet</span>
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+          <a
+            href="https://testnet.nearblocks.io/address/ref-finance.testnet"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--text-primary)] hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+          >
+            <span>ref-finance.testnet</span>
+            <ExternalLink className="h-3.5 w-3.5 text-[var(--accent-emerald)]" />
+          </a>
+          <a
+            href="https://testnet.nearblocks.io/address/jubayir69.testnet"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1 font-mono text-xs font-bold text-[var(--text-primary)] hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+          >
+            <span>jubayir69.testnet</span>
+            <ExternalLink className="h-3.5 w-3.5 text-[var(--accent-emerald)]" />
+          </a>
+        </div>
       </div>
 
       {judgeMode && (

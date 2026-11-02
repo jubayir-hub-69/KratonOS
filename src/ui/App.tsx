@@ -6,6 +6,7 @@ import {
   BookOpen,
   CheckCircle2,
   Cpu,
+  ExternalLink,
   FileSpreadsheet,
   Layers,
   Monitor,
@@ -209,7 +210,34 @@ const LiveBlockBadge = React.memo(function LiveBlockBadge({
 
 export function App() {
   const { mode, setMode } = useTheme();
-  const [activeView, setActiveView] = useState<ActiveSidebarView>("overview");
+  const [activeView, setActiveView] = useState<ActiveSidebarView>(() =>
+    typeof window !== "undefined" && window.location.pathname.startsWith("/docs")
+      ? "docs"
+      : "overview"
+  );
+
+  const navigateToView = useCallback((nextView: ActiveSidebarView) => {
+    setActiveView(nextView);
+    if (typeof window !== "undefined") {
+      const targetPath = nextView === "docs" ? "/docs" : "/";
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, "", targetPath);
+      }
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, []);
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (window.location.pathname.startsWith("/docs")) {
+        setActiveView("docs");
+      } else {
+        setActiveView((prev) => (prev === "docs" ? "overview" : prev));
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isBrandAnimating, setIsBrandAnimating] = useState(false);
   const brandAnimTimerRef = useRef<number | null>(null);
@@ -532,8 +560,8 @@ export function App() {
   }, [fetchOverview, fetchMpcAndRhea, handleRunPayroll, handleExecuteMarket]);
 
   const handleNavigateSwap = useCallback(() => {
-    setActiveView("swap");
-  }, []);
+    navigateToView("swap");
+  }, [navigateToView]);
 
   const handleUserPayroll = useCallback(
     (p: {
@@ -557,6 +585,28 @@ export function App() {
   const activeNavMeta =
     SIDEBAR_ITEMS.find((item) => item.id === activeView) ?? SIDEBAR_ITEMS[0];
   const killSwitchEngaged = overview?.constraints?.emergency_kill_switch === true;
+
+  if (activeView === "docs") {
+    return (
+      <DotGrid spacing={26} className="min-h-screen">
+        <BackgroundCubesGrid className="fixed inset-0 w-screen h-screen pointer-events-none z-0" />
+        <div className="relative z-10 min-h-screen w-full">
+          <DocsPortalView
+            onBackToApp={() => navigateToView("overview")}
+            onNotify={pushNotification}
+          />
+        </div>
+        <div className="toasts" aria-live="polite">
+          {toasts.map((t) => (
+            <div key={t.id} className="toast">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
+              <span>{t.text}</span>
+            </div>
+          ))}
+        </div>
+      </DotGrid>
+    );
+  }
 
   return (
     <DotGrid spacing={26} className="min-h-screen">
@@ -662,7 +712,7 @@ export function App() {
                   <button
                     key={item.id}
                     type="button"
-                    onClick={() => setActiveView(item.id)}
+                    onClick={() => navigateToView(item.id)}
                     title={`${item.label} — ${item.subtitle}`}
                     className={`group relative flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left transition-all duration-200 cursor-pointer ${
                       isActive
@@ -706,9 +756,15 @@ export function App() {
                     LIVE RPC
                   </Badge>
                 </div>
-                <p className="mt-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)]">
-                  {overview?.treasuryAccount ?? "jubayir69.testnet"}
-                </p>
+                <a
+                  href={`https://testnet.nearblocks.io/address/${overview?.treasuryAccount ?? "jubayir69.testnet"}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
+                >
+                  <span>{overview?.treasuryAccount ?? "jubayir69.testnet"}</span>
+                  <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
+                </a>
                 <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                   <span>Balance</span>
                   <span className="font-mono font-bold text-[var(--accent-emerald)]">
@@ -717,9 +773,15 @@ export function App() {
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                   <span>Fee Recipient</span>
-                  <span className="font-mono font-bold text-[var(--accent-cyan)]">
-                    {overview?.feeRecipient ?? "jubayir33.near"}
-                  </span>
+                  <a
+                    href={`https://nearblocks.io/address/${overview?.feeRecipient ?? "jubayir33.near"}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-mono font-bold text-[var(--accent-cyan)] hover:underline"
+                  >
+                    <span>{overview?.feeRecipient ?? "jubayir33.near"}</span>
+                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                  </a>
                 </div>
               </div>
             ) : (
@@ -805,29 +867,7 @@ export function App() {
                 </button>
               </div>
 
-              {/* 2. Compact Docs Portal Quick-Switch Button */}
-              <Button
-                variant={activeView === "docs" ? "emerald" : "outline"}
-                size="sm"
-                onClick={() => setActiveView("docs")}
-                className="shrink-0 gap-1.5 px-3 py-1.5 text-xs font-bold whitespace-nowrap"
-              >
-                <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                <span>Docs</span>
-              </Button>
-
-              {/* 3. Compact Judge Mode Pill Button */}
-              <Button
-                variant={judgeMode ? "emerald" : "outline"}
-                size="sm"
-                onClick={handleToggleJudgeMode}
-                className="shrink-0 gap-1.5 px-3 py-1.5 text-xs font-bold whitespace-nowrap"
-              >
-                <Sparkles className="h-3.5 w-3.5 shrink-0" />
-                <span>{judgeMode ? "Judge Mode: ON" : "Judge Mode"}</span>
-              </Button>
-
-              {/* 3. Compact Press-and-Hold Kill-Switch Button */}
+              {/* 2. Compact Press-and-Hold Kill-Switch Button */}
               <HoldConfirmButton
                 label={
                   killSwitchEngaged
@@ -840,7 +880,7 @@ export function App() {
                 testId="kill-switch-hold-btn"
               />
 
-              {/* 4. Compact, Unclipped Connect Wallet Button (@hot-labs/near-connect) */}
+              {/* 3. Compact, Unclipped Connect Wallet Button (@hot-labs/near-connect) */}
               <Button
                 variant="emerald"
                 size="sm"
@@ -929,10 +969,6 @@ export function App() {
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
-            )}
-
-            {activeView === "docs" && (
-              <DocsPortalView onNotify={pushNotification} />
             )}
           </main>
 

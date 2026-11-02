@@ -134,9 +134,9 @@ async function runServerSmokeTest(): Promise<void> {
     `  ✓ Kill-Switch Toggle API      : HTTP 200 (Armed=true -> Disarmed=false verified)\n`
   );
 
-  // 3. Test Pillar Endpoints (/api/security/evaluate, /api/payroll/export-csv, /api/payroll/export-statement, /llms.txt, /openapi.json)
-  console.log("[3/4] Probing Security, Printable Audit Statement, /llms.txt, /openapi.json & 4-Asset TEE Co-Pilot...");
-  const [secRes, csvRes, stmtRes, llmsRes, openApiRes, teeMarketRes] = await Promise.all([
+  // 3. Test Pillar Endpoints (/api/security/evaluate, /api/payroll/export-csv, /api/payroll/export-statement, /llms.txt, /openapi.json, & Anti-Hallucination TEE Co-Pilot)
+  console.log("[3/4] Probing Security, Printable Audit Statement, /llms.txt, /openapi.json & Anti-Hallucination TEE Co-Pilot...");
+  const [secRes, csvRes, stmtRes, llmsRes, openApiRes, teeMarketRes, teeUnlistedRes, teeTypoRes] = await Promise.all([
     invokeServerEndpoint("POST", "/api/security/evaluate", {
       receiverId: "scam-drainer-vault.testnet",
       amountUsd: 420,
@@ -146,7 +146,13 @@ async function runServerSmokeTest(): Promise<void> {
     invokeServerEndpoint("GET", "/llms.txt"),
     invokeServerEndpoint("GET", "/openapi.json"),
     invokeServerEndpoint("POST", "/api/tee/verify", {
-      prompt: "NEAR/USDT, SOL/USDT CURRENT MARKET PRICE. Besides that, share some of today's crypto news as well.",
+      prompt: "NEAR/USDT, XRP /USDT CURRENT MARKET PRICE. Besides that, share some of today's crypto news as well.",
+    }),
+    invokeServerEndpoint("POST", "/api/tee/verify", {
+      prompt: "AYAN/USDT PRICE",
+    }),
+    invokeServerEndpoint("POST", "/api/tee/verify", {
+      prompt: "AVEX/USDT PRICE",
     }),
   ]);
 
@@ -156,6 +162,8 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(llmsRes.statusCode, 200);
   assert.equal(openApiRes.statusCode, 200);
   assert.equal(teeMarketRes.statusCode, 200);
+  assert.equal(teeUnlistedRes.statusCode, 200);
+  assert.equal(teeTypoRes.statusCode, 200);
 
   const secJson = JSON.parse(secRes.bodyText) as {
     riskVerdict: { decision: string; riskScore: number };
@@ -172,13 +180,95 @@ async function runServerSmokeTest(): Promise<void> {
 
   const teeMarketJson = JSON.parse(teeMarketRes.bodyText) as {
     liveReasoning: { content: string };
-    oracleSnap: { ethUsdMedian: number; nearUsdMedian: number; solUsdMedian: number; btcUsdMedian: number };
+    oracleSnap: {
+      ethUsdMedian: number;
+      nearUsdMedian: number;
+      solUsdMedian: number;
+      btcUsdMedian: number;
+      xrpUsdMedian: number;
+    };
   };
   assert.ok(teeMarketJson.oracleSnap.solUsdMedian > 0, "solUsdMedian must be > 0");
   assert.ok(teeMarketJson.oracleSnap.btcUsdMedian > 0, "btcUsdMedian must be > 0");
+  assert.ok(teeMarketJson.oracleSnap.xrpUsdMedian > 0, "xrpUsdMedian must be > 0");
   assert.ok(
-    !teeMarketJson.liveReasoning.content.includes("Enclave evaluated custom directive"),
-    "TEE Co-Pilot must answer market/news query directly without generic template"
+    !teeMarketJson.liveReasoning.content.includes("Enclave evaluated custom directive") &&
+      !/not available/i.test(teeMarketJson.liveReasoning.content),
+    "TEE Co-Pilot must answer NEAR/USDT & XRP/USDT market/news query directly with real live prices"
+  );
+
+  // Verify Anti-Hallucination on Unlisted Token (AYAN/USDT -> found: false, priceUsd: null, never $1.00)
+  const teeUnlistedJson = JSON.parse(teeUnlistedRes.bodyText) as {
+    liveReasoning: { content: string };
+    oracleSnap: {
+      dynamicAssetQuotes: Array<{
+        symbol: string;
+        found: boolean;
+        priceUsd: number | null;
+        status: string;
+      }>;
+    };
+  };
+  const ayanQuote = teeUnlistedJson.oracleSnap.dynamicAssetQuotes.find((q) => q.symbol === "AYAN");
+  assert.ok(ayanQuote, "AYAN quote entry must exist in dynamicAssetQuotes");
+  assert.equal(ayanQuote.found, false, "AYAN must have found === false");
+  assert.equal(ayanQuote.priceUsd, null, "AYAN must have priceUsd === null (never fake $1.00)");
+  assert.equal(ayanQuote.status, "UNLISTED_TOKEN", "AYAN must have status === UNLISTED_TOKEN");
+  assert.ok(
+    teeUnlistedJson.liveReasoning.content.includes("TOKEN NOT FOUND (UNLISTED)"),
+    "TEE Co-Pilot must explicitly report TOKEN NOT FOUND (UNLISTED) for AYAN"
+  );
+
+  // Verify Anti-Hallucination + Levenshtein Typo Suggestion on Misspelled Token (AVEX/USDT -> suggestion: AVAX)
+  const teeTypoJson = JSON.parse(teeTypoRes.bodyText) as {
+    liveReasoning: { content: string };
+    oracleSnap: {
+      dynamicAssetQuotes: Array<{
+        symbol: string;
+        found: boolean;
+        priceUsd: number | null;
+        status: string;
+        suggestion?: string;
+        suggestionPriceUsd?: number;
+      }>;
+    };
+  };
+  const avexQuote = teeTypoJson.oracleSnap.dynamicAssetQuotes.find((q) => q.symbol === "AVEX");
+  assert.ok(avexQuote, "AVEX quote entry must exist in dynamicAssetQuotes");
+  assert.equal(avexQuote.found, false, "AVEX must have found === false");
+  assert.equal(avexQuote.priceUsd, null, "AVEX must have priceUsd === null");
+  assert.equal(avexQuote.suggestion, "AVAX", "AVEX must suggest AVAX via Levenshtein/typo detection");
+  assert.ok((avexQuote.suggestionPriceUsd ?? 0) > 0, "AVEX suggestionPriceUsd for AVAX must be > 0");
+
+  // 3G. Test POST /api/onchain/commit-proof (Live NEAR Testnet Proof Signer)
+  const proofRes = await invokeServerEndpoint("POST", "/api/onchain/commit-proof", {});
+  assert.equal(proofRes.statusCode, 200, "POST /api/onchain/commit-proof must return HTTP 200");
+  const proofJson = JSON.parse(proofRes.bodyText) as {
+    status: string;
+    txHash: string;
+    signerAccountId: string;
+    signerPublicKey: string;
+    blockHeight: number;
+    blockHash: string;
+    poc4HMaster: string;
+    ed25519Verified: boolean;
+    explorerTxUrl: string;
+    explorerAccountUrl: string;
+  };
+  assert.ok(
+    proofJson.status === "COMMITTED_ON_CHAIN" ||
+      proofJson.status === "CRYPTOGRAPHICALLY_SIGNED_PROOF",
+    `Unexpected proof commit status: ${proofJson.status}`
+  );
+  assert.equal(proofJson.signerAccountId, "jubayir69.testnet");
+  assert.equal(proofJson.ed25519Verified, true, "Ed25519 signature on Borsh tx digest must verify");
+  assert.ok(
+    proofJson.explorerTxUrl.startsWith("https://testnet.nearblocks.io/txns/"),
+    "explorerTxUrl must point to NEARBlocks testnet txns"
+  );
+  assert.equal(
+    proofJson.explorerAccountUrl,
+    "https://testnet.nearblocks.io/address/jubayir69.testnet"
   );
 
   console.log(
@@ -194,7 +284,13 @@ async function runServerSmokeTest(): Promise<void> {
     `  ✓ GET /llms.txt & /openapi.json: HTTP 200 (OpenAPI ${openApiJson.openapi}, ${Object.keys(openApiJson.paths).length} paths documented)`
   );
   console.log(
-    `  ✓ POST /api/tee/verify (4-Asset): ETH=$${teeMarketJson.oracleSnap.ethUsdMedian.toFixed(2)}, NEAR=$${teeMarketJson.oracleSnap.nearUsdMedian.toFixed(2)}, SOL=$${teeMarketJson.oracleSnap.solUsdMedian.toFixed(2)}, BTC=$${teeMarketJson.oracleSnap.btcUsdMedian.toFixed(0)}\n`
+    `  ✓ POST /api/tee/verify (5-Asset): ETH=$${teeMarketJson.oracleSnap.ethUsdMedian.toFixed(2)}, NEAR=$${teeMarketJson.oracleSnap.nearUsdMedian.toFixed(2)}, XRP=$${teeMarketJson.oracleSnap.xrpUsdMedian.toFixed(4)}, SOL=$${teeMarketJson.oracleSnap.solUsdMedian.toFixed(2)}, BTC=$${teeMarketJson.oracleSnap.btcUsdMedian.toFixed(0)}`
+  );
+  console.log(
+    `  ✓ Anti-Hallucination Oracle   : AYAN/USDT -> ${ayanQuote.status} (priceUsd=${String(ayanQuote.priceUsd)}) | AVEX/USDT -> Did you mean ${avexQuote.suggestion} ($${avexQuote.suggestionPriceUsd?.toFixed(2)})?`
+  );
+  console.log(
+    `  ✓ POST /api/onchain/commit-proof: HTTP ${proofRes.statusCode} | TxHash=${proofJson.txHash.slice(0, 16)}... | Ed25519=${String(proofJson.ed25519Verified)} | ${proofJson.explorerTxUrl}\n`
   );
 
   // 4. Test POST /api/demo/autonomous-loop

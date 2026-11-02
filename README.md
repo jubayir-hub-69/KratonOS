@@ -90,8 +90,32 @@ npm run build
 | **`npm run verify:outlayer`** | Fetches a live Ethereum Mainnet block header across 5 RPCs, verifies Chainlink `ETH/USD` (`0x5f4e...8419`) via live `eth_getProof` (EIP-1186) Keccak-256 Merkle-Patricia Trie hashing (`stateRootMatches: true`, `storageHashMatches: true`), computes multi-source median prices (`ETH/USD`, `NEAR/USD`), verifies 5x48B Intel TDX registers + Ed25519 VRF anti-MEV slices, and writes/re-verifies `samples/outlayer-execution-proof.json`. |
 | **`npm run verify:ai-tee`** | Runs the 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) hardware attestation verifier (`STATUS: TEE ATTESTATION VERIFIED`), verifies Zero-Retention memory wipe (`2173 bytes overwritten with 0x00, 0 non-zero bytes remaining`), executes 1-round quote negotiation + `A2A + x402` (`x402Version: 2`) NEP-366 `SignedDelegateAction` hiring + `aat_` worker check, and settles the 20-Buyer $\times$ 5-Seller Sealed-Bid Swarm round (`0 LLM calls`, `$357.00` saved). |
 | **`npm run verify:intents-rhea`** | Fetches `210` live tokens from `GET /v0/tokens`, benchmarks `1Click` (`1 bp` stablecoin fee + `40 bps` app fee to `jubayir33.near`) vs `RHEA V2 DCL` vs `RHEA V1 AMM` (`196` active pools on `ref-finance.testnet`), builds a `"confidentiality": "basic"` GTC limit order (`/v0/orders`), verifies `ref-farming.testnet` `withdraw_reward({ amount: "0" })` + `v1.signer-prod.testnet` multi-chain addresses (`EVM`, `BTC`, `SOL`, `ZEC`, `TON`), and runs `EXACT_OUTPUT` ceiling invoicing + 12-row fault-isolated batch payroll (`STATUS: PASS`). |
-| **`npm run verify:server`** | Boots the full-stack server (`src/server/server.ts`), verifies `HTTP 200` on the Obsidian Glass UI (`/`, `/styles.css`, `/app.js`), `/api/overview`, `/api/policy/kill-switch`, `/api/security/evaluate`, `/api/payroll/export-csv`, `/api/payroll/export-statement` (Printable HTML/PDF Audit Statement), `/llms.txt`, `/openapi.json`, 4-Asset TEE Market/News Co-Pilot (`ETH`, `NEAR`, `SOL`, `BTC`), and executes the 5-stage `/api/demo/autonomous-loop` in $< 120\text{ s}$. |
-| **`npm run dev`** | Starts the Obsidian Glass Command Center at **`http://localhost:4173`** with `@hot-labs/near-connect` wallet integration, the in-app **Mintlify-Style Documentation Portal (`Docs & API Spec`)**, and the one-click **"Judge Mode"** verification switch. |
+| **`npm run verify:server`** | Boots the full-stack server (`src/server/server.ts`), verifies `HTTP 200` on the Obsidian Glass UI (`/`, `/docs`, `/styles.css`, `/app.js`), `/api/overview`, `/api/policy/kill-switch`, `/api/security/evaluate`, `/api/payroll/export-csv`, `/api/payroll/export-statement` (Printable HTML/PDF Audit Statement), `/llms.txt`, `/openapi.json`, `/api/onchain/commit-proof`, the Strict Anti-Hallucination TEE Market/News Co-Pilot (`ETH`, `NEAR`, `XRP`, `SOL`, `BTC` + `UNLISTED_TOKEN` on `AYAN/USDT` + Levenshtein typo suggestion `AVEX -> AVAX`), and executes the 5-stage `/api/demo/autonomous-loop` in $< 120\text{ s}$. |
+| **`npm run dev`** | Starts the Obsidian Glass Command Center at **`http://localhost:4173`** and the standalone full-viewport **Mintlify-Grade Documentation Portal (`http://localhost:4173/docs`)** with `@hot-labs/near-connect` wallet integration, interactive 5-Stage SVG architecture inspector, live endpoint explorer, `/llms.txt`, and `/openapi.json`. |
+
+---
+
+## 5B. Standalone `/docs` Portal, Strict Anti-Hallucination Oracle & Live On-Chain Proof Anchor
+
+1. **Standalone Full-Viewport Mintlify Documentation Portal (`/docs`, `/llms.txt`, `/openapi.json`)**:
+   - Navigating to `http://localhost:4173/docs` (or clicking `Docs & API Spec` in the sidebar) opens a 100% standalone, full-viewport documentation portal (`src/ui/views-docs.tsx`) featuring:
+     - **Interactive Animated 5-Stage SVG Architecture Pipeline**: Click any stage node (`1. Human Constraints` $\rightarrow$ `5. Confidential Execution`) to inspect its source file, cryptographic inputs/outputs, and verification command.
+     - **In-Browser Verification Matrix (`Do X -> See Y`)**: Click **Run Check in Browser** on any row to execute live backend verification checks and view the JSON receipt inline.
+     - **Interactive REST API Overview & Endpoint Explorer**: Test all 11 live REST endpoints (`Test Live ->`) and inspect `/llms.txt` and `/openapi.json` (OpenAPI `3.1.0`) in a dedicated modal drawer.
+     - **1-Click `Copy Page Markdown`**: Every chapter includes a `Copy Page Markdown` button for AI agents (`Claude Code`, `Codex`) and judges.
+2. **Strict Anti-Hallucination Multi-Source Price Oracle (`src/core/outlayer-enclave.ts`, `src/core/near-ai-tee.ts`)**:
+   - Resolves real-time prices across **Coinbase Spot**, **1Click (`GET /v0/tokens`, 210 tokens)**, and **Kraken / CryptoCompare**.
+   - **Never Invents `$1.00` Fallbacks**: Unknown or unlisted tickers (e.g., `AYAN/USDT`) return `found: false`, `priceUsd: null`, and `status: "UNLISTED_TOKEN"`, rendering an explicit `TOKEN NOT FOUND (UNLISTED)` badge.
+   - **Levenshtein Edit-Distance Typo Detection (`AVEX -> AVAX`)**: Misspelled tickers (e.g., `AVEX/USDT`) are caught by `findClosestValidTicker()`, returning `suggestion: "AVAX"` with the live `AVAX/USDT` price right below it.
+3. **Live On-Chain NEAR Testnet Proof Signer (`POST /api/onchain/commit-proof`) & Public Explorer Links**:
+   - `commitPoc4ProofOnChain()` (`src/core/rpc.ts`) Borsh-serializes and Ed25519-signs a NEAR Testnet transaction anchoring the current `PoC-4` `H_master` digest on `jubayir69.testnet`, returning `txHash`, `signerPublicKey`, `blockHash`, and a clickable `https://testnet.nearblocks.io/txns/${txHash}` receipt.
+   - Public Explorer Verification Links:
+     - Treasury Vault: `https://testnet.nearblocks.io/address/jubayir69.testnet`
+     - Protocol Fee Recipient: `https://nearblocks.io/address/jubayir33.near`
+     - OutLayer Enclave: `https://testnet.nearblocks.io/address/outlayer.testnet`
+     - RHEA DEX & Farming: `https://testnet.nearblocks.io/address/ref-finance.testnet` & `https://testnet.nearblocks.io/address/ref-farming.testnet`
+     - Chain Signatures MPC: `https://testnet.nearblocks.io/address/v1.signer-prod.testnet`
+     - Chainlink ETH/USD Proxy: `https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419`
 
 ---
 
