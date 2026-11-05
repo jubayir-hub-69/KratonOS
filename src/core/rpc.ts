@@ -134,17 +134,13 @@ export class NearRpcClient {
     method: string,
     params: Record<string, unknown> | unknown[]
   ): Promise<{ result: T; endpointUsed: string }> {
-    // Enforce non-batching invariant: payload is always a single JSON-RPC 2.0 object
+    // Protocol Rule: nearcore JSON-RPC forbids batch arrays; payload is strictly a single JSON-RPC 2.0 object.
     const requestPayload: JsonRpcRequest = {
       jsonrpc: "2.0",
       id: `kraton-${crypto.randomUUID()}`,
       method,
       params,
     };
-
-    if (Array.isArray(requestPayload)) {
-      throw new Error("Protocol Violation: nearcore JSON-RPC batch arrays are strictly prohibited.");
-    }
 
     const errors: string[] = [];
     const totalEndpoints = this.endpoints.length;
@@ -167,23 +163,24 @@ export class NearRpcClient {
           signal: controller.signal,
         });
 
-        clearTimeout(timer);
-
         if (!response.ok) {
           errors.push(`[${endpoint}] HTTP ${response.status} ${response.statusText}`);
           continue;
         }
 
-        const json = (await response.json()) as JsonRpcResponse<T>;
+        const json = (await response.json()) as JsonRpcResponse<T> & {
+          error?: JsonRpcError & { cause?: { name?: string } };
+        };
         if (json.error) {
-          // If it's a deterministic chain error (e.g. UNKNOWN_ACCOUNT or UNKNOWN_ACCESS_KEY), propagate with context
           const errDataStr = json.error.data ? JSON.stringify(json.error.data) : "";
-          const errMsg = `[${endpoint}] RPC Error ${json.error.code}: ${json.error.message} ${errDataStr}`.trim();
+          const causeName = json.error.cause?.name ?? "";
+          const errMsg = `[${endpoint}] RPC Error ${json.error.code}: ${json.error.message} ${causeName} ${errDataStr}`.trim();
+          // Deterministic chain state errors should propagate immediately without retrying other RPCs
           if (
             errDataStr.includes("UNKNOWN_ACCOUNT") ||
             errDataStr.includes("UNKNOWN_ACCESS_KEY") ||
-            errDataStr.includes("MethodNotFound") ||
-            json.error.code === -32601
+            causeName === "UNKNOWN_ACCOUNT" ||
+            causeName === "UNKNOWN_ACCESS_KEY"
           ) {
             throw new Error(errMsg);
           }
@@ -191,26 +188,43 @@ export class NearRpcClient {
           continue;
         }
 
-        if (json.result === undefined) {
+        if (json.result === undefined || json.result === null) {
           errors.push(`[${endpoint}] Empty RPC result for method ${method}`);
           continue;
+        }
+
+        // nearcore `query` can return HTTP 200 with `{ result: { error: "account ... does not exist while viewing", ... } }`
+        if (
+          typeof json.result === "object" &&
+          "error" in (json.result as Record<string, unknown>) &&
+          typeof (json.result as Record<string, unknown>).error === "string"
+        ) {
+          const embeddedErr = (json.result as Record<string, unknown>).error as string;
+          const lowerErr = embeddedErr.toLowerCase();
+          if (lowerErr.includes("does not exist while viewing") && lowerErr.includes("account")) {
+            throw new Error(`[${endpoint}] UNKNOWN_ACCOUNT: ${embeddedErr}`);
+          }
+          if (lowerErr.includes("access key") && lowerErr.includes("does not exist")) {
+            throw new Error(`[${endpoint}] UNKNOWN_ACCESS_KEY: ${embeddedErr}`);
+          }
+          throw new Error(`[${endpoint}] RPC_QUERY_ERROR: ${embeddedErr}`);
         }
 
         // Advance round-robin pointer to the healthy endpoint
         this.currentIndex = endpointIndex;
         return { result: json.result, endpointUsed: endpoint };
       } catch (err) {
-        clearTimeout(timer);
         const message = err instanceof Error ? err.message : String(err);
         if (
           message.includes("UNKNOWN_ACCOUNT") ||
           message.includes("UNKNOWN_ACCESS_KEY") ||
-          message.includes("MethodNotFound") ||
-          message.includes("-32601")
+          message.includes("RPC_QUERY_ERROR")
         ) {
           throw err;
         }
         errors.push(`[${endpoint}] ${message}`);
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -230,23 +244,15 @@ export class NearRpcClient {
   }
 
   /**
-   * Lists all access keys on an account via `EXPERIMENTAL_view_access_key_list` (or `view_access_key_list`).
+   * Lists all access keys on an account via `query` -> `view_access_key_list`.
    */
   public async viewAccessKeyList(accountId: string): Promise<AccessKeyListView> {
-    try {
-      const { result } = await this.sendSingleRpc<AccessKeyListView>("EXPERIMENTAL_view_access_key_list", {
-        finality: "final",
-        account_id: accountId,
-      });
-      return result;
-    } catch {
-      const { result } = await this.sendSingleRpc<AccessKeyListView>("query", {
-        request_type: "view_access_key_list",
-        finality: "final",
-        account_id: accountId,
-      });
-      return result;
-    }
+    const { result } = await this.sendSingleRpc<AccessKeyListView>("query", {
+      request_type: "view_access_key_list",
+      finality: "final",
+      account_id: accountId,
+    });
+    return result;
   }
 
   /**
@@ -358,6 +364,12 @@ export class NearRpcClient {
       args_base64: argsBase64,
     });
 
+    if (!Array.isArray(result.result)) {
+      throw new Error(`RPC view call ${contractId}::${methodName} returned malformed byte array.`);
+    }
+    if (result.result.length === 0) {
+      return null as T;
+    }
     const decodedText = Buffer.from(result.result).toString("utf8");
     return JSON.parse(decodedText) as T;
   }
@@ -497,8 +509,13 @@ const ED25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b657004220420", "he
 const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
 
 function encodeBase58(buffer: Uint8Array): string {
-  const digits = [0];
-  for (let i = 0; i < buffer.length; i++) {
+  if (buffer.length === 0) return "";
+  let leadingZeroCount = 0;
+  while (leadingZeroCount < buffer.length && buffer[leadingZeroCount] === 0) {
+    leadingZeroCount++;
+  }
+  const digits: number[] = [];
+  for (let i = leadingZeroCount; i < buffer.length; i++) {
     let carry = buffer[i];
     for (let j = 0; j < digits.length; j++) {
       carry += digits[j] << 8;
@@ -510,22 +527,21 @@ function encodeBase58(buffer: Uint8Array): string {
       carry = (carry / 58) | 0;
     }
   }
-  let leadingZeros = "";
-  for (let i = 0; i < buffer.length && buffer[i] === 0; i++) {
-    leadingZeros += BASE58_ALPHABET[0];
+  let result = BASE58_ALPHABET[0].repeat(leadingZeroCount);
+  for (let i = digits.length - 1; i >= 0; i--) {
+    result += BASE58_ALPHABET[digits[i]];
   }
-  return (
-    leadingZeros +
-    digits
-      .reverse()
-      .map((d) => BASE58_ALPHABET[d])
-      .join("")
-  );
+  return result;
 }
 
 function decodeBase58(str: string): Buffer {
-  const bytes = [0];
-  for (let i = 0; i < str.length; i++) {
+  if (str.length === 0) return Buffer.alloc(0);
+  let leadingZeros = 0;
+  while (leadingZeros < str.length && str[leadingZeros] === BASE58_ALPHABET[0]) {
+    leadingZeros++;
+  }
+  const bytes: number[] = [];
+  for (let i = leadingZeros; i < str.length; i++) {
     const charIndex = BASE58_ALPHABET.indexOf(str[i]);
     if (charIndex === -1) {
       throw new Error(`Invalid Base58 character: ${str[i]}`);
@@ -540,10 +556,6 @@ function decodeBase58(str: string): Buffer {
       bytes.push(carry & 0xff);
       carry >>= 8;
     }
-  }
-  let leadingZeros = 0;
-  for (let i = 0; i < str.length && str[i] === BASE58_ALPHABET[0]; i++) {
-    leadingZeros++;
   }
   return Buffer.concat([Buffer.alloc(leadingZeros), Buffer.from(bytes.reverse())]);
 }
@@ -588,6 +600,30 @@ export interface OnChainPoc4ProofCommitResult {
   committedAtIso: string;
 }
 
+export interface RecentNearTestnetTx {
+  txHash: string;
+  signerId: string;
+  receiverId: string;
+  actionLabel: string;
+  blockHeight: number | string;
+  timestampIso: string;
+  liveOnChain: boolean;
+  explorerTxUrl: string;
+  source: "rpc_broadcast_tx_commit" | "nearblocks_testnet_api";
+}
+
+let cachedLiveProofReceipt: OnChainPoc4ProofCommitResult | null = null;
+let initialAutoAnchorAttempted = false;
+let recentTxCache: {
+  accountId: string;
+  expiresAtMs: number;
+  transactions: RecentNearTestnetTx[];
+} | null = null;
+
+export function getCachedLiveProofReceipt(): OnChainPoc4ProofCommitResult | null {
+  return cachedLiveProofReceipt;
+}
+
 export async function commitPoc4ProofOnChain(params: {
   accountId?: string;
   privateKey?: string;
@@ -602,10 +638,15 @@ export async function commitPoc4ProofOnChain(params: {
 
   // 1. Derive 32-byte Ed25519 private seed & public key
   let rawSeed32: Buffer;
+  let validPrivateKeyProvided = false;
   if (rawPrivKey.startsWith("ed25519:")) {
     try {
       const decoded = decodeBase58(rawPrivKey.slice("ed25519:".length));
+      if (decoded.length !== 32 && decoded.length !== 64) {
+        throw new Error(`Invalid Ed25519 secret key length: ${decoded.length}`);
+      }
       rawSeed32 = decoded.subarray(0, 32);
+      validPrivateKeyProvided = true;
     } catch {
       rawSeed32 = crypto
         .createHash("sha256")
@@ -689,19 +730,27 @@ export async function commitPoc4ProofOnChain(params: {
   const signedTxBase64 = borshSignedTransaction.toString("base64");
 
   let liveBroadcast = false;
-  if (rawPrivKey.startsWith("ed25519:")) {
+  if (validPrivateKeyProvided) {
     try {
       const broadcastRes = await client.broadcastSignedTransaction(signedTxBase64);
-      if (broadcastRes.outcome?.transaction?.hash) {
+      const statusObj = broadcastRes.outcome?.status;
+      const hasExecutionFailure =
+        typeof statusObj === "object" && statusObj !== null && "Failure" in statusObj;
+      if (broadcastRes.outcome?.transaction?.hash && !hasExecutionFailure) {
         txHash = broadcastRes.outcome.transaction.hash;
+        if (broadcastRes.outcome.transaction_outcome?.block_hash) {
+          blockHash = broadcastRes.outcome.transaction_outcome.block_hash;
+        }
         liveBroadcast = true;
       }
     } catch {
-      // Safe fallback to cryptographic signed transaction receipt
+      // Safe fallback to cryptographic signed transaction receipt when offline or key lacks permissions
     }
   }
 
-  return {
+  const explorerBase =
+    env.NEAR_NETWORK_ID === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io";
+  const receipt: OnChainPoc4ProofCommitResult = {
     status: liveBroadcast ? "COMMITTED_ON_CHAIN" : "CRYPTOGRAPHICALLY_SIGNED_PROOF",
     liveBroadcast,
     networkId: env.NEAR_NETWORK_ID || "testnet",
@@ -716,9 +765,152 @@ export async function commitPoc4ProofOnChain(params: {
     policyHash: params.policyHash,
     signatureBase58,
     ed25519Verified,
-    explorerTxUrl: `https://testnet.nearblocks.io/txns/${txHash}`,
-    explorerAccountUrl: `https://testnet.nearblocks.io/address/${signerAccountId}`,
+    explorerTxUrl: `${explorerBase}/txns/${txHash}`,
+    explorerAccountUrl: `${explorerBase}/address/${signerAccountId}`,
     committedAtIso: new Date().toISOString(),
+  };
+
+  if (liveBroadcast) {
+    cachedLiveProofReceipt = receipt;
+  }
+
+  return receipt;
+}
+
+/**
+ * Fetches recent real on-chain NEAR Testnet transactions for `accountId` from Nearblocks Testnet API
+ * (`https://api-testnet.nearblocks.io/v1/account/${accountId}/txns?per_page=5`), and if `NEAR_PRIVATE_KEY`
+ * is configured and no live broadcast has been anchored in this process yet, executes a real signed
+ * `0` yoctoNEAR self-transfer via `broadcast_tx_commit` on `https://rpc.testnet.near.org` and merges
+ * its real on-chain `txHash` receipt. Never fabricates transaction hashes when offline.
+ */
+export async function fetchRecentAccountTransactions(
+  accountId = "jubayir69.testnet",
+  options?: {
+    rpcClient?: NearRpcClient;
+    poc4HMaster?: string;
+    policyHash?: string;
+  }
+): Promise<{
+  liveFetched: boolean;
+  transactions: RecentNearTestnetTx[];
+  latestLiveReceipt: OnChainPoc4ProofCommitResult | null;
+}> {
+  const env = loadEnvironmentConfig();
+
+  // Attempt one automatic real on-chain `broadcast_tx_commit` anchor if NEAR_PRIVATE_KEY is configured
+  if (!initialAutoAnchorAttempted && env.NEAR_PRIVATE_KEY && env.NEAR_PRIVATE_KEY.trim().startsWith("ed25519:")) {
+    initialAutoAnchorAttempted = true;
+    try {
+      await commitPoc4ProofOnChain({
+        accountId,
+        privateKey: env.NEAR_PRIVATE_KEY,
+        poc4HMaster: options?.poc4HMaster ?? "poc4-live-anchor-init",
+        policyHash: options?.policyHash ?? "kratonos-policy-v1",
+        rpcClient: options?.rpcClient,
+      });
+    } catch {
+      // Ignore offline auto-anchor failure
+    }
+  }
+
+  let indexerTxns: RecentNearTestnetTx[] = [];
+  const now = Date.now();
+  if (recentTxCache && recentTxCache.accountId === accountId && recentTxCache.expiresAtMs > now) {
+    indexerTxns = recentTxCache.transactions;
+  } else {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2200);
+    try {
+      const url = `https://api-testnet.nearblocks.io/v1/account/${encodeURIComponent(accountId)}/txns?per_page=5`;
+      const res = await fetch(url, {
+        headers: { Accept: "application/json" },
+        signal: controller.signal,
+      });
+      if (res.ok) {
+        const json = (await res.json()) as {
+          txns?: Array<{
+            transaction_hash?: string;
+            predecessor_account_id?: string;
+            receiver_account_id?: string;
+            block?: { block_height?: number | string };
+            block_timestamp?: string | number;
+            actions?: Array<{ action?: string; method?: string | null }>;
+          }>;
+        };
+        if (Array.isArray(json.txns)) {
+          const parsed: RecentNearTestnetTx[] = [];
+          const seen = new Set<string>();
+          for (const tx of json.txns) {
+            const hash = (tx.transaction_hash ?? "").trim();
+            if (!hash || seen.has(hash)) continue;
+            seen.add(hash);
+            const firstAction = tx.actions?.[0];
+            const actionLabel = firstAction?.method
+              ? `${firstAction.action ?? "FUNCTION_CALL"}:${firstAction.method}`
+              : firstAction?.action ?? "TRANSFER";
+            let timestampIso = new Date().toISOString();
+            if (tx.block_timestamp) {
+              try {
+                const ms = Number(BigInt(String(tx.block_timestamp)) / 1_000_000n);
+                if (Number.isFinite(ms) && ms > 1_500_000_000_000) {
+                  timestampIso = new Date(ms).toISOString();
+                }
+              } catch {
+                // Keep ISO fallback
+              }
+            }
+            parsed.push({
+              txHash: hash,
+              signerId: tx.predecessor_account_id ?? accountId,
+              receiverId: tx.receiver_account_id ?? accountId,
+              actionLabel,
+              blockHeight: tx.block?.block_height ?? "final",
+              timestampIso,
+              liveOnChain: true,
+              explorerTxUrl: `https://testnet.nearblocks.io/txns/${hash}`,
+              source: "nearblocks_testnet_api",
+            });
+          }
+          indexerTxns = parsed.slice(0, 5);
+          recentTxCache = {
+            accountId,
+            expiresAtMs: now + 30_000,
+            transactions: indexerTxns,
+          };
+        }
+      }
+    } catch {
+      // Offline or indexer timeout — return empty indexer list without fabricating hashes
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  const merged: RecentNearTestnetTx[] = [];
+  if (cachedLiveProofReceipt && cachedLiveProofReceipt.liveBroadcast) {
+    merged.push({
+      txHash: cachedLiveProofReceipt.txHash,
+      signerId: cachedLiveProofReceipt.signerAccountId,
+      receiverId: cachedLiveProofReceipt.receiverAccountId,
+      actionLabel: "TRANSFER (PoC-4 Anchor 0 NEAR)",
+      blockHeight: cachedLiveProofReceipt.blockHeight,
+      timestampIso: cachedLiveProofReceipt.committedAtIso,
+      liveOnChain: true,
+      explorerTxUrl: cachedLiveProofReceipt.explorerTxUrl,
+      source: "rpc_broadcast_tx_commit",
+    });
+  }
+  for (const item of indexerTxns) {
+    if (!merged.some((m) => m.txHash === item.txHash)) {
+      merged.push(item);
+    }
+  }
+
+  return {
+    liveFetched: merged.length > 0,
+    transactions: merged.slice(0, 5),
+    latestLiveReceipt: cachedLiveProofReceipt,
   };
 }
 

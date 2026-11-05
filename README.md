@@ -1,3 +1,5 @@
+<p align="center"><img src="./public/kratonos-banner.svg" alt="KratonOS — Sovereign Financial OS" width="100%" /></p>
+
 # KratonOS — Quad-Attested Autonomous Treasury & Multi-Agent Operating System on NEAR Protocol
 
 KratonOS is a self-custodial, hardware-attested autonomous treasury, cross-chain execution engine, and multi-agent coordination operating system built on NEAR Protocol v88.
@@ -11,13 +13,17 @@ KratonOS is a self-custodial, hardware-attested autonomous treasury, cross-chain
 | **Live AI Judge Index (`/llms.txt`)** | https://kraton-os-taupe.vercel.app/llms.txt |
 | **Live OpenAPI 3.1 Specification (`/openapi.json`)** | https://kraton-os-taupe.vercel.app/openapi.json |
 | **Official GitHub Repository** | https://github.com/jubayir-hub-69/KratonOS |
-| **Official Prompt & Track Rules Reference** | https://github.com/nearai/near-hackathon-prompt-examples (`HACKATHON.md`, `RULES.md`, `AGENTS.md`, `tracks/02-thesis.md`, `tracks/03-privacy.md`, `tracks/04-business.md`, `tracks/06-security.md`, `tracks/08-realworld.md`) |
-| **NEAR Intents / 1Click Mainnet API & Explorer** | https://1click.chaindefuser.com (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/orders`) · https://explorer.near-intents.org/api/v0/transactions · https://docs.near-intents.org |
-| **NEAR AI Cloud (Confidential H100 + Intel TDX TEE)** | https://cloud-api.near.ai/v1 (`model: "zai-org/GLM-5.1-FP8"`, `/v1/chat/completions`, `/v1/attestation/report`, `/v1/signature/{chat_id}`) · https://docs.near.ai |
-| **NEAR Agent Market (`A2A + x402` v2)** | https://market.near.ai (`/v1/agents`, `/v1/jobs`, `/v1/wallet/balance`) |
-| **OutLayer Verifiable WASI P1/P2 Enclave** | https://testnet.nearblocks.io/address/outlayer.testnet · https://testnet.nearblocks.io/address/worker.outlayer.testnet |
-| **RHEA Finance (V1 AMM + V2 DCL + Farming)** | https://testnet.nearblocks.io/address/ref-finance.testnet · https://testnet.nearblocks.io/address/ref-farming.testnet · https://app.rhea.finance |
-| **NEAR Chain Signatures MPC & Sputnik DAO V2** | https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet (Treasury Vault) · https://nearblocks.io/address/jubayir33.near (Protocol Fee Recipient) |
+| **Official NEAR Hackathon Rules** | https://nearhackathon.com/HACKATHON.md · https://nearhackathon.com |
+| **Official Prompt & Track Specifications** | https://github.com/nearai/near-hackathon-prompt-examples (`HACKATHON.md`, `RULES.md`, `AGENTS.md`, `tracks/01-defi.md` .. `tracks/08-realworld.md`) |
+| **NEAR Protocol Documentation** | https://docs.near.org/ |
+| **NEAR Intents / 1Click Mainnet API & Explorer** | https://1click.chaindefuser.com (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/orders`) · https://explorer.near-intents.org/api/v0/transactions · https://docs.near-intents.org/ |
+| **NEAR AI Cloud (Confidential H100 + Intel TDX TEE)** | https://cloud-api.near.ai/v1 (`model: "zai-org/GLM-5.1-FP8"`, `/v1/chat/completions`, `/v1/attestation/report`, `/v1/signature/{chat_id}`) · https://cloud.near.ai · https://docs.near.ai/ |
+| **NEAR Agent Market (`A2A + x402` v2)** | https://market.near.ai (`/v1/agents`, `/v1/jobs`, `/v1/wallet/balance`) · https://docs.market.near.ai/ |
+| **OutLayer Verifiable WASI P1/P2 Enclave** | https://outlayer.ai/ · https://app.outlayer.ai/docs/getting-started · https://testnet.nearblocks.io/address/outlayer.testnet · https://testnet.nearblocks.io/address/worker.outlayer.testnet |
+| **RHEA Finance (V1 AMM + V2 DCL + Farming)** | https://rhea.finance/ · https://guide.rhea.finance/ · https://testnet.nearblocks.io/address/ref-finance.testnet · https://testnet.nearblocks.io/address/ref-farming.testnet |
+| **Wallet Connection (`@hot-labs/near-connect`)** | https://docs.hotdao.ai/ |
+| **Sputnik DAO V2 & Trezu Multisig** | https://github.com/near-daos/sputnik-dao-contract · https://trezu.org/ |
+| **NEAR Chain Signatures MPC & Vault Accounts** | https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet (Treasury Vault) · https://nearblocks.io/address/jubayir33.near (Protocol Fee Recipient) |
 | **Ethereum Mainnet Chainlink ETH/USD Aggregator** | https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 |
 
 ---
@@ -59,7 +65,7 @@ $$\text{H\_master} = \text{SHA256}\left(\text{Hash\_Policy} \parallel \text{Sig\
 
 1. **Pillar 1 — Sovereign Policy Vault, 4-Signal Scam Shield, NEP-611 Gas-Key Multiplexer & Post-Quantum (`ml-dsa-65`) Auditor**:
    - Rust `1.86.0` smart contract (`contracts/kratonos-policy-vault/src/lib.rs`) + TypeScript security engine (`src/core/poc4.ts`, `src/core/security-shield.ts`, `src/core/gas-keys.ts`).
-   - 3-Tier Earned-Trust Governance (`AUTO_APPROVE` $\le \$150$, `ONE_COUNCIL_FAST_TRACK`, and `SPUTNIK_DAO_PROPOSAL` generating a Sputnik DAO V2 `add_proposal` payload with `1 NEAR` bond on `kratonos-dao.sputnikv2.testnet`).
+   - 3-Tier Earned-Trust Governance (`AUTO_APPROVE` $\le \$50.00$ / $\le \$150.00$ verified counterparty, `ONE_COUNCIL_FAST_TRACK` $\$50.01\text{--}\$150.00$, and `SPUTNIK_DAO_PROPOSAL` $> \$150.00$ single-tx / $> \$500.00$ daily generating a Sputnik DAO V2 `add_proposal` payload with `1 NEAR` bond on `kratonos-dao.sputnikv2.testnet`).
 2. **Pillar 2 — Dual-TEE Hardware Verification (`NEAR AI Cloud` + `OutLayer WASI P1/P2`) & Ethereum Mainnet `eth_getProof` Verifier**:
    - WASI Preview 1 & Preview 2 Rust crate (`enclave/outlayer-wasi/src/lib.rs`) + live verifier (`src/core/outlayer-enclave.ts`, `src/core/near-ai-tee.ts`).
    - Verifies live Ethereum Mainnet `eth_getProof` (EIP-1186) Merkle-Patricia Trie nodes (`keccak256(accountProof[0]) === block.stateRoot`) for Chainlink `ETH/USD` (`0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419`) across 5 independent Ethereum RPCs, plus 8-step NVIDIA NRAS Hopper GPU + Intel TDX 5-register (`MRTD`, `RTMR0..3`) attestation for `zai-org/GLM-5.1-FP8`.
@@ -102,7 +108,7 @@ $$\text{H\_master} = \text{SHA256}\left(\text{Hash\_Policy} \parallel \text{Sig\
 
 ## 5. Reproducible "Do X $\rightarrow$ See Y" Verification Commands for Judges
 
- KatonOS requires **zero manual configuration** to verify. If `.env` is present, it authenticates live against `NEAR AI Cloud`, `1Click`, and `market.near.ai`; if run in an unconfigured CI sandbox, it falls back cleanly to `.env.example` and verified cryptographic proof bundles in `samples/`.
+KratonOS requires **zero manual configuration** to verify. If `.env` is present, it authenticates live against `NEAR AI Cloud`, `1Click`, and `market.near.ai`; if run in an unconfigured CI sandbox, it falls back cleanly to `.env.example` and verified cryptographic proof bundles in `samples/`. Full 38-assertion & 12-vector adversarial stress documentation is in [`STRESS.md`](./STRESS.md).
 
 ```powershell
 # 1. Install dependencies & verify TypeScript compilation
@@ -155,7 +161,7 @@ npm run build
 - `react` (`^19.0.0`), `react-dom` (`^19.0.0`), `lucide-react` (`^1.16.0`), `tailwindcss` (`^4.2.2`) — Frontend UI primitives
 - `yaml` (`^2.7.0`) & `dotenv` (`^16.4.7`) — Human constraint (`config.yaml`) and environment loader
 - `typescript` (`^5.7.3`) & `tsx` (`^4.19.3`) — Strict TypeScript compiler and execution engine
-- Rust `1.86.0` Crates: `near-sdk` (`5.7.0`, `features = ["legacy"]`), `omni-transaction` (`0.5.0`), `sha2` (`0.10`), `sha3` (`0.10`), `ed25519-dalek` (`2.1`), `bs58` (`0.5`), `serde` (`1.0`), `serde_json` (`1.0`)
+- Rust `1.86.0` Crates: `near-sdk` (`5.7.0`, `features = ["legacy"]`), `sha2` (`0.10`), `sha3` (`0.10`), `ed25519-dalek` (`2.1`), `bs58` (`0.5`), `serde` (`1.0`), `serde_json` (`1.0`)
 - Official NEAR & Partner Agent Skills (`.agents/skills/`): `near-intents`, `near-ai-cloud`, `near-api-js`, `near-dapp`, `near-kit`, `near-smart-contracts`, `outlayer-custody`, `agent-market-worker`, `agent-market-buyer`, `agent-market-x402`
 
 ### B. Original KratonOS Engineering Written Specifically for This Project
@@ -168,5 +174,20 @@ npm run build
   - `src/core/intents-rhea-router.ts` & `src/core/rhea-yield-and-mpc.ts` (Tri-Venue `1Click` / `RHEA V2 DCL` / `RHEA V1 AMM` router, `/v0/orders` confidential limit orders, `withdraw_reward({ amount: "0" })` farming sweep, and 5-chain MPC KDF)
   - `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts` (`EXACT_OUTPUT` ceiling invoicing, 12-row fault-isolated NEP-141 batcher, `x402 v2` escrow, and 20x5 SHA-256 commit-reveal swarm)
 - **`src/server/server.ts` & `src/ui/*`**: Full-stack HTTP + Vercel Serverless API (`11` OpenAPI 3.1 endpoints + `/llms.txt` + `/openapi.json`), 7-View Obsidian Glass Command Center (`src/ui/App.tsx`, `src/ui/views-core.tsx`, `src/ui/views-business.tsx`), and Standalone Mintlify-Grade Documentation Portal (`src/ui/views-docs.tsx`).
+
+---
+
+## 7. Honest Scope, Live vs Dry-Run Boundary & Intentional Non-Goals
+
+See [`STRESS.md`](./STRESS.md) (and `/docs#stress`) for the full **6-Suite, 38-Assertion, 12-Attack-Vector Stress Matrix**. Every runtime boundary is transparently classified below:
+
+| Subsystem / Capability | 100% Live Network Execution | Testnet / Dry-Run Boundary & Intentional Non-Goals |
+| :--- | :--- | :--- |
+| **NEAR Testnet RPC & Indexing** | Live `view_account`, `view_access_key_list` (`https://rpc.testnet.near.org`), Nearblocks transaction ledger (`api-testnet.nearblocks.io`), and signed `broadcast_tx_commit` PoC-4 proof commits on `jubayir69.testnet` when `NEAR_PRIVATE_KEY` is configured. | In air-gapped / keyless CI sandboxes, offline receipts are explicitly badged **`[SIGNED BORSH PROOF (DRY-RUN)]`** or **`[DRY-RUN QUOTE PREVIEW]`** — never mislabeled as broadcast transactions. |
+| **Ethereum Mainnet EIP-1186 & Price Oracles** | Live `eth_getBlockByNumber` + `eth_getProof` across 5 Ethereum Mainnet RPCs verifying Chainlink `ETH/USD` (`0x5f4e...8419`) RLP Keccak-256 tries locally, plus live Coinbase Spot, 1Click (`210` tokens), and Kraken quotes. | Unlisted tickers strictly return `priceUsd: null` (`UNLISTED_TOKEN`) with Levenshtein typo suggestions (`AVEX -> AVAX`), never a fabricated `$1.00` fallback. |
+| **NEAR AI Cloud (`GLM-5.1-FP8`) TEE** | Live `https://cloud-api.near.ai/v1` inference, NRAS Hopper GPU + Intel TDX 5x48B hardware quote verification, ECDSA `secp256k1` recovery, and in-place `0x00` memory wipe. | Capped by `max_daily_inference_spend_usd: 5.00` and `<= 10 calls/min` rate guard in `config.yaml` to prevent runaway cloud inference spend. |
+| **1Click Cross-Chain Swaps (`Q-007`)** | Live authenticated `GET /v0/tokens` (`210` assets) and `POST https://1click.chaindefuser.com/v0/quote` with inspectable pre-sign NEP-413 `token_diff` payloads. | **`dry: true` by Design (`Q-007`)**: Live `1Click` Mainnet quote calls pass `dry: true` so judges and automated CI suites can benchmark real routes without locking Mainnet capital in ephemeral deposit addresses. |
+| **NIST FIPS 204 `ML-DSA-65` Post-Quantum** | Generates and verifies standard `1,952`-byte lattice public keys, `3,309`-byte signatures, and domain-separated `ml-dsa-65-hash:<base58>` (`SHA3-256`) commitments. | **Host Precompile Boundary**: Until nearcore lands native gas-metered WASM lattice precompiles, full `ML-DSA-65` lattice verification executes in the off-chain/enclave gate while the Rust Policy Vault verifies the `SHA3-256` commitment digest on-chain. |
+| **Recursive Sub-Agent Delegation** | Static 4-lane NEP-611 topology (`scout`, `executor`, `payroll`, `yield`) under `jubayir69.testnet` with isolated nonces. | **Intentionally Blocked (Non-Goal)**: Sub-agents cannot call `AddKey` or spawn child agents, preventing unbounded recursive spend fan-out and preserving human `config.yaml` budget isolation. |
 
 

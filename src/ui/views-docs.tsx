@@ -1,20 +1,18 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Activity,
+  AlertTriangle,
   ArrowLeft,
-  ArrowLeftRight,
   BookOpen,
   Check,
   CheckCircle2,
   ChevronRight,
   Copy,
-  Cpu,
   Download,
   ExternalLink,
   FileCode2,
   FileSpreadsheet,
-  Layers,
   Lock,
+  Menu,
   Monitor,
   Moon,
   Play,
@@ -23,8 +21,6 @@ import {
   ShieldCheck,
   Sun,
   Terminal,
-  Users,
-  Wallet,
   X,
 } from "lucide-react";
 import { type TelemetryFeedItem } from "@/components/ui/animated-list";
@@ -43,6 +39,7 @@ export type DocPageId =
   | "api-overview"
   | "api-explorer"
   | "live-status"
+  | "stress"
   | "shipped"
   | "changelog";
 
@@ -83,6 +80,7 @@ const DOC_NAV_TREE: NavCategory[] = [
   {
     category: "OPERATIONS & TELEMETRY",
     items: [
+      { id: "stress", title: "Adversarial Stress & Attack Suite", badge: "38 Checks" },
       { id: "live-status", title: "Live Status", badge: "10s Poll" },
       { id: "shipped", title: "Shipped Matrix & Roadmap" },
       { id: "changelog", title: "Changelog" },
@@ -116,7 +114,7 @@ const API_SPECS: ApiEndpointSpec[] = [
       status: "OK",
       treasuryAccount: "jubayir69.testnet",
       feeRecipient: "jubayir33.near",
-      balanceFormatted: "14.8500 NEAR",
+      balanceFormatted: "5.0000 NEAR",
       poc4Valid: true,
       nep611Lanes: 4,
       oracle: {
@@ -191,7 +189,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     method: "POST",
     path: "/api/security/evaluate",
     summary:
-      "Runs 4-signal counterparty scam/prompt-injection risk analysis, 3-tier Sputnik DAO V2 escalation (> $500), and NIST FIPS 204 ML-DSA-65 post-quantum signature verification.",
+      "Runs 4-signal counterparty scam/prompt-injection risk analysis, 3-tier Sputnik DAO V2 escalation (> $150 single-tx / > $500 daily), and NIST FIPS 204 ML-DSA-65 post-quantum signature verification.",
     auth: "PoC-4 Enclave Gate",
     curlExample: `curl -X POST http://localhost:4173/api/security/evaluate \\\n  -H "Content-Type: application/json" \\\n  -d '{"receiverId":"scam-drainer-vault.testnet","amountUsd":420}'`,
     tsExample: `const res = await fetch("/api/security/evaluate", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ receiverId: "scam-drainer-vault.testnet", amountUsd: 420 })\n});`,
@@ -207,7 +205,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     sampleResponse: {
       status: "OK",
       riskVerdict: { decision: "block", riskScore: 100 },
-      governanceEscalation: { tier: "ONE_COUNCIL_FAST_TRACK" },
+      governanceEscalation: { tier: "SPUTNIK_DAO_PROPOSAL" },
     },
   },
   {
@@ -360,7 +358,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
     subtitle: "config.yaml + ML-DSA-65",
     sourceFile: "src/core/poc4.ts & src/core/security-shield.ts",
     verifyCmd: "npm run verify:attack-demo",
-    inputs: "config.yaml ($500 single-tx cap, <= 500 bps fee ceiling, whitelisted contracts)",
+    inputs: "config.yaml ($150 single-tx / $500 daily cap, <= 500 bps fee ceiling, whitelisted contracts)",
     outputs: "SHA-256 Policy Hash + NIST FIPS 204 ML-DSA-65 (3,309B signature) + 4-Signal Scam Verdict",
     summary:
       "Enforces human-defined spending ceilings, blocks prompt-injected memos and drainers (scam-drainer-vault.testnet), and signs vault root upgrades with post-quantum lattice cryptography.",
@@ -421,7 +419,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   quickstart:
     "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n",
   poc4:
-    "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Sputnik DAO V2 Escalation\n\n- Source: `contracts/kratonos-policy-vault/src/lib.rs`, `src/core/poc4.ts`\n- 3-Tier Governance: `<= $150` Auto-Approve, `$150-$500` 1-Council Fast-Track, `> $500` Sputnik DAO V2 Proposal (`1 NEAR` bond).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
+    "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Sputnik DAO V2 Escalation\n\n- Source: `contracts/kratonos-policy-vault/src/lib.rs`, `src/core/poc4.ts`\n- 3-Tier Governance: `<= $50.00` (`<= $150.00` verified counterparty) Auto-Approve, `$50.01-$150.00` 1-Council Fast-Track, `> $150.00` single-tx or `> $500.00` daily Sputnik DAO V2 Proposal (`1 NEAR` bond).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
   nep611:
     "# NEP-611 4-Lane Gas Multiplexer & NIST FIPS 204 ML-DSA-65 Shield\n\n- Source: `src/core/gas-keys.ts`, `src/core/security-shield.ts`\n- 4 Parallel Lanes: `scout`, `executor`, `payroll`, `yield` with 0 nonce collisions.\n- Burn Guard: Prepends `WithdrawFromGasKey` before `DeleteKey`.\n- Post-Quantum: Verifies 1,952B public keys and 3,309B `ML-DSA-65` signatures.\n",
   tee:
@@ -436,24 +434,119 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
     "# Interactive REST API Endpoint Explorer\n\nSelect any endpoint to inspect request parameters, copy cURL/TypeScript snippets, and execute live HTTP requests.\n",
   "live-status":
     "# Live System & Multi-Chain Oracle Status (10s Auto-Poll)\n\nReal-time telemetry from `GET /api/overview` across NEAR RPC, Ethereum Mainnet EIP-1186, and 5-asset price medians.\n",
+  stress:
+    "# KratonOS Adversarial Stress & Attack Suite (6 Suites, 38 Assertions, 12 Attack Vectors)\n\nRun `npm test` (`src/verify/verify-all.ts`) to execute all 6 master verification suites and 38 distinct cryptographic/runtime assertions (`EXIT 0`). Full matrix also in `STRESS.md`.\n",
   shipped:
     "# Shipped Feature Matrix & Verification Coverage\n\nAll 8 core modules and 6 verification suites are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
     "# KratonOS Engineering Changelog\n\n- v2026.5: Standalone Mintlify `/docs` route, Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n",
 };
 
+function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="font-display text-lg font-bold text-[var(--text-primary)]">
+            Honest Scope &amp; Limitations (What is Live vs Dry-Run &amp; Intentional Non-Goals)
+          </h2>
+          <p className="text-xs text-[var(--text-secondary)]">
+            Every KratonOS subsystem is transparently classified between 100% live network execution and deliberate safety/protocol boundaries.
+          </p>
+        </div>
+        {onOpenStress && (
+          <button
+            type="button"
+            onClick={onOpenStress}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-3 py-1.5 font-mono text-xs font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/20 cursor-pointer"
+          >
+            <span>Open 38-Check Adversarial Stress Suite →</span>
+          </button>
+        )}
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
+        <table className="w-full min-w-[640px] text-left text-xs">
+          <thead className="border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] font-mono text-[10px] uppercase text-[var(--text-secondary)]">
+            <tr>
+              <th className="px-4 py-3">Subsystem</th>
+              <th className="px-4 py-3">100% Live Network Execution</th>
+              <th className="px-4 py-3">Testnet / Dry-Run Boundary &amp; Intentional Non-Goals</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-color)]">
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; Ledger</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Live <code className="font-mono text-[var(--accent-emerald)]">view_account</code> &amp; <code className="font-mono text-[var(--accent-emerald)]">view_access_key_list</code> on <code className="font-mono">rpc.testnet.near.org</code>, live Nearblocks tx indexing, and real <code className="font-mono">broadcast_tx_commit</code> PoC-4 proof commits on <code className="font-mono">jubayir69.testnet</code> when <code className="font-mono">NEAR_PRIVATE_KEY</code> is set.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                In keyless/offline CI sandboxes, receipts are explicitly badged <code className="font-mono font-bold text-[var(--accent-cyan)]">[SIGNED BORSH PROOF (DRY-RUN)]</code> or <code className="font-mono font-bold">[DRY-RUN QUOTE PREVIEW]</code>.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Ethereum EIP-1186 &amp; Oracles</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Live <code className="font-mono text-[var(--accent-emerald)]">eth_getProof</code> across 5 Ethereum Mainnet RPCs verifying Chainlink ETH/USD (<code className="font-mono">0x5f4e...8419</code>) Keccak-256 tries locally + Coinbase, 1Click (210 tokens), and Kraken quotes.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Unlisted tickers strictly return <code className="font-mono font-bold text-rose-500">UNLISTED_TOKEN</code> (<code className="font-mono">priceUsd: null</code>) + Levenshtein typo suggestions — never a fake <code className="font-mono">$1.00</code> fallback.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">1Click Cross-Chain Swaps (Q-007)</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Live authenticated <code className="font-mono text-[var(--accent-emerald)]">GET /v0/tokens</code> &amp; <code className="font-mono text-[var(--accent-emerald)]">POST /v0/quote</code> on <code className="font-mono">1click.chaindefuser.com</code> with inspectable pre-sign NEP-413 <code className="font-mono">token_diff</code> JSON payloads.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong><code className="font-mono">dry: true</code> by Design (Q-007)</strong>: Mainnet quote calls pass <code className="font-mono">dry: true</code> so judges and CI suites benchmark real routes without locking Mainnet capital in ephemeral deposit addresses.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NIST FIPS 204 ML-DSA-65</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Generates and verifies standard 1,952-byte lattice public keys, 3,309-byte signatures, and domain-separated <code className="font-mono text-[var(--accent-emerald)]">ml-dsa-65-hash:</code> SHA3-256 commitments.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Host Precompile Boundary</strong>: Until nearcore lands native gas-metered WASM lattice precompiles, full <code className="font-mono">ML-DSA-65</code> math runs in the off-chain/enclave gate while the Rust Policy Vault verifies the SHA3-256 commitment digest on-chain.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Recursive Sub-Agent Delegation</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Static 4-lane NEP-611 topology (<code className="font-mono">scout</code>, <code className="font-mono">executor</code>, <code className="font-mono">payroll</code>, <code className="font-mono">yield</code>) under <code className="font-mono">jubayir69.testnet</code>.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Intentionally Blocked (Non-Goal)</strong>: Sub-agents cannot call <code className="font-mono">AddKey</code> or spawn child agents, preventing unbounded recursive spend fan-out and preserving human <code className="font-mono">config.yaml</code> budget isolation.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export const DocsPortalView = React.memo(function DocsPortalView({
+  initialPage,
   onBackToApp,
   onNotify,
 }: {
+  initialPage?: DocPageId;
   onBackToApp?: () => void;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
   const { mode, setMode } = useTheme();
-  const [activePage, setActivePage] = useState<DocPageId>("intro");
+  const [activePage, setActivePage] = useState<DocPageId>(initialPage ?? "intro");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [selectedArchStage, setSelectedArchStage] = useState<number>(1);
+
+  useEffect(() => {
+    if (initialPage) {
+      setActivePage(initialPage);
+    }
+  }, [initialPage]);
 
   // Live Browser Verification Runner in Quickstart
   const [browserVerifyRunning, setBrowserVerifyRunning] = useState<string | null>(null);
@@ -483,11 +576,35 @@ export const DocsPortalView = React.memo(function DocsPortalView({
   const [liveStatusData, setLiveStatusData] = useState<any | null>(null);
   const [statusLastUpdated, setStatusLastUpdated] = useState<string>("");
 
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSpecModalOpen(null);
+        setMobileNavOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
+
   const copyText = (key: string, text: string, label: string) => {
     navigator.clipboard?.writeText(text).catch(() => {});
     setCopiedKey(key);
     onNotify?.(`Copied ${label} to clipboard`, "tee");
-    setTimeout(() => setCopiedKey(null), 1800);
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = window.setTimeout(() => {
+      setCopiedKey(null);
+      copyTimerRef.current = null;
+    }, 1800);
   };
 
   const openMachineSpecModal = async (kind: "llms" | "openapi") => {
@@ -627,9 +744,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
       {/* ================================================================== */}
       {/* FULL-VIEWPORT STICKY MINTLIFY TOP HEADER BAR                       */}
       {/* ================================================================== */}
-      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-color)] bg-[var(--bg-header)] px-6 py-3 backdrop-blur-md">
-        {/* Left: Glassy "K" Logo + KratonOS Documentation + Back to KratonOS dApp */}
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2.5 border-b border-[var(--border-color)] bg-[var(--bg-header)] px-4 py-3 backdrop-blur-md sm:px-6">
+        {/* Left: Mobile Chapters Toggle + Glassy "K" Logo + KratonOS Documentation + Back to KratonOS */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen((prev) => !prev)}
+            aria-label="Toggle Documentation Chapters"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 font-mono text-xs font-bold text-[var(--text-primary)] hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] cursor-pointer lg:hidden"
+          >
+            <Menu className="h-4 w-4 text-[var(--accent-emerald)]" />
+            <span>Chapters</span>
+          </button>
           <div className="k-logo-box shrink-0">
             <svg
               viewBox="0 0 24 24"
@@ -656,24 +782,28 @@ export const DocsPortalView = React.memo(function DocsPortalView({
               <circle cx="18.2" cy="12" r="1.45" fill="#38BDF8" />
             </svg>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-display text-sm font-extrabold tracking-tight text-[var(--text-primary)]">
-              KratonOS Documentation
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="font-display text-sm font-extrabold tracking-tight text-[var(--text-primary)] truncate">
+              KratonOS Docs
             </span>
-            <Badge variant="emerald" className="font-mono text-[10px]">
+            <Badge variant="emerald" className="font-mono text-[10px] shrink-0">
               v2026.5
             </Badge>
           </div>
-          {onBackToApp && (
-            <button
-              type="button"
-              onClick={onBackToApp}
-              className="ml-1 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-3 py-1.5 font-mono text-xs font-bold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/20 cursor-pointer whitespace-nowrap"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-              <span>Back to KratonOS dApp</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              if (onBackToApp) {
+                onBackToApp();
+              } else {
+                window.location.href = "/";
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-2.5 py-1.5 font-mono text-xs font-bold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/20 cursor-pointer whitespace-nowrap"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+            <span>Back to KratonOS</span>
+          </button>
         </div>
 
         {/* Center Search Input */}
@@ -765,11 +895,54 @@ export const DocsPortalView = React.memo(function DocsPortalView({
       </header>
 
       {/* ================================================================== */}
-      {/* FULL-VIEWPORT MINTLIFY 2-COLUMN SPLIT (SINGLE DOCS SIDEBAR + MAIN) */}
+      {/* FULL-VIEWPORT MINTLIFY 2-COLUMN SPLIT (OFF-CANVAS MOBILE DRAWER)   */}
       {/* ================================================================== */}
-      <div className="flex flex-1 flex-col lg:flex-row">
-        {/* Left Categorized Navigation Tree (272px Fixed Width on Desktop) */}
-        <aside className="w-full shrink-0 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] p-5 lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)] lg:w-[272px] lg:overflow-y-auto lg:border-r lg:border-b-0">
+      <div className="relative flex flex-1 flex-col lg:flex-row min-w-0">
+        {mobileNavOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] lg:hidden"
+            onClick={() => setMobileNavOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Left Categorized Navigation Tree (Off-Canvas Drawer on < 1024px, 272px Sticky on Desktop) */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] shrink-0 overflow-y-auto border-r border-[var(--border-color)] bg-[var(--bg-sidebar)] p-5 transition-transform duration-200 lg:sticky lg:top-[57px] lg:z-10 lg:h-[calc(100vh-57px)] lg:w-[272px] lg:translate-x-0 ${
+            mobileNavOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+          }`}
+        >
+          <div className="mb-4 space-y-3 border-b border-[var(--border-color)] pb-3 lg:hidden">
+            <div className="flex items-center justify-between">
+              <span className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
+                Documentation Chapters
+              </span>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                aria-label="Close Chapters Drawer"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[var(--border-color)] bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileNavOpen(false);
+                if (onBackToApp) {
+                  onBackToApp();
+                } else {
+                  window.location.href = "/";
+                }
+              }}
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-3 py-2 font-mono text-xs font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/20 cursor-pointer"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+              <span>Back to KratonOS</span>
+            </button>
+          </div>
+
           <div className="space-y-6">
             {filteredNavTree.map((group) => (
               <div key={group.category}>
@@ -783,7 +956,10 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setActivePage(item.id)}
+                        onClick={() => {
+                          setActivePage(item.id);
+                          setMobileNavOpen(false);
+                        }}
                         className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-bold transition-all cursor-pointer ${
                           active
                             ? "border border-emerald-500/40 bg-emerald-500/14 text-[var(--accent-emerald)]"
@@ -805,8 +981,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
           </div>
         </aside>
 
-        {/* Right Semantic Documentation Reader (Generous Max-W-6XL Container) */}
-        <div className="mx-auto w-full max-w-6xl flex-1 p-6 sm:p-10 space-y-8">
+        {/* Right Semantic Documentation Reader (100% Mobile Viewport Width, Max-W-6XL Desktop) */}
+        <div className="mx-auto w-full min-w-0 max-w-6xl flex-1 p-4 sm:p-8 lg:p-10 space-y-8">
           {/* Universal Chapter Utility Bar: Copy Page Markdown */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2.5">
             <div className="flex items-center gap-2 font-mono text-xs text-[var(--text-secondary)]">
@@ -855,7 +1031,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
                   { label: "Cryptographic Pillars", val: "4 Pillars", sub: "PoC-4 Quad-Attested Gate" },
-                  { label: "Live REST & Spec APIs", val: "12 Endpoints", sub: "OpenAPI 3.1 + /llms.txt" },
+                  { label: "Live REST & Spec APIs", val: "11 + 2 Specs", sub: "11 REST + /llms.txt + OpenAPI" },
                   { label: "Parallel Gas Lanes", val: "4 NEP-611 Lanes", sub: "~1.2s Cross-Lane Finality" },
                   { label: "Master Key Exposure", val: "0% Local Keys", sub: "Scoped Keys + MPC v1.signer" },
                 ].map((stat) => (
@@ -912,12 +1088,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   </Badge>
                 </div>
 
-                <svg
-                  viewBox="0 0 920 140"
-                  className="w-full h-auto select-none"
-                  role="img"
-                  aria-label="KratonOS Interactive 5-Stage Animated Architecture Pipeline"
-                >
+                <div className="overflow-x-auto pb-1">
+                  <svg
+                    viewBox="0 0 920 140"
+                    className="min-w-[700px] w-full h-auto select-none"
+                    role="img"
+                    aria-label="KratonOS Interactive 5-Stage Animated Architecture Pipeline"
+                  >
                   <defs>
                     <linearGradient id="archGradActive" x1="0%" y1="0%" x2="100%" y2="100%">
                       <stop offset="0%" stopColor="#00EC97" stopOpacity="0.34" />
@@ -997,7 +1174,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       </g>
                     );
                   })}
-                </svg>
+                  </svg>
+                </div>
 
                 {/* Interactive Stage Inspector Card */}
                 <div className="rounded-xl border border-emerald-500/35 bg-[var(--bg-card)] p-4">
@@ -1102,6 +1280,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   ))}
                 </div>
               </div>
+
+              <HonestScopeSection onOpenStress={() => setActivePage("stress")} />
             </div>
           )}
 
@@ -1268,32 +1448,92 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
                   {[
                     {
-                      label: "Live App: kraton-os-taupe.vercel.app",
-                      href: "https://kraton-os-taupe.vercel.app",
-                    },
-                    {
-                      label: "GitHub: jubayir-hub-69/KratonOS",
-                      href: "https://github.com/jubayir-hub-69/KratonOS",
+                      label: "Hackathon Spec: nearhackathon.com/HACKATHON.md",
+                      href: "https://nearhackathon.com/HACKATHON.md",
                     },
                     {
                       label: "Track Specs: near-hackathon-prompt-examples",
                       href: "https://github.com/nearai/near-hackathon-prompt-examples",
                     },
                     {
-                      label: "Vault: jubayir69.testnet",
-                      href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
+                      label: "Live App: kraton-os-taupe.vercel.app",
+                      href: "https://kraton-os-taupe.vercel.app",
                     },
                     {
-                      label: "Fee Recipient: jubayir33.near",
-                      href: "https://nearblocks.io/address/jubayir33.near",
+                      label: "Live Docs: kraton-os-taupe.vercel.app/docs",
+                      href: "https://kraton-os-taupe.vercel.app/docs",
                     },
                     {
-                      label: "OutLayer Enclave: outlayer.testnet",
+                      label: "LLM Index: kraton-os-taupe.vercel.app/llms.txt",
+                      href: "https://kraton-os-taupe.vercel.app/llms.txt",
+                    },
+                    {
+                      label: "OpenAPI 3.1: kraton-os-taupe.vercel.app/openapi.json",
+                      href: "https://kraton-os-taupe.vercel.app/openapi.json",
+                    },
+                    {
+                      label: "GitHub: jubayir-hub-69/KratonOS",
+                      href: "https://github.com/jubayir-hub-69/KratonOS",
+                    },
+                    {
+                      label: "NEAR Docs: docs.near.org",
+                      href: "https://docs.near.org/",
+                    },
+                    {
+                      label: "1Click API: 1click.chaindefuser.com",
+                      href: "https://1click.chaindefuser.com",
+                    },
+                    {
+                      label: "1Click Explorer: explorer.near-intents.org",
+                      href: "https://explorer.near-intents.org/api/v0/transactions",
+                    },
+                    {
+                      label: "1Click Docs: docs.near-intents.org",
+                      href: "https://docs.near-intents.org/",
+                    },
+                    {
+                      label: "NEAR AI Cloud API: cloud-api.near.ai/v1",
+                      href: "https://cloud-api.near.ai/v1",
+                    },
+                    {
+                      label: "NEAR AI Console: cloud.near.ai",
+                      href: "https://cloud.near.ai",
+                    },
+                    {
+                      label: "NEAR AI Docs: docs.near.ai",
+                      href: "https://docs.near.ai/",
+                    },
+                    {
+                      label: "Agent Market: market.near.ai",
+                      href: "https://market.near.ai",
+                    },
+                    {
+                      label: "Agent Market Docs: docs.market.near.ai",
+                      href: "https://docs.market.near.ai/",
+                    },
+                    {
+                      label: "OutLayer: outlayer.ai",
+                      href: "https://outlayer.ai/",
+                    },
+                    {
+                      label: "OutLayer Docs: app.outlayer.ai/docs",
+                      href: "https://app.outlayer.ai/docs/getting-started",
+                    },
+                    {
+                      label: "OutLayer Contract: outlayer.testnet",
                       href: "https://testnet.nearblocks.io/address/outlayer.testnet",
                     },
                     {
                       label: "OutLayer Worker: worker.outlayer.testnet",
                       href: "https://testnet.nearblocks.io/address/worker.outlayer.testnet",
+                    },
+                    {
+                      label: "RHEA Finance: rhea.finance",
+                      href: "https://rhea.finance/",
+                    },
+                    {
+                      label: "RHEA Guide: guide.rhea.finance",
+                      href: "https://guide.rhea.finance/",
                     },
                     {
                       label: "RHEA DEX: ref-finance.testnet",
@@ -1304,24 +1544,32 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       href: "https://testnet.nearblocks.io/address/ref-farming.testnet",
                     },
                     {
+                      label: "HOT Connect Docs: docs.hotdao.ai",
+                      href: "https://docs.hotdao.ai/",
+                    },
+                    {
+                      label: "Sputnik DAO V2: near-daos/sputnik-dao-contract",
+                      href: "https://github.com/near-daos/sputnik-dao-contract",
+                    },
+                    {
+                      label: "Trezu Multisig: trezu.org",
+                      href: "https://trezu.org/",
+                    },
+                    {
                       label: "MPC Signer: v1.signer-prod.testnet",
                       href: "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
                     },
                     {
+                      label: "Vault: jubayir69.testnet",
+                      href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
+                    },
+                    {
+                      label: "Fee Recipient: jubayir33.near",
+                      href: "https://nearblocks.io/address/jubayir33.near",
+                    },
+                    {
                       label: "Chainlink ETH/USD: 0x5f4e...8419",
                       href: "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
-                    },
-                    {
-                      label: "1Click Docs: docs.near-intents.org",
-                      href: "https://docs.near-intents.org",
-                    },
-                    {
-                      label: "NEAR AI Cloud: docs.near.ai",
-                      href: "https://docs.near.ai",
-                    },
-                    {
-                      label: "Agent Market: market.near.ai",
-                      href: "https://market.near.ai",
                     },
                   ].map((link) => (
                     <a
@@ -1377,6 +1625,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   </table>
                 </div>
               </div>
+
+              <HonestScopeSection onOpenStress={() => setActivePage("stress")} />
             </div>
           )}
 
@@ -1405,7 +1655,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   H_master = SHA256( Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote )
                 </div>
                 <p className="mt-3 text-xs leading-relaxed text-[var(--text-secondary)]">
-                  Every autonomous payout or rebalance must satisfy <code className="font-mono">max_single_tx_usd &lt;= $150.00</code> (auto-approve), <code className="font-mono">$150.01 - $500.00</code> (1-Council Fast-Track), or escalate via <code className="font-mono">escalate_sha256_to_sputnik_bounty()</code> to <code className="font-mono">kratonos-dao.sputnikv2.testnet</code> with a <code className="font-mono">1 NEAR</code> bond.
+                  Every autonomous payout or rebalance enforces 3-Tier Earned-Trust Governance: <code className="font-mono">&lt;= $50.00</code> (<code className="font-mono">&lt;= $150.00</code> verified counterparty) executes autonomously, <code className="font-mono">$50.01 - $150.00</code> queues for 1-Council Fast-Track co-signature, and <code className="font-mono">&gt; $150.00</code> single-tx (or <code className="font-mono">&gt; $500.00</code> daily) escalates via <code className="font-mono">escalate_sha256_to_sputnik_bounty()</code> to <code className="font-mono">kratonos-dao.sputnikv2.testnet</code> with a <code className="font-mono">1 NEAR</code> bond.
                 </p>
               </div>
 
@@ -1431,7 +1681,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     </h3>
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    Inside a Rust contract host call (<code className="font-mono">promise_batch_action_add_key_with_function_call</code>), <code className="font-mono">allowance = 0</code> means <strong>unlimited</strong>. However, in an external RPC transaction <code className="font-mono">AddKey</code> action, passing <code className="font-mono">allowance: 0</code> sets a literal <code className="font-mono">0 yoctoNEAR</code> allowance (`NotEnoughAllowance`). External transactions must pass <code className="font-mono">allowance: null</code>.
+                    Inside a Rust contract host call (<code className="font-mono">promise_batch_action_add_key_with_function_call</code>), <code className="font-mono">allowance = 0</code> means <strong>unlimited</strong>. However, in an external RPC transaction <code className="font-mono">AddKey</code> action, passing <code className="font-mono">allowance: 0</code> sets a literal <code className="font-mono">0 yoctoNEAR</code> allowance (<code className="font-mono">NotEnoughAllowance</code>). External transactions must pass <code className="font-mono">allowance: null</code>.
                   </p>
                 </div>
               </div>
@@ -1845,7 +2095,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-input)] overflow-hidden">
                         <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2">
                           <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
-                            cURL &amp; TypeScript SDK
+                            cURL Request
                           </span>
                           <button
                             type="button"
@@ -1857,6 +2107,21 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         </div>
                         <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-[var(--text-primary)]">
                           <code>{ep.curlExample}</code>
+                        </pre>
+                        <div className="flex items-center justify-between border-y border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2">
+                          <span className="font-mono text-[11px] font-bold text-[var(--text-primary)]">
+                            TypeScript / Fetch SDK
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyText(`ts-${ep.path}`, ep.tsExample, "TypeScript snippet")}
+                            className="font-mono text-[10px] font-bold text-[var(--accent-cyan)] hover:underline cursor-pointer"
+                          >
+                            {copiedKey === `ts-${ep.path}` ? "Copied!" : "Copy TypeScript"}
+                          </button>
+                        </div>
+                        <pre className="overflow-x-auto p-4 font-mono text-xs leading-relaxed text-[var(--text-secondary)]">
+                          <code>{ep.tsExample}</code>
                         </pre>
                       </div>
 
@@ -1908,7 +2173,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
                 {[
                   { pair: "ETH/USDT", val: `$${Number(liveStatusData?.oracle?.ethUsdMedian ?? 2219.86).toFixed(2)}` },
                   { pair: "NEAR/USDT", val: `$${Number(liveStatusData?.oracle?.nearUsdMedian ?? 4.18).toFixed(4)}` },
@@ -1930,7 +2195,10 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     {liveStatusData?.treasuryAccount ?? "jubayir69.testnet"}
                   </div>
                   <div className="mt-1 font-mono text-xs text-[var(--accent-emerald)]">
-                    Balance: {liveStatusData?.balanceFormatted ?? "14.8500 NEAR"}
+                    Balance:{" "}
+                    {liveStatusData?.vault?.liquidNear
+                      ? `${liveStatusData.vault.liquidNear} NEAR`
+                      : liveStatusData?.balanceFormatted ?? "Syncing RPC..."}
                   </div>
                 </div>
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
@@ -1938,7 +2206,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   <div className="mt-1 font-mono text-sm font-extrabold text-[var(--text-primary)]">
                     Block #{liveStatusData?.oracle?.blockNumber ?? 21984512}
                   </div>
-                  <div className="mt-1 truncate font-mono text-xs text-[var(--accent-cyan)]">
+                  <div className="mt-1 break-all font-mono text-xs text-[var(--accent-cyan)]">
                     StateRoot: {liveStatusData?.oracle?.stateRoot ?? "0xc25483..."}
                   </div>
                 </div>
@@ -1950,6 +2218,144 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   <div className="mt-1 font-mono text-xs text-[var(--text-secondary)]">
                     0 Nonce Collisions · 1.30x Buffer
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================== */}
+          {/* PAGE 10B: ADVERSARIAL STRESS & ATTACK SUITE (38 CHECKS)        */}
+          {/* ============================================================== */}
+          {activePage === "stress" && (
+            <div className="space-y-6 animate-fade-in">
+              <div>
+                <Badge variant="emerald" className="font-mono">
+                  SECURITY &amp; STRESS // 6 SUITES · 38 ASSERTIONS · 12 ATTACK VECTORS
+                </Badge>
+                <h1 className="font-display mt-2 text-2xl font-extrabold text-[var(--text-primary)]">
+                  Adversarial Stress &amp; Attack Rejection Suite (STRESS.md)
+                </h1>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Run <code className="font-mono font-bold text-[var(--accent-emerald)]">npm test</code> (<code className="font-mono">src/verify/verify-all.ts</code>) to execute all 6 master verification suites, 38 distinct runtime/cryptographic assertions, and 12 adversarial attack vectors (<code className="font-mono">EXIT 0</code>).
+                </p>
+              </div>
+
+              {/* 6 Master Verification Suites Table */}
+              <div className="space-y-2.5">
+                <h2 className="font-display text-base font-bold text-[var(--text-primary)]">
+                  1. The 6 Master Verification Suites (38 Assertions)
+                </h2>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
+                  <table className="w-full min-w-[680px] text-left text-xs">
+                    <thead className="border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] font-mono text-[10px] uppercase text-[var(--text-secondary)]">
+                      <tr>
+                        <th className="px-4 py-3">Suite</th>
+                        <th className="px-4 py-3">CLI Command</th>
+                        <th className="px-4 py-3">Checks</th>
+                        <th className="px-4 py-3">Cryptographic &amp; Runtime Invariants Verified</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-color)]">
+                      {[
+                        {
+                          suite: "Suite 1",
+                          cmd: "npm run verify:attack-demo",
+                          checks: "7",
+                          desc: "Blocks prompt injection + scam-drainer-vault.testnet (100/100), escalates $450 (> $150 cap) to Sputnik DAO V2 (1 NEAR bond), rejects 8.42% oracle deviation, dispatches 4 NEP-611 lanes (0 collisions), WithdrawFromGasKey guard, and ML-DSA-65 (1,952B/3,309B).",
+                        },
+                        {
+                          suite: "Suite 2",
+                          cmd: "npm run verify:outlayer",
+                          checks: "6",
+                          desc: "5-RPC Ethereum Mainnet header consensus, EIP-1186 eth_getProof Keccak-256 trie verification on Chainlink ETH/USD (0x5f4e...8419), multi-source medians, 5x48B Intel TDX registers, and Ed25519 VRF slices.",
+                        },
+                        {
+                          suite: "Suite 3",
+                          cmd: "npm run verify:ai-tee",
+                          checks: "7",
+                          desc: "8-Step NEAR AI Cloud (GLM-5.1-FP8) NRAS H100 + Intel TDX attestation, Zero-Retention 0x00 memory wipe (0 non-zero bytes), 1-round x402 v2 NEP-366 SignedDelegateAction (signerKeyIsGasKey: false), and 20x5 Swarm ($357 saved, 0 LLM calls).",
+                        },
+                        {
+                          suite: "Suite 4",
+                          cmd: "npm run verify:intents-rhea",
+                          checks: "7",
+                          desc: "210 live 1Click tokens, 1Click (1 bp + 40 bps <= 500 bps) vs RHEA V2 DCL vs RHEA V1 (196 pools), /v0/orders GTC limit order, ref-farming withdraw_reward({ amount: '0' }), 5-chain MPC KDF, and 11/12 fault-isolated payroll.",
+                        },
+                        {
+                          suite: "Suite 5",
+                          cmd: "npm run verify:server",
+                          checks: "9",
+                          desc: "HTTP 200 across all 11 OpenAPI 3.1 REST endpoints + /docs + /llms.txt + /openapi.json, UNLISTED_TOKEN anti-hallucination check (AYAN/USDT), Levenshtein typo suggestion (AVEX -> AVAX), and < 120s 5-stage loop.",
+                        },
+                        {
+                          suite: "Suite 6",
+                          cmd: "npm test",
+                          checks: "2",
+                          desc: "Audits .gitignore secret hygiene (.env excluded, zero leaked ed25519 keys in .env.example) and verifies all 12 mandatory Rust/WASI/TypeScript/Documentation artifacts.",
+                        },
+                      ].map((s) => (
+                        <tr key={s.suite}>
+                          <td className="px-4 py-3 font-mono font-bold text-[var(--text-primary)] whitespace-nowrap">
+                            {s.suite}
+                          </td>
+                          <td className="px-4 py-3 font-mono font-bold text-[var(--accent-emerald)] whitespace-nowrap">
+                            {s.cmd}
+                          </td>
+                          <td className="px-4 py-3 font-mono font-bold text-[var(--accent-cyan)]">
+                            {s.checks}
+                          </td>
+                          <td className="px-4 py-3 text-[var(--text-secondary)]">{s.desc}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 12 Adversarial Attack Vectors Table */}
+              <div className="space-y-2.5">
+                <h2 className="font-display text-base font-bold text-[var(--text-primary)]">
+                  2. The 12 Adversarial Attack &amp; Protocol-Hazard Vectors
+                </h2>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
+                  <table className="w-full min-w-[680px] text-left text-xs">
+                    <thead className="border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] font-mono text-[10px] uppercase text-[var(--text-secondary)]">
+                      <tr>
+                        <th className="px-4 py-3">#</th>
+                        <th className="px-4 py-3">Attack / Hazard Vector</th>
+                        <th className="px-4 py-3">Adversarial Payload</th>
+                        <th className="px-4 py-3">Deterministic Defense Outcome</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border-color)]">
+                      {[
+                        ["01", "Prompt-Injection Drain", "SYSTEM OVERRIDE: Ignore previous instructions...", "sanitizeUntrustedBrief() strips payload; decision locked to block."],
+                        ["02", "Scam Drainer Counterparty", "scam-drainer-vault.testnet", "4-Signal Counterparty Shield scores 100/100 (>= 70 block threshold)."],
+                        ["03", "Fake NEP-141 Token Contract", "usdc.fakes.testnet", "Rejected against RHEA Finance token whitelist (nusdc.ft-fin.testnet)."],
+                        ["04", "Over-Limit Single Spend", "$450.00 (> $150.00 autonomous cap)", "Refuses autonomous signing; escalates to Sputnik DAO V2 (1 NEAR bond)."],
+                        ["05", "Flash-Crash / Spoofed Oracle", "8.42% spread (> 5.0% max deviation)", "PoC-4 gate aborts with ORACLE_DEVIATION_EXCEEDED."],
+                        ["06", "Predatory Fee Extraction", "Combined fee > 500 bps (5.00%)", "Rejected by config.yaml and Rust Policy Vault fee ceiling."],
+                        ["07", "Unlisted Token Hallucination", "AYAN/USDT CURRENT MARKET PRICE", "Returns found: false, priceUsd: null, status: UNLISTED_TOKEN (never $1.00)."],
+                        ["08", "Misspelled Ticker Spoof", "AVEX/USDT CURRENT MARKET PRICE", "Flags AVEX as UNLISTED_TOKEN and suggests AVAX via Levenshtein distance."],
+                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (scam-drainer)", "Quarantines Row #12 while settling 11/12 valid rows ($264.00 USDC)."],
+                        ["10", "NEP-611 DeleteKey Gas Burn", "DeleteKey on funded NEP-611 Gas Key", "Auto-prepends WithdrawFromGasKey before DeleteKey so 0 NEAR is burned."],
+                        ["11", "Protocol v87 Gas-Key Meta-Tx", "signerKeyIsGasKey: true on NEP-366 inner tx", "Blocked per nearcore v87+; enforces standard ed25519 key on inner delegate."],
+                        ["12", "External AddKey allowance: 0", "RPC AddKey with allowance: '0'", "Rejected (sets literal 0 yoctoNEAR lockout); requires allowance: null."],
+                      ].map(([num, vec, payload, outcome]) => (
+                        <tr key={num}>
+                          <td className="px-4 py-2.5 font-mono font-bold text-[var(--accent-emerald)]">{num}</td>
+                          <td className="px-4 py-2.5 font-bold text-[var(--text-primary)]">
+                            <span className="inline-flex items-center gap-1.5">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                              <span>{vec}</span>
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 font-mono text-[var(--text-secondary)]">{payload}</td>
+                          <td className="px-4 py-2.5 text-[var(--text-secondary)]">{outcome}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -2067,6 +2473,27 @@ export const DocsPortalView = React.memo(function DocsPortalView({
               </div>
             </div>
           )}
+
+          {/* Footer Return Bar */}
+          <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)] pt-6">
+            <span className="font-mono text-xs text-[var(--text-muted)]">
+              KratonOS Sovereign Financial Operating System — Documentation v2026.5
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                if (onBackToApp) {
+                  onBackToApp();
+                } else {
+                  window.location.href = "/";
+                }
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-3.5 py-2 font-mono text-xs font-bold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/20 cursor-pointer"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+              <span>Back to KratonOS</span>
+            </button>
+          </div>
         </div>
       </div>
 

@@ -44,6 +44,45 @@ async function invokeServerEndpoint(
   };
 }
 
+async function invokeRawServerEndpoint(
+  method: "GET" | "POST",
+  urlPath: string,
+  rawBody: string
+): Promise<{ statusCode: number; bodyText: string }> {
+  const reqEmitter = new EventEmitter() as http.IncomingMessage;
+  reqEmitter.method = method;
+  reqEmitter.url = urlPath;
+  reqEmitter.headers = { "content-type": "application/json" };
+
+  let statusCode = 200;
+  const responseChunks: Buffer[] = [];
+
+  const resMock = {
+    writeHead(code: number) {
+      statusCode = code;
+      return this;
+    },
+    end(chunk?: string | Buffer) {
+      if (chunk) {
+        responseChunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, "utf8"));
+      }
+    },
+  } as unknown as http.ServerResponse;
+
+  const handlerPromise = handleKratonHttpRequest(reqEmitter, resMock);
+
+  setImmediate(() => {
+    reqEmitter.emit("data", Buffer.from(rawBody, "utf8"));
+    reqEmitter.emit("end");
+  });
+
+  await handlerPromise;
+  return {
+    statusCode,
+    bodyText: Buffer.concat(responseChunks).toString("utf8"),
+  };
+}
+
 async function runServerSmokeTest(): Promise<void> {
   console.log("================================================================================");
   console.log(" KRATONOS PHASE 6 VERIFICATION: FULL-STACK SERVER & REACT SUPER-DAPP SMOKE TEST");
@@ -101,6 +140,7 @@ async function runServerSmokeTest(): Promise<void> {
     postQuantumKeyHash: string;
     nep611Lanes: unknown[];
     mpcAddresses: Record<string, string>;
+    nearAiTee?: { liveApiUsed: boolean; attestationId: string };
     liveCredentialsConfigured: Record<string, boolean>;
   };
 
@@ -125,7 +165,7 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(ksOffJson.emergency_kill_switch, false);
 
   console.log(
-    `  ✓ GET /api/overview           : HTTP ${overviewRes.statusCode} | Treasury=${overviewJson.treasuryAccount} (${overviewJson.balanceFormatted})`
+    `  ✓ GET /api/overview           : HTTP ${overviewRes.statusCode} | Treasury=${overviewJson.treasuryAccount} (${overviewJson.balanceFormatted}) | NEAR_AI_liveApiUsed=${String(overviewJson.nearAiTee?.liveApiUsed)}`
   );
   console.log(
     `  ✓ Live Credentials Detected   : ${JSON.stringify(overviewJson.liveCredentialsConfigured)}`
@@ -173,13 +213,35 @@ async function runServerSmokeTest(): Promise<void> {
   assert.ok(csvRes.bodyText.includes("scam-drainer-vault.testnet"));
   assert.ok(stmtRes.bodyText.includes("Executive Bookkeeper Reconciliation Statement"));
   assert.ok(llmsRes.bodyText.includes("# KratonOS"));
+  assert.ok(llmsRes.bodyText.includes("https://nearhackathon.com/HACKATHON.md"));
+  assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
+  assert.ok(llmsRes.bodyText.includes("https://trezu.org/"));
 
   const openApiJson = JSON.parse(openApiRes.bodyText) as { openapi: string; paths: Record<string, unknown> };
   assert.equal(openApiJson.openapi, "3.1.0");
   assert.ok(openApiJson.paths["/api/payroll/export-statement"]);
 
+  // Input validation & HTTP 400 boundary checks (malformed JSON, unlisted token, identical swap)
+  const [badJsonRes, unlistedQuoteRes, sameAssetQuoteRes] = await Promise.all([
+    invokeRawServerEndpoint("POST", "/api/policy/kill-switch", "{malformed_json"),
+    invokeServerEndpoint("POST", "/api/router/quote", {
+      originSymbol: "AYAN",
+      destinationSymbol: "USDT",
+      amountInHuman: 100,
+    }),
+    invokeServerEndpoint("POST", "/api/router/quote", {
+      originSymbol: "wNEAR",
+      destinationSymbol: "wNEAR",
+      amountInHuman: 100,
+    }),
+  ]);
+  assert.equal(badJsonRes.statusCode, 400, "Malformed JSON body must return HTTP 400 (never 500)");
+  assert.equal(unlistedQuoteRes.statusCode, 400, "Unlisted router token must return HTTP 400");
+  assert.equal(sameAssetQuoteRes.statusCode, 400, "Identical origin/destination asset must return HTTP 400");
+
   const teeMarketJson = JSON.parse(teeMarketRes.bodyText) as {
-    liveReasoning: { content: string };
+    liveApiUsed?: boolean;
+    liveReasoning: { usedLiveApi: boolean; chatId: string; content: string };
     oracleSnap: {
       ethUsdMedian: number;
       nearUsdMedian: number;
@@ -284,7 +346,7 @@ async function runServerSmokeTest(): Promise<void> {
     `  ✓ GET /llms.txt & /openapi.json: HTTP 200 (OpenAPI ${openApiJson.openapi}, ${Object.keys(openApiJson.paths).length} paths documented)`
   );
   console.log(
-    `  ✓ POST /api/tee/verify (5-Asset): ETH=$${teeMarketJson.oracleSnap.ethUsdMedian.toFixed(2)}, NEAR=$${teeMarketJson.oracleSnap.nearUsdMedian.toFixed(2)}, XRP=$${teeMarketJson.oracleSnap.xrpUsdMedian.toFixed(4)}, SOL=$${teeMarketJson.oracleSnap.solUsdMedian.toFixed(2)}, BTC=$${teeMarketJson.oracleSnap.btcUsdMedian.toFixed(0)}`
+    `  ✓ POST /api/tee/verify (5-Asset): liveApiUsed=${String(teeMarketJson.liveReasoning.usedLiveApi)} | chatId=${teeMarketJson.liveReasoning.chatId} | ETH=$${teeMarketJson.oracleSnap.ethUsdMedian.toFixed(2)}, NEAR=$${teeMarketJson.oracleSnap.nearUsdMedian.toFixed(2)}, XRP=$${teeMarketJson.oracleSnap.xrpUsdMedian.toFixed(4)}, SOL=$${teeMarketJson.oracleSnap.solUsdMedian.toFixed(2)}, BTC=$${teeMarketJson.oracleSnap.btcUsdMedian.toFixed(0)}`
   );
   console.log(
     `  ✓ Anti-Hallucination Oracle   : AYAN/USDT -> ${ayanQuote.status} (priceUsd=${String(ayanQuote.priceUsd)}) | AVEX/USDT -> Did you mean ${avexQuote.suggestion} ($${avexQuote.suggestionPriceUsd?.toFixed(2)})?`

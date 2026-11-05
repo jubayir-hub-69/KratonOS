@@ -1,4 +1,3 @@
-import "dotenv/config";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -138,17 +137,22 @@ export function loadEnvironmentConfig(workspaceRoot: string = resolveWorkspaceRo
     return val !== undefined && val.trim() !== "" ? val.trim() : fallback;
   };
 
-  const primaryRpc = getVal("NEAR_RPC_URL", "https://rpc.testnet.near.org");
-  const defaultFallbacks = [
-    primaryRpc,
-    "https://test.rpc.fastnear.com",
-    "https://rpc.testnet.near.org",
-    "https://near-testnet.api.pagoda.co/rpc/v1",
-  ];
-  const uniqueFallbacks = Array.from(new Set(defaultFallbacks));
-
-  const networkRaw = getVal("NEAR_NETWORK_ID", "testnet");
+  const networkRaw = getVal("NEAR_NETWORK_ID", "testnet").toLowerCase();
   const networkId: "testnet" | "mainnet" = networkRaw === "mainnet" ? "mainnet" : "testnet";
+
+  const defaultPrimaryRpc =
+    networkId === "mainnet" ? "https://rpc.mainnet.near.org" : "https://rpc.testnet.near.org";
+  const primaryRpc = getVal("NEAR_RPC_URL", defaultPrimaryRpc);
+  const defaultFallbacks =
+    networkId === "mainnet"
+      ? [primaryRpc, "https://rpc.mainnet.near.org", "https://free.rpc.fastnear.com"]
+      : [
+          primaryRpc,
+          "https://test.rpc.fastnear.com",
+          "https://rpc.testnet.near.org",
+          "https://near-testnet.api.pagoda.co/rpc/v1",
+        ];
+  const uniqueFallbacks = Array.from(new Set(defaultFallbacks));
 
   return {
     NEAR_NETWORK_ID: networkId,
@@ -176,8 +180,15 @@ export function loadEnvironmentConfig(workspaceRoot: string = resolveWorkspaceRo
 }
 
 export function validateHumanConstraints(raw: Record<string, unknown>): HumanConstraintsConfig {
-  const treasuryAccount = String(raw.treasury_account ?? "jubayir69.testnet");
-  const emergencyKillSwitch = Boolean(raw.emergency_kill_switch ?? false);
+  const treasuryAccount = String(raw.treasury_account ?? "jubayir69.testnet").trim();
+  if (!treasuryAccount) {
+    throw new Error("Invalid treasury_account: cannot be empty.");
+  }
+  const emergencyKillSwitch =
+    raw.emergency_kill_switch === true ||
+    String(raw.emergency_kill_switch ?? "false")
+      .trim()
+      .toLowerCase() === "true";
   const dailySpendLimitUsd = Number(raw.daily_spend_limit_usd ?? 500.0);
   const maxSingleTxUsd = Number(raw.max_single_tx_usd ?? 150.0);
   const maxDailyInferenceSpendUsd = Number(raw.max_daily_inference_spend_usd ?? 5.0);
@@ -187,16 +198,41 @@ export function validateHumanConstraints(raw: Record<string, unknown>): HumanCon
   const appFeeBps = Number(raw.app_fee_bps ?? 40);
   const maxTotalFeeBps = Number(raw.max_total_fee_bps ?? 500);
 
-  if (appFeeBps < 0 || appFeeBps > 500) {
-    throw new Error(`Invalid app_fee_bps (${appFeeBps}): must be between 0 and 500 bps.`);
+  if (!Number.isFinite(appFeeBps) || appFeeBps < 0 || appFeeBps > 500) {
+    throw new Error(`Invalid app_fee_bps (${appFeeBps}): must be a finite number between 0 and 500 bps.`);
   }
-  if (maxTotalFeeBps > 500) {
-    throw new Error(`Invalid max_total_fee_bps (${maxTotalFeeBps}): protocol invariant forbids total fee > 500 bps.`);
+  if (!Number.isFinite(maxTotalFeeBps) || maxTotalFeeBps < appFeeBps || maxTotalFeeBps > 500) {
+    throw new Error(
+      `Invalid max_total_fee_bps (${maxTotalFeeBps}): must be >= app_fee_bps (${appFeeBps}) and <= 500 bps.`
+    );
   }
-  if (maxSingleTxUsd <= 0 || dailySpendLimitUsd < maxSingleTxUsd) {
+  if (!Number.isFinite(maxSlippageBps) || maxSlippageBps < 0 || maxSlippageBps > 500) {
+    throw new Error(`Invalid max_slippage_bps (${maxSlippageBps}): must be between 0 and 500 bps.`);
+  }
+  if (
+    !Number.isFinite(maxOracleDeviationPercent) ||
+    maxOracleDeviationPercent <= 0 ||
+    maxOracleDeviationPercent > 5.0
+  ) {
+    throw new Error(
+      `Invalid max_oracle_deviation_percent (${maxOracleDeviationPercent}): must be > 0 and <= 5.0%.`
+    );
+  }
+  if (
+    !Number.isFinite(maxSingleTxUsd) ||
+    !Number.isFinite(dailySpendLimitUsd) ||
+    maxSingleTxUsd <= 0 ||
+    dailySpendLimitUsd < maxSingleTxUsd
+  ) {
     throw new Error(
       `Invalid spend limits: max_single_tx_usd (${maxSingleTxUsd}) must be > 0 and <= daily_spend_limit_usd (${dailySpendLimitUsd}).`
     );
+  }
+  if (!Number.isFinite(maxDailyInferenceSpendUsd) || maxDailyInferenceSpendUsd <= 0) {
+    throw new Error(`Invalid max_daily_inference_spend_usd (${maxDailyInferenceSpendUsd}): must be > 0.`);
+  }
+  if (!Number.isFinite(minReportOrTaskPriceUsd) || minReportOrTaskPriceUsd <= 0) {
+    throw new Error(`Invalid min_report_or_task_price_usd (${minReportOrTaskPriceUsd}): must be > 0.`);
   }
 
   const rawSplit = (raw.revenue_split_percentages ?? {}) as Record<string, unknown>;
@@ -206,6 +242,11 @@ export function validateHumanConstraints(raw: Record<string, unknown>): HumanCon
     compute_refill_pool: Number(rawSplit.compute_refill_pool ?? 10),
   };
 
+  for (const [k, v] of Object.entries(revenueSplit)) {
+    if (!Number.isFinite(v) || v < 0 || v > 100) {
+      throw new Error(`Invalid revenue_split_percentages.${k} (${v}): must be between 0 and 100.`);
+    }
+  }
   const splitSum =
     revenueSplit.treasury_reserve +
     revenueSplit.sub_agent_bounty_pool +

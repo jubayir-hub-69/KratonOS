@@ -89,12 +89,21 @@ export class Nep611GasKeyMultiplexer {
     const runtime = loadKratonConfig();
     this.rpc = rpcClient ?? new NearRpcClient();
     this.treasuryAccountId = treasuryAccountId ?? runtime.constraints.treasury_account;
-    this.laneSubAccounts = {
-      0: runtime.constraints.nep611_gas_key_lanes.lane_0,
-      1: runtime.constraints.nep611_gas_key_lanes.lane_1,
-      2: runtime.constraints.nep611_gas_key_lanes.lane_2,
-      3: runtime.constraints.nep611_gas_key_lanes.lane_3,
-    };
+    const useCustomTreasury =
+      Boolean(treasuryAccountId) && treasuryAccountId !== runtime.constraints.treasury_account;
+    this.laneSubAccounts = useCustomTreasury
+      ? {
+          0: `scout.${this.treasuryAccountId}`,
+          1: `executor.${this.treasuryAccountId}`,
+          2: `payroll.${this.treasuryAccountId}`,
+          3: `yield.${this.treasuryAccountId}`,
+        }
+      : {
+          0: runtime.constraints.nep611_gas_key_lanes.lane_0,
+          1: runtime.constraints.nep611_gas_key_lanes.lane_1,
+          2: runtime.constraints.nep611_gas_key_lanes.lane_2,
+          3: runtime.constraints.nep611_gas_key_lanes.lane_3,
+        };
   }
 
   /**
@@ -165,7 +174,10 @@ export class Nep611GasKeyMultiplexer {
    * so NEP-611 gas keys never under-allocate gas during shard congestion spikes.
    */
   public computeGasBufferMetrics(estimatedTgas = 30): GasPriceBufferMetrics {
-    const gasUnits = BigInt(Math.max(1, Math.round(estimatedTgas))) * 1_000_000_000_000n; // TGas -> gas
+    const sanitizedTgas = Number.isFinite(estimatedTgas)
+      ? Math.min(300, Math.max(1, Math.round(estimatedTgas)))
+      : 30;
+    const gasUnits = BigInt(sanitizedTgas) * 1_000_000_000_000n; // TGas -> gas
     const baseCost = gasUnits * this.cachedGasPriceYocto;
     const multiplierPercent = 130; // 1.30x buy-vs-burn safety buffer
     const recommendedAllocation = (baseCost * BigInt(multiplierPercent)) / 100n;
@@ -190,9 +202,17 @@ export class Nep611GasKeyMultiplexer {
       throw new Error(`Invalid NEP-611 laneIndex (${laneIndex}): must be 0, 1, 2, or 3.`);
     }
 
+    if (loadKratonConfig().constraints.emergency_kill_switch) {
+      throw new Error("NEP611_KILL_SWITCH_ACTIVE: Emergency kill switch is enabled; all 4 gas-key lanes halted.");
+    }
+
     const v87Check = this.verifyProtocolV87MetaTxRule(task);
     if (!v87Check.allowed) {
       throw new Error(v87Check.reason);
+    }
+
+    if (!task.receiverId || task.receiverId.trim().length < 2) {
+      throw new Error("NEP611_INVALID_RECEIVER: receiverId must be a valid non-empty NEAR account ID.");
     }
 
     if (!task.hMasterCommitment || task.hMasterCommitment.trim().length < 32) {
@@ -211,6 +231,7 @@ export class Nep611GasKeyMultiplexer {
     const gasMetrics = this.computeGasBufferMetrics(task.estimatedTgas ?? 30);
 
     const envelopePreimage = JSON.stringify({
+      taskId: task.taskId ?? null,
       laneIndex,
       laneRole,
       laneSubAccountId,
@@ -219,6 +240,7 @@ export class Nep611GasKeyMultiplexer {
       receiverId: task.receiverId,
       actionType: task.actionType,
       methodName: task.methodName ?? null,
+      attachedDepositYocto: task.attachedDepositYocto ?? "0",
       args: task.args ?? {},
       hMasterCommitment: task.hMasterCommitment,
     });
@@ -251,8 +273,18 @@ export class Nep611GasKeyMultiplexer {
     prepaidBalanceYocto: string | bigint;
     beneficiaryId?: string;
   }): Nep611DeleteKeyBundle {
+    const publicKey = (params.publicKey ?? "").trim();
+    if (!publicKey) {
+      throw new Error("NEP611_INVALID_PUBLIC_KEY: publicKey cannot be empty when deleting a Gas Key.");
+    }
     const balance = BigInt(params.prepaidBalanceYocto);
-    const beneficiaryId = params.beneficiaryId ?? this.treasuryAccountId;
+    if (balance < 0n) {
+      throw new Error("NEP611_INVALID_BALANCE: prepaidBalanceYocto cannot be negative.");
+    }
+    const beneficiaryId = (params.beneficiaryId ?? this.treasuryAccountId).trim();
+    if (!beneficiaryId) {
+      throw new Error("NEP611_INVALID_BENEFICIARY: beneficiaryId cannot be empty.");
+    }
     const exceedsOneNear = balance > ONE_NEAR_YOCTO;
 
     const actions: Nep611DeleteKeyBundle["actions"] = [];
@@ -260,7 +292,7 @@ export class Nep611GasKeyMultiplexer {
     if (balance > 0n) {
       actions.push({
         type: "WithdrawFromGasKey",
-        publicKey: params.publicKey,
+        publicKey,
         amountYocto: balance.toString(),
         beneficiaryId,
       });
@@ -268,17 +300,38 @@ export class Nep611GasKeyMultiplexer {
 
     actions.push({
       type: "DeleteKey",
-      publicKey: params.publicKey,
+      publicKey,
     });
 
     return {
-      publicKey: params.publicKey,
+      publicKey,
       prepaidBalanceYocto: balance.toString(),
       exceedsOneNearHardFailThreshold: exceedsOneNear,
       burnPrevented: balance > 0n,
       actions,
     };
   }
+}
+
+/**
+ * Guard for external `AddKey` Function-Call key registration:
+ * Never emit `0` as an external `AddKey` allowance (which sets literal 0 yoctoNEAR and causes
+ * `NotEnoughAllowance` on the first call). Converts `null`/`undefined` to `null` (unlimited) and
+ * rejects `0` unless explicitly inside a contract host `promise_batch_action_add_key_with_function_call`.
+ */
+export function normalizeExternalAddKeyAllowance(
+  allowanceYocto: string | bigint | number | null | undefined
+): string | null {
+  if (allowanceYocto === null || allowanceYocto === undefined) {
+    return null;
+  }
+  const parsed = BigInt(allowanceYocto);
+  if (parsed <= 0n) {
+    throw new Error(
+      "PROTOCOL_ALLOWANCE_HAZARD: External AddKey FunctionCall allowance must not be 0 (causes NotEnoughAllowance). Pass null for unlimited or a positive yoctoNEAR allowance."
+    );
+  }
+  return parsed.toString();
 }
 
 const defaultMultiplexer = new Nep611GasKeyMultiplexer();

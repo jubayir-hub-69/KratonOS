@@ -12,13 +12,14 @@ import {
   FileSpreadsheet,
   Layers,
   LogOut,
+  Menu,
   Monitor,
   Moon,
   ShieldCheck,
-  Sparkles,
   Sun,
   Users,
   Wallet,
+  X,
 } from "lucide-react";
 import { type TelemetryFeedItem } from "@/components/ui/animated-list";
 import { BackgroundCubesGrid } from "@/components/ui/background-cubes-grid";
@@ -44,7 +45,7 @@ import {
   type MpcRheaRouterSlice,
   type PayrollApiResponse,
 } from "./views-business";
-import { DocsPortalView } from "./views-docs";
+import { DocsPortalView, type DocPageId } from "./views-docs";
 
 export type ActiveSidebarView =
   | "overview"
@@ -59,7 +60,6 @@ export type ActiveSidebarView =
 interface SidebarNavItem {
   id: ActiveSidebarView;
   label: string;
-  shortLabel: string;
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
 }
@@ -68,56 +68,48 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     id: "overview",
     label: "Overview",
-    shortLabel: "Overview",
     subtitle: "5-Stage Closed Loop & Live Telemetry",
     icon: Layers,
   },
   {
     id: "swap",
     label: "Cross-Chain Swap & Orders",
-    shortLabel: "Swap",
     subtitle: "1Click Confidential + RHEA + VRF",
     icon: ArrowLeftRight,
   },
   {
     id: "shield",
     label: "Policy Vault & Scam Shield",
-    shortLabel: "Shield",
     subtitle: "PoC-4, NEP-611 Lanes & ML-DSA-65",
     icon: ShieldCheck,
   },
   {
     id: "tee",
     label: "Dual-TEE AI & EIP-1186 Oracle",
-    shortLabel: "AI & Oracle",
     subtitle: "GLM-5.1 8-Step & Ethereum Trie Proof",
     icon: Cpu,
   },
   {
     id: "payroll",
     label: "Invoicing & Batch Payroll",
-    shortLabel: "Payroll",
     subtitle: "EXACT_OUTPUT Ceiling & 12-Row CSV",
     icon: FileSpreadsheet,
   },
   {
     id: "market",
     label: "Agent Market (x402) & Swarm",
-    shortLabel: "Market",
     subtitle: "A2A + x402 v2 & 20x5 Sealed-Bid",
     icon: Users,
   },
   {
     id: "mpc",
     label: "Multi-Chain MPC & RHEA Yield",
-    shortLabel: "MPC & Yield",
     subtitle: "5 Foreign Chains & 14.85% APR Farm",
     icon: Wallet,
   },
   {
     id: "docs",
     label: "Docs & API Spec",
-    shortLabel: "Docs",
     subtitle: "Mintlify Docs · /llms.txt · OpenAPI",
     icon: BookOpen,
   },
@@ -129,54 +121,40 @@ const INITIAL_FEED_ITEMS: TelemetryFeedItem[] = [
     title: "OutLayer EIP-1186 Merkle-Patricia Proof Verified",
     description:
       "Ethereum Mainnet Chainlink ETH/USD stateRoot & 5x48B Intel TDX registers verified inside WASI P2 enclave.",
-    timeAgo: "Just now",
+    timeAgo: "Verified snapshot",
     category: "tee",
     tone: "emerald",
+    verificationBadge: "DRY-RUN QUOTE PREVIEW",
   },
   {
     id: "feed-2",
     title: "1Click Confidential Private Shard Route Selected",
     description:
-      "Swapped 100.00 USDC -> 99.590000 USDT at 1 bp protocol fee + 40 bps app fee to jubayir33.near.",
-    timeAgo: "8s ago",
+      "Quoted 100.00 USDC -> 99.590000 USDT (dry: true per Q-007) at 1 bp protocol fee + 40 bps app fee to jubayir33.near.",
+    timeAgo: "Quote preview",
     category: "swap",
     tone: "cyan",
+    verificationBadge: "DRY-RUN QUOTE PREVIEW",
   },
   {
     id: "feed-3",
     title: "Scam Drainer Quarantined by 4-Signal Shield",
     description:
       "Blocked $420.00 transfer to scam-drainer-vault.testnet (Risk Score: 100/100, Prompt Injection neutralized).",
-    timeAgo: "19s ago",
+    timeAgo: "Policy gate",
     category: "shield",
     tone: "red",
+    verificationBadge: "DRY-RUN QUOTE PREVIEW",
   },
   {
     id: "feed-4",
     title: "NEP-611 4-Lane Parallel Gas-Key Dispatch",
     description:
-      "Dispatched scout, executor, payroll, and yield lanes concurrently with 0 nonce collisions.",
-    timeAgo: "31s ago",
+      "Assigned isolated nonces across scout, executor, payroll, and yield lanes with 0 collisions.",
+    timeAgo: "Lane check",
     category: "loop",
     tone: "emerald",
-  },
-  {
-    id: "feed-5",
-    title: "20x5 Sealed-Bid Swarm Cleared at $2.15/unit",
-    description:
-      "25 sub-accounts cleared 510 compute units with 0 LLM calls, saving $357.00 USDC (24.56% below retail).",
-    timeAgo: "44s ago",
-    category: "market",
-    tone: "cyan",
-  },
-  {
-    id: "feed-6",
-    title: "11/12 Fault-Isolated Batch Payroll Settled",
-    description:
-      "Auto-injected 0.00125 NEAR storage_deposit for unregistered accounts and exported bookkeeper CSV.",
-    timeAgo: "1m ago",
-    category: "payroll",
-    tone: "emerald",
+    verificationBadge: "DRY-RUN QUOTE PREVIEW",
   },
 ];
 
@@ -187,26 +165,19 @@ interface ToastMessage {
 
 const LiveBlockBadge = React.memo(function LiveBlockBadge({
   baseHeight,
+  liveVerified,
 }: {
   baseHeight?: number;
+  liveVerified?: boolean;
 }) {
-  const [offset, setOffset] = useState(0);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (!document.hidden) {
-        setOffset((n) => n + 1);
-      }
-    }, 2400);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  const currentBlock = (baseHeight ?? 189450112) + offset;
+  if (!baseHeight) return null;
 
   return (
     <div className="hidden shrink-0 items-center gap-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1 font-mono text-[11px] font-bold whitespace-nowrap text-[var(--text-primary)] xl:inline-flex">
       <span className="card-status-dot" aria-hidden="true" />
-      <span>#{currentBlock} · LIVE</span>
+      <span>
+        #{baseHeight} · {liveVerified === false ? "SNAPSHOT" : "TESTNET RPC"}
+      </span>
     </div>
   );
 });
@@ -218,17 +189,36 @@ export function App() {
       ? "docs"
       : "overview"
   );
+  const [docsInitialPage, setDocsInitialPage] = useState<DocPageId>(() =>
+    typeof window !== "undefined" && window.location.hash === "#quickstart"
+      ? "quickstart"
+      : "intro"
+  );
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-  const navigateToView = useCallback((nextView: ActiveSidebarView) => {
-    setActiveView(nextView);
-    if (typeof window !== "undefined") {
-      const targetPath = nextView === "docs" ? "/docs" : "/";
-      if (window.location.pathname !== targetPath) {
-        window.history.pushState({}, "", targetPath);
+  const navigateToView = useCallback(
+    (nextView: ActiveSidebarView, docPage?: DocPageId) => {
+      setMobileSidebarOpen(false);
+      if (docPage) {
+        setDocsInitialPage(docPage);
       }
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, []);
+      setActiveView(nextView);
+      if (typeof window !== "undefined") {
+        const targetPath =
+          nextView === "docs"
+            ? docPage && docPage !== "intro"
+              ? `/docs#${docPage}`
+              : "/docs"
+            : "/";
+        const currentFull = `${window.location.pathname}${window.location.hash}`;
+        if (currentFull !== targetPath) {
+          window.history.pushState({}, "", targetPath);
+        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const onPopState = () => {
@@ -264,8 +254,32 @@ export function App() {
   const [walletAccountId, setWalletAccountId] = useState<string | null>(null);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [walletCopied, setWalletCopied] = useState(false);
+  const walletCopyTimerRef = useRef<number | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const walletMenuRef = useRef<HTMLDivElement | null>(null);
-  const [judgeMode, setJudgeMode] = useState(false);
+  const judgeMode = false;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setWalletMenuOpen(false);
+        setMobileSidebarOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (brandAnimTimerRef.current !== null) {
+        window.clearTimeout(brandAnimTimerRef.current);
+      }
+      if (walletCopyTimerRef.current !== null) {
+        window.clearTimeout(walletCopyTimerRef.current);
+      }
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!walletMenuOpen) return;
@@ -286,12 +300,20 @@ export function App() {
     (
       text: string,
       category: TelemetryFeedItem["category"] = "loop",
-      tone: TelemetryFeedItem["tone"] = "emerald"
+      tone: TelemetryFeedItem["tone"] = "emerald",
+      meta?: {
+        verificationBadge?: "LIVE ON-CHAIN TX" | "DRY-RUN QUOTE PREVIEW";
+        txUrl?: string;
+      }
     ) => {
       const id = `evt-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setToasts([{ id, text }]);
-      setTimeout(() => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+      toastTimerRef.current = window.setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
+        toastTimerRef.current = null;
       }, 2200);
 
       setFeedItems((prev) => [
@@ -302,6 +324,8 @@ export function App() {
           timeAgo: "Just now",
           category,
           tone,
+          verificationBadge: meta?.verificationBadge ?? "DRY-RUN QUOTE PREVIEW",
+          txUrl: meta?.txUrl,
         },
         ...prev.slice(0, 9),
       ]);
@@ -334,27 +358,44 @@ export function App() {
 
   // Initialize @hot-labs/near-connect
   useEffect(() => {
+    let active = true;
     try {
       const connector = new NearConnector({
         network: "testnet",
         footerBranding: null,
       });
       connectorRef.current = connector;
+      void connector
+        .wallet()
+        .then((w) => w.getAccounts())
+        .then((accounts) => {
+          const existing = accounts?.[0]?.accountId;
+          if (active && existing) {
+            setWalletAccountId(existing);
+          }
+        })
+        .catch(() => {});
+
       connector.on("wallet:signIn", async (payload: unknown) => {
         const p = payload as { accounts?: Array<{ accountId?: string }> };
         const acc = p?.accounts?.[0]?.accountId;
-        if (acc) {
+        if (active && acc) {
           setWalletAccountId(acc);
           pushNotification(`Connected NEAR Wallet: ${acc}`, "shield", "emerald");
         }
       });
       connector.on("wallet:signOut", async () => {
-        setWalletAccountId(null);
-        pushNotification("Disconnected NEAR Wallet", "shield", "amber");
+        if (active) {
+          setWalletAccountId(null);
+          pushNotification("Disconnected NEAR Wallet", "shield", "amber");
+        }
       });
     } catch {
       // Headless / sandbox environment fallback
     }
+    return () => {
+      active = false;
+    };
   }, [pushNotification]);
 
   const handleConnectWallet = async () => {
@@ -384,8 +425,10 @@ export function App() {
     setWalletMenuOpen(false);
     try {
       if (connectorRef.current) {
-        const wallet = await connectorRef.current.wallet();
-        await wallet.signOut();
+        await connectorRef.current.disconnect().catch(async () => {
+          const wallet = await connectorRef.current?.wallet();
+          await wallet?.signOut();
+        });
       }
     } catch {
       // Ignore disconnect errors
@@ -396,10 +439,16 @@ export function App() {
 
   const handleCopyWalletAddress = () => {
     if (!walletAccountId) return;
-    void navigator.clipboard.writeText(walletAccountId);
+    navigator.clipboard?.writeText(walletAccountId).catch(() => {});
     setWalletCopied(true);
     pushNotification(`Copied ${walletAccountId} to clipboard`, "shield", "emerald");
-    setTimeout(() => setWalletCopied(false), 1600);
+    if (walletCopyTimerRef.current !== null) {
+      window.clearTimeout(walletCopyTimerRef.current);
+    }
+    walletCopyTimerRef.current = window.setTimeout(() => {
+      setWalletCopied(false);
+      walletCopyTimerRef.current = null;
+    }, 1600);
   };
 
   // API Handlers
@@ -408,6 +457,26 @@ export function App() {
     if (res.ok) {
       const data = await res.json();
       setOverview(data);
+      if (Array.isArray(data?.recentOnChainTxns) && data.recentOnChainTxns.length > 0) {
+        setFeedItems((prev) => {
+          // Prepend real on-chain NEAR Testnet transactions without duplicating
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const liveItems: TelemetryFeedItem[] = data.recentOnChainTxns.slice(0, 2).map((tx: any) => ({
+            id: `onchain-${tx.txHash}`,
+            title: `NEAR Testnet Tx: ${tx.actionLabel} (${String(tx.txHash).slice(0, 10)}...)`,
+            description: `Signer ${tx.signerId} -> ${tx.receiverId} at Block #${tx.blockHeight} (${tx.txHash})`,
+            timeAgo: `Block #${tx.blockHeight}`,
+            category: "shield" as const,
+            tone: "emerald" as const,
+            verificationBadge: "LIVE ON-CHAIN TX" as const,
+            txUrl: tx.explorerTxUrl,
+          }));
+          const existingNonDuplicate = prev.filter(
+            (item) => !liveItems.some((li) => li.id === item.id)
+          );
+          return [...liveItems, ...existingNonDuplicate].slice(0, 8);
+        });
+      }
     }
   }, []);
 
@@ -620,18 +689,6 @@ export function App() {
     }
   };
 
-  const handleToggleJudgeMode = () => {
-    const next = !judgeMode;
-    setJudgeMode(next);
-    pushNotification(
-      next
-        ? "Judge Verification Mode ON: Cryptographic proof callouts expanded across all views"
-        : "Judge Verification Mode OFF",
-      "tee",
-      "cyan"
-    );
-  };
-
   // Hydrate initial views on mount & guarantee emergency_kill_switch defaults to false (DISARMED / READY)
   useEffect(() => {
     void fetch("/api/policy/kill-switch", {
@@ -662,6 +719,10 @@ export function App() {
     navigateToView("swap");
   }, [navigateToView]);
 
+  const handleOpenDocsQuickstart = useCallback(() => {
+    navigateToView("docs", "quickstart");
+  }, [navigateToView]);
+
   const handleUserPayroll = useCallback(
     (p: {
       freelancerAccountId: string;
@@ -684,13 +745,18 @@ export function App() {
   const activeNavMeta =
     SIDEBAR_ITEMS.find((item) => item.id === activeView) ?? SIDEBAR_ITEMS[0];
   const killSwitchEngaged = overview?.constraints?.emergency_kill_switch === true;
+  const showExpandedSidebar = mobileSidebarOpen || !sidebarCollapsed;
+  const unifiedVaultBalance = overview?.vault?.liquidNear
+    ? `${overview.vault.liquidNear} NEAR`
+    : overview?.balanceFormatted ?? "Syncing RPC...";
 
   if (activeView === "docs") {
     return (
-      <DotGrid spacing={26} className="min-h-screen">
+      <DotGrid spacing={26} className="min-h-screen w-full overflow-x-hidden">
         <BackgroundCubesGrid className="fixed inset-0 w-screen h-screen pointer-events-none z-0" />
-        <div className="relative z-10 min-h-screen w-full">
+        <div className="relative z-10 min-h-screen w-full max-w-full overflow-x-hidden">
           <DocsPortalView
+            initialPage={docsInitialPage}
             onBackToApp={() => navigateToView("overview")}
             onNotify={pushNotification}
           />
@@ -708,18 +774,27 @@ export function App() {
   }
 
   return (
-    <DotGrid spacing={26} className="min-h-screen">
+    <DotGrid spacing={26} className="min-h-screen w-full overflow-x-hidden">
       {/* Global Full-Viewport 3D Isometric Cubes Background (Pointer-reactive via window events) */}
       <BackgroundCubesGrid className="fixed inset-0 w-screen h-screen pointer-events-none z-0" />
 
-      <div className="relative z-10 flex min-h-screen">
+      <div className="relative z-10 flex min-h-screen w-full max-w-full overflow-x-hidden">
+        {/* Mobile/Tablet Off-Canvas Backdrop Overlay (< 1024px) */}
+        {mobileSidebarOpen && (
+          <div
+            role="presentation"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity lg:hidden"
+          />
+        )}
+
         {/* ================================================================ */}
-        {/* LEFT COLLAPSIBLE SIDEBAR (282px Expanded / 74px Collapsed Rail)  */}
+        {/* LEFT SIDEBAR: Off-Canvas Drawer on < 1024px, Sticky Rail >= 1024 */}
         {/* ================================================================ */}
         <aside
-          className={`sticky top-0 z-30 flex h-screen shrink-0 flex-col justify-between border-r border-[var(--border-color)] bg-[var(--panel-solid)] transition-all duration-300 ${
-            sidebarCollapsed ? "w-[74px]" : "w-[282px]"
-          }`}
+          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[280px] shrink-0 flex-col justify-between overflow-y-auto border-r border-[var(--border-color)] bg-[var(--panel-solid)] transition-all duration-200 lg:sticky lg:top-0 lg:z-30 lg:translate-x-0 ${
+            mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
+          } ${sidebarCollapsed ? "lg:w-[74px]" : "lg:w-[282px]"}`}
         >
           {/* Brand Header */}
           <div>
@@ -765,7 +840,7 @@ export function App() {
                     <circle cx="18.2" cy="12" r="1.45" fill="#38BDF8" />
                   </svg>
                 </div>
-                {!sidebarCollapsed && (
+                {showExpandedSidebar && (
                   <div className="min-w-0 flex-1 overflow-hidden">
                     <div className="flex items-center gap-1.5 overflow-hidden">
                       <span
@@ -789,11 +864,23 @@ export function App() {
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(false)}
+                aria-label="Close Navigation Drawer"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] lg:hidden cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
 
-            {/* Single Sidebar Menu Toggle Directly Above "Overview" + Navigation Items */}
+            {/* Desktop Collapse Toggle + Navigation Items */}
             <nav className="space-y-1.5 p-3">
-              <div className={`mb-2 flex ${sidebarCollapsed ? "justify-center" : "justify-start"}`}>
+              <div
+                className={`mb-2 hidden lg:flex ${
+                  sidebarCollapsed ? "justify-center" : "justify-start"
+                }`}
+              >
                 <KultiveretMenuButton
                   isOpen={sidebarCollapsed}
                   onToggle={() => setSidebarCollapsed((c) => !c)}
@@ -827,7 +914,7 @@ export function App() {
                           : "text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]"
                       }`}
                     />
-                    {!sidebarCollapsed && (
+                    {showExpandedSidebar && (
                       <div className="min-w-0 flex-1">
                         <p className="font-display truncate text-xs font-bold">
                           {item.label}
@@ -843,31 +930,31 @@ export function App() {
             </nav>
           </div>
 
-          {/* Sidebar Footer: Live VAULT ACCOUNT Card */}
+          {/* Sidebar Footer: Unified Live VAULT ACCOUNT Card */}
           <div className="border-t border-[var(--border-color)] p-3">
-            {!sidebarCollapsed ? (
+            {showExpandedSidebar ? (
               <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                     VAULT ACCOUNT
                   </span>
                   <Badge variant="emerald" className="text-[10px]">
-                    LIVE RPC
+                    {overview?.vault?.liveRpcVerified === false ? "SNAPSHOT" : "LIVE RPC"}
                   </Badge>
                 </div>
                 <a
                   href={`https://testnet.nearblocks.io/address/${overview?.treasuryAccount ?? "jubayir69.testnet"}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-1 inline-flex items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
+                  className="mt-1 inline-flex max-w-full items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
                 >
-                  <span>{overview?.treasuryAccount ?? "jubayir69.testnet"}</span>
+                  <span className="truncate">{overview?.treasuryAccount ?? "jubayir69.testnet"}</span>
                   <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
                 </a>
                 <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                  <span>Balance</span>
+                  <span>Liquid Balance</span>
                   <span className="font-mono font-bold text-[var(--accent-emerald)]">
-                    {overview?.balanceFormatted ?? "14.8500 NEAR"}
+                    {unifiedVaultBalance}
                   </span>
                 </div>
                 <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
@@ -894,22 +981,35 @@ export function App() {
         </aside>
 
         {/* ================================================================ */}
-        {/* MAIN CONTENT SHELL                                               */}
+        {/* MAIN CONTENT SHELL (100% Width on < 1024px, Zero Overflow)       */}
         {/* ================================================================ */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          {/* Sticky Single-Row Fluid Header (No Wrapping, No Clipped Wallet Button) */}
-          <header className="topbar sticky top-0 z-20 flex items-center justify-between gap-4 border-b border-[var(--border-color)] bg-[var(--bg-header)] px-6 py-3.5 backdrop-blur-md">
-            {/* LEFT GROUP: Current View Title + Compact Live Block Pill */}
-            <div className="flex min-w-0 items-center gap-3">
-              <h2 className="font-display text-lg font-bold tracking-tight whitespace-nowrap text-[var(--text-primary)]">
+        <div className="flex w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden">
+          {/* Sticky Responsive Fluid Header */}
+          <header className="topbar sticky top-0 z-20 flex flex-wrap items-center justify-between gap-2.5 border-b border-[var(--border-color)] bg-[var(--bg-header)] px-3.5 py-2.5 backdrop-blur-md sm:px-6 sm:py-3.5">
+            {/* LEFT GROUP: Mobile Menu Trigger (< 1024px) + Current View Title + Live Block Pill */}
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setMobileSidebarOpen(true)}
+                aria-label="Open Navigation Menu"
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 font-mono text-xs font-bold text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] lg:hidden cursor-pointer"
+              >
+                <Menu className="h-4 w-4 text-[var(--accent-emerald)]" />
+                <span className="hidden xs:inline sm:inline">MENU</span>
+              </button>
+
+              <h2 className="font-display min-w-0 truncate text-base font-bold tracking-tight text-[var(--text-primary)] sm:text-lg">
                 {activeNavMeta.label}
               </h2>
 
-              <LiveBlockBadge baseHeight={overview?.blockHeight} />
+              <LiveBlockBadge
+                baseHeight={overview?.blockHeight}
+                liveVerified={overview?.vault?.liveRpcVerified}
+              />
             </div>
 
-            {/* RIGHT GROUP (Single-Row Compact Controls): Theme | Judge Mode | Kill-Switch | Connect Wallet */}
-            <div className="ml-auto flex shrink-0 items-center gap-2.5">
+            {/* RIGHT GROUP (Responsive Wrapping Controls): Theme | Kill-Switch | Connect Wallet */}
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {/* 1. Compact Theme Switcher (Light | Dark | System) */}
               <div
                 role="group"
@@ -923,14 +1023,14 @@ export function App() {
                     pushNotification("Switched to Light Mode", "loop", "cyan");
                   }}
                   title="Light Mode"
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer sm:px-2 sm:text-xs ${
                     mode === "light"
                       ? "bg-[var(--accent-emerald)] text-[#04130D]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
                   <Sun className="h-3.5 w-3.5 shrink-0" />
-                  <span>Light</span>
+                  <span className="hidden sm:inline">Light</span>
                 </button>
                 <button
                   type="button"
@@ -939,14 +1039,14 @@ export function App() {
                     pushNotification("Switched to Dark Obsidian Mode", "loop", "emerald");
                   }}
                   title="Dark Mode"
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer sm:px-2 sm:text-xs ${
                     mode === "dark"
                       ? "bg-[var(--accent-emerald)] text-[#04130D]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
                   <Moon className="h-3.5 w-3.5 shrink-0" />
-                  <span>Dark</span>
+                  <span className="hidden sm:inline">Dark</span>
                 </button>
                 <button
                   type="button"
@@ -955,14 +1055,14 @@ export function App() {
                     pushNotification("Synced with System Theme", "loop", "cyan");
                   }}
                   title="System Preference Mode"
-                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer sm:px-2 sm:text-xs ${
                     mode === "system"
                       ? "bg-[var(--accent-emerald)] text-[#04130D]"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   }`}
                 >
                   <Monitor className="h-3.5 w-3.5 shrink-0" />
-                  <span>System</span>
+                  <span className="hidden sm:inline">System</span>
                 </button>
               </div>
 
@@ -985,10 +1085,12 @@ export function App() {
                   variant="emerald"
                   size="sm"
                   onClick={handleConnectWallet}
-                  className="shrink-0 gap-1.5 px-3.5 py-2 font-mono text-xs font-bold whitespace-nowrap"
+                  className="shrink-0 gap-1.5 px-2.5 py-2 font-mono text-[11px] font-bold whitespace-nowrap sm:px-3.5 sm:text-xs"
                 >
                   <Wallet className="h-3.5 w-3.5 shrink-0" />
-                  <span>{walletAccountId ?? "Connect Wallet"}</span>
+                  <span className="max-w-[140px] truncate sm:max-w-none">
+                    {walletAccountId ?? "Connect Wallet"}
+                  </span>
                   {walletAccountId && (
                     <ChevronDown
                       className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${
@@ -999,7 +1101,7 @@ export function App() {
                 </Button>
 
                 {walletAccountId && walletMenuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-[var(--border-color)] bg-[var(--panel-solid)] p-3.5 shadow-2xl animate-fade-in">
+                  <div className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--border-color)] bg-[var(--panel-solid)] p-3.5 shadow-2xl animate-fade-in">
                     <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2.5">
                       <div>
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -1068,13 +1170,37 @@ export function App() {
           )}
 
           {/* Main Workspace Container */}
-          <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
+          <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 overflow-x-hidden px-4 py-5 sm:px-6 sm:py-8">
             {activeView === "overview" && (
               <OverviewHeroView
                 overview={overview}
                 loopState={loopState}
                 onRunLoop={handleRunAutonomousLoop}
                 onNavigateSwap={handleNavigateSwap}
+                onOpenDocsQuickstart={handleOpenDocsQuickstart}
+                onProofCommitted={(receipt) => {
+                  void fetchOverview();
+                  if (receipt?.liveBroadcast && receipt?.explorerTxUrl) {
+                    pushNotification(
+                      `PoC-4 Proof Anchored On-Chain: ${String(receipt.txHash).slice(0, 14)}...`,
+                      "shield",
+                      "emerald",
+                      {
+                        verificationBadge: "LIVE ON-CHAIN TX",
+                        txUrl: receipt.explorerTxUrl,
+                      }
+                    );
+                  } else {
+                    pushNotification(
+                      `Signed PoC-4 Transaction Digest (${String(receipt?.txHash ?? "").slice(0, 14)}...)`,
+                      "shield",
+                      "cyan",
+                      {
+                        verificationBadge: "DRY-RUN QUOTE PREVIEW",
+                      }
+                    );
+                  }
+                }}
                 feedItems={feedItems}
                 judgeMode={judgeMode}
               />
@@ -1134,15 +1260,15 @@ export function App() {
           </main>
 
           {/* High-Contrast Footer */}
-          <footer className="border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] px-6 py-4 text-xs text-[var(--text-secondary)]">
+          <footer className="border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] px-4 py-4 text-xs text-[var(--text-secondary)] sm:px-6">
             <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-[var(--accent-emerald)]" />
-                <span className="font-display font-bold text-[var(--text-primary)]">
+              <div className="flex min-w-0 items-center gap-2">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
+                <span className="font-display break-words font-bold text-[var(--text-primary)]">
                   KratonOS Sovereign Financial Operating System
                 </span>
               </div>
-              <div className="flex items-center gap-4 font-mono">
+              <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] sm:gap-4 sm:text-xs">
                 <span>PoC-4 Quad-Attested</span>
                 <span>NEP-611 4-Lane Parallel</span>
                 <span>FIPS 204 ml-dsa-65</span>

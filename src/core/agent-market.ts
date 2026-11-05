@@ -1,4 +1,3 @@
-import "dotenv/config";
 import crypto from "node:crypto";
 import { loadKratonConfig } from "./config.js";
 import { encodeBase58, decodeBase58 } from "./security-shield.js";
@@ -58,6 +57,18 @@ export interface MarketDiscoveryResult {
 // 1. Live Marketplace Discovery (`/v1/agents`, `/v1/jobs/board`, `/v1/agents/me/assignments`)
 // ============================================================================
 
+const SAFE_AGENT_HANDLE_REGEX = /^[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?$/i;
+
+function assertValidAgentHandle(agentHandle: string): string {
+  const clean = String(agentHandle ?? "").trim();
+  if (!SAFE_AGENT_HANDLE_REGEX.test(clean)) {
+    throw new Error(
+      `INVALID_AGENT_HANDLE: "${agentHandle}" must be 1..63 ASCII alphanumeric/hyphen/underscore characters.`
+    );
+  }
+  return clean;
+}
+
 export async function verifyLiveWorkerAuthentication(): Promise<WorkerLiveAuthResult> {
   const runtime = loadKratonConfig();
   const baseUrl = runtime.env.AGENT_MARKET_BASE_URL.replace(/\/+$/, "");
@@ -75,9 +86,9 @@ export async function verifyLiveWorkerAuthentication(): Promise<WorkerLiveAuthRe
     };
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(endpoint, {
       headers: {
         Accept: "application/json",
@@ -85,7 +96,6 @@ export async function verifyLiveWorkerAuthentication(): Promise<WorkerLiveAuthRe
       },
       signal: controller.signal,
     });
-    clearTimeout(timer);
 
     let assignmentCount = 0;
     if (res.ok) {
@@ -118,6 +128,8 @@ export async function verifyLiveWorkerAuthentication(): Promise<WorkerLiveAuthRe
       assignmentCount: 0,
       statusText: `SANDBOX_FALLBACK (${err instanceof Error ? err.message : String(err)})`,
     };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -134,9 +146,9 @@ export async function discoverLiveAgentMarket(
   const discoveredJobs: MarketBoardJob[] = [];
   const workerAuth = await verifyLiveWorkerAuthentication();
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
     const headers: Record<string, string> = { Accept: "application/json" };
     if (runtime.env.AGENT_MARKET_API_TOKEN) {
       headers.Authorization = `Bearer ${runtime.env.AGENT_MARKET_API_TOKEN}`;
@@ -146,7 +158,6 @@ export async function discoverLiveAgentMarket(
       fetch(agentsUrl, { headers, signal: controller.signal }),
       fetch(jobsUrl, { headers, signal: controller.signal }).catch(() => null),
     ]);
-    clearTimeout(timer);
 
     liveHttpStatus = `HTTP ${agentsRes.status} (${agentsRes.ok ? "LIVE_CATALOG_OK" : "REACHABLE"})`;
 
@@ -157,17 +168,25 @@ export async function discoverLiveAgentMarket(
       };
       const rows = json.agents ?? json.items ?? [];
       for (const r of rows.slice(0, 5)) {
+        const rawHandle = String(r.handle ?? "near-research-oracle").trim();
+        const safeHandle = SAFE_AGENT_HANDLE_REGEX.test(rawHandle)
+          ? rawHandle
+          : "near-research-oracle";
+        const parsedPrice = Number(r.price_amount ?? r.price ?? 2.5);
         discoveredAgents.push({
           agentId: String(r.id ?? r.agent_id ?? "agt-live-1"),
-          handle: String(r.handle ?? "near-research-oracle"),
+          handle: safeHandle,
           name: String(r.name ?? "NEAR DeFi Research Oracle"),
           category: String(r.category ?? "research"),
           description: String(r.description ?? "Cross-chain liquidity & TEE attestation researcher"),
           availableNow: Boolean(r.available_now ?? true),
-          slaSeconds: Number(r.sla_seconds ?? 3600),
-          defaultPriceUsd: Number(r.price_amount ?? 2.5),
-          deliveredJobs: Number(r.delivered_jobs ?? 42),
-          successRatePercent: Number(r.success_rate ?? 98.5),
+          slaSeconds: Number.isFinite(Number(r.sla_seconds)) ? Number(r.sla_seconds) : 3600,
+          defaultPriceUsd:
+            Number.isFinite(parsedPrice) && parsedPrice > 0 ? parsedPrice : 2.5,
+          deliveredJobs: Number.isFinite(Number(r.delivered_jobs)) ? Number(r.delivered_jobs) : 42,
+          successRatePercent: Number.isFinite(Number(r.success_rate))
+            ? Number(r.success_rate)
+            : 98.5,
         });
       }
     }
@@ -186,19 +205,24 @@ export async function discoverLiveAgentMarket(
             : minVerifRaw === "verified"
               ? "verified"
               : "none";
+        const rawBudget = Number(j.budgetAmount ?? j.budget_amount ?? 5.0);
         discoveredJobs.push({
           jobId: String(j.id ?? j.job_id ?? "job-live-1"),
           title: String(j.title ?? "Cross-Chain Yield & Slippage Audit"),
           kind: "standard",
-          budgetAmountUsd: Number(j.budgetAmount ?? j.budget_amount ?? 5.0),
+          budgetAmountUsd: Number.isFinite(rawBudget) && rawBudget > 0 ? rawBudget : 5.0,
           minBuilderVerification,
-          slaSeconds: Number(j.slaSeconds ?? j.sla_seconds ?? 3600),
+          slaSeconds: Number.isFinite(Number(j.slaSeconds ?? j.sla_seconds))
+            ? Number(j.slaSeconds ?? j.sla_seconds)
+            : 3600,
           tags: Array.isArray(j.tags) ? j.tags.map(String) : ["near", "defi", "research"],
         });
       }
     }
   } catch (err) {
     liveHttpStatus = `SANDBOX_FALLBACK (${err instanceof Error ? err.message : String(err)})`;
+  } finally {
+    clearTimeout(timer);
   }
 
   const cleanQuery = query.trim().toLowerCase();
@@ -311,10 +335,22 @@ export interface QuoteNegotiationResult {
  *   settle; otherwise walk away cleanly without entering multi-round haggling.
  */
 export function negotiateAgentQuote(input: QuoteNegotiationInput): QuoteNegotiationResult {
+  const safeHandle = assertValidAgentHandle(input.agentHandle);
   const runtime = loadKratonConfig();
   const plannedBudgetUsd =
     input.plannedBudgetUsd ?? runtime.constraints.min_report_or_task_price_usd; // $2.50
   const maxAcceptableBudgetUsd = input.maxAcceptableBudgetUsd ?? plannedBudgetUsd;
+
+  if (
+    !Number.isFinite(input.quotedAmountUsd) ||
+    input.quotedAmountUsd <= 0 ||
+    !Number.isFinite(plannedBudgetUsd) ||
+    plannedBudgetUsd <= 0 ||
+    !Number.isFinite(maxAcceptableBudgetUsd) ||
+    maxAcceptableBudgetUsd <= 0
+  ) {
+    throw new Error("INVALID_QUOTE_NEGOTIATION_AMOUNT: quote and budget amounts must be finite and > 0.");
+  }
 
   if (input.quotedAmountUsd <= plannedBudgetUsd) {
     return {
@@ -330,7 +366,7 @@ export function negotiateAgentQuote(input: QuoteNegotiationInput): QuoteNegotiat
   // Construct exactly ONE structured counter-offer
   const counterOfferSentUsd = Number(plannedBudgetUsd.toFixed(2));
   const counterOfferReasoning = [
-    `[KratonOS 1-Round Counter-Offer to @${input.agentHandle}]`,
+    `[KratonOS 1-Round Counter-Offer to @${safeHandle}]`,
     `Task: "${input.taskTitle}" (SLA: ${input.slaSeconds ?? 3600}s).`,
     `Your quote of $${input.quotedAmountUsd.toFixed(2)} USDC exceeds our config.yaml target task allocation ($${plannedBudgetUsd.toFixed(2)} USDC).`,
     `Offering firm 1-round counter of $${counterOfferSentUsd.toFixed(2)} USDC settled immediately via gasless x402 v2 NEP-366 SignedDelegateAction.`,
@@ -565,82 +601,122 @@ export function verifyX402PaymentHeader(xPaymentBase64: string): {
   errors: string[];
 } {
   const errors: string[] = [];
-  const headerObj = JSON.parse(
-    Buffer.from(xPaymentBase64, "base64").toString("utf8")
-  ) as X402PaymentHeaderObject;
+  try {
+    const headerObj = JSON.parse(
+      Buffer.from(String(xPaymentBase64 ?? ""), "base64").toString("utf8")
+    ) as X402PaymentHeaderObject;
 
-  if (headerObj.x402Version !== 2) {
-    errors.push(`Unsupported x402Version: expected 2, got ${headerObj.x402Version}`);
-  }
+    if (!headerObj || typeof headerObj !== "object" || headerObj.x402Version !== 2) {
+      errors.push(`Unsupported x402Version: expected 2, got ${String(headerObj?.x402Version)}`);
+    }
 
-  const envelope = JSON.parse(
-    Buffer.from(headerObj.payload.signedDelegateAction, "base64").toString("utf8")
-  ) as Nep366SignedDelegateEnvelope;
+    const envelope = JSON.parse(
+      Buffer.from(String(headerObj?.payload?.signedDelegateAction ?? ""), "base64").toString("utf8")
+    ) as Nep366SignedDelegateEnvelope;
 
-  const da = envelope.delegateAction;
-  const action = da.actions[0];
+    const da = envelope?.delegateAction;
+    if (!da || !Array.isArray(da.actions) || da.actions.length === 0) {
+      errors.push("DelegateAction is missing or contains zero actions.");
+      return {
+        valid: false,
+        x402Version: headerObj?.x402Version ?? 0,
+        senderId: da?.senderId ?? "",
+        assetContractId: da?.receiverId ?? "",
+        payTo: "",
+        amountAtomicUsdc: "0",
+        gasUnits: "0",
+        depositYocto: "0",
+        ed25519SignatureVerified: false,
+        protocolV87StandardKeyVerified: false,
+        errors,
+      };
+    }
 
-  if (!action || action.methodName !== "ft_transfer") {
-    errors.push("DelegateAction must contain an ft_transfer FunctionCall action.");
-  }
-  if (action.gas !== "30000000000000") {
-    errors.push(`Expected 30 TGas (30000000000000), got ${action.gas}`);
-  }
-  if (action.deposit !== "1") {
-    errors.push(`Expected 1 yoctoNEAR deposit, got ${action.deposit}`);
-  }
-  if (action.args.receiver_id !== headerObj.accepted.payTo) {
-    errors.push("ft_transfer receiver_id does not match accepted.payTo.");
-  }
-  if (action.args.amount !== headerObj.accepted.amount) {
-    errors.push("ft_transfer amount does not match accepted.amount.");
-  }
-  if (da.signerKeyIsGasKey !== false) {
-    errors.push("Protocol v87 violation: inner SignedDelegateAction used a Gas Key.");
-  }
+    const action = da.actions[0];
+    if (da.receiverId !== headerObj.accepted?.asset) {
+      errors.push("DelegateAction receiverId does not match accepted.asset contract.");
+    }
+    if (!action || action.methodName !== "ft_transfer") {
+      errors.push("DelegateAction must contain an ft_transfer FunctionCall action.");
+    }
+    if (action.gas !== "30000000000000") {
+      errors.push(`Expected 30 TGas (30000000000000), got ${action.gas}`);
+    }
+    if (action.deposit !== "1") {
+      errors.push(`Expected 1 yoctoNEAR deposit, got ${action.deposit}`);
+    }
+    if (action.args?.receiver_id !== headerObj.accepted?.payTo) {
+      errors.push("ft_transfer receiver_id does not match accepted.payTo.");
+    }
+    if (action.args?.amount !== headerObj.accepted?.amount) {
+      errors.push("ft_transfer amount does not match accepted.amount.");
+    }
+    if (da.signerKeyIsGasKey !== false) {
+      errors.push("Protocol v87 violation: inner SignedDelegateAction used a Gas Key.");
+    }
 
-  // Recompute NEP-366 digest and verify Ed25519 signature
-  const delegateBytes = Buffer.from(JSON.stringify(da), "utf8");
-  const nep366Tag = Buffer.alloc(4);
-  nep366Tag.writeUInt32LE(2 ** 30 + 366, 0);
-  const recomputedDigestHex = crypto
-    .createHash("sha256")
-    .update(Buffer.concat([nep366Tag, delegateBytes]))
-    .digest("hex");
+    // Recompute NEP-366 digest and verify Ed25519 signature
+    const delegateBytes = Buffer.from(JSON.stringify(da), "utf8");
+    const nep366Tag = Buffer.alloc(4);
+    nep366Tag.writeUInt32LE(2 ** 30 + 366, 0);
+    const recomputedDigestHex = crypto
+      .createHash("sha256")
+      .update(Buffer.concat([nep366Tag, delegateBytes]))
+      .digest("hex");
 
-  const pubKeyBytes = decodeBase58(da.publicKey.replace(/^ed25519:/, ""));
-  const pubKeyObj = crypto.createPublicKey({
-    key: Buffer.concat([ED25519_SPKI_PREFIX, pubKeyBytes]),
-    format: "der",
-    type: "spki",
-  });
+    const pubKeyBytes = decodeBase58(da.publicKey.replace(/^ed25519:/, ""));
+    let ed25519SignatureVerified = false;
+    if (pubKeyBytes.length === 32 && /^[0-9a-f]{128}$/i.test(envelope.ed25519SignatureHex ?? "")) {
+      const pubKeyObj = crypto.createPublicKey({
+        key: Buffer.concat([ED25519_SPKI_PREFIX, pubKeyBytes]),
+        format: "der",
+        type: "spki",
+      });
+      ed25519SignatureVerified =
+        recomputedDigestHex === envelope.delegateActionSha256 &&
+        crypto.verify(
+          null,
+          Buffer.from(recomputedDigestHex, "hex"),
+          pubKeyObj,
+          Buffer.from(envelope.ed25519SignatureHex, "hex")
+        );
+    }
 
-  const ed25519SignatureVerified =
-    recomputedDigestHex === envelope.delegateActionSha256 &&
-    crypto.verify(
-      null,
-      Buffer.from(recomputedDigestHex, "hex"),
-      pubKeyObj,
-      Buffer.from(envelope.ed25519SignatureHex, "hex")
+    if (!ed25519SignatureVerified) {
+      errors.push("Ed25519 signature verification failed on NEP-366 SignedDelegateAction.");
+    }
+
+    return {
+      valid: errors.length === 0,
+      x402Version: headerObj.x402Version,
+      senderId: da.senderId,
+      assetContractId: da.receiverId,
+      payTo: action.args?.receiver_id ?? "",
+      amountAtomicUsdc: action.args?.amount ?? "0",
+      gasUnits: action.gas,
+      depositYocto: action.deposit,
+      ed25519SignatureVerified,
+      protocolV87StandardKeyVerified: da.signerKeyIsGasKey === false,
+      errors,
+    };
+  } catch (err) {
+    errors.push(
+      `Malformed X-PAYMENT header: ${err instanceof Error ? err.message : String(err)}`
     );
-
-  if (!ed25519SignatureVerified) {
-    errors.push("Ed25519 signature verification failed on NEP-366 SignedDelegateAction.");
+    return {
+      valid: false,
+      x402Version: 0,
+      senderId: "",
+      assetContractId: "",
+      payTo: "",
+      amountAtomicUsdc: "0",
+      gasUnits: "0",
+      depositYocto: "0",
+      ed25519SignatureVerified: false,
+      protocolV87StandardKeyVerified: false,
+      errors,
+    };
   }
-
-  return {
-    valid: errors.length === 0,
-    x402Version: headerObj.x402Version,
-    senderId: da.senderId,
-    assetContractId: da.receiverId,
-    payTo: action.args.receiver_id,
-    amountAtomicUsdc: action.args.amount,
-    gasUnits: action.gas,
-    depositYocto: action.deposit,
-    ed25519SignatureVerified,
-    protocolV87StandardKeyVerified: da.signerKeyIsGasKey === false,
-    errors,
-  };
 }
 
 /**
@@ -666,9 +742,13 @@ export async function hireAgentViaX402(params: {
   cancelTaskRequestTemplate: Record<string, unknown>;
   taskReceipt: CryptographicTaskReceipt;
 }> {
+  const safeHandle = assertValidAgentHandle(params.agentHandle);
+  if (!Number.isFinite(params.agreedAmountUsd) || params.agreedAmountUsd <= 0) {
+    throw new Error("INVALID_X402_AMOUNT: agreedAmountUsd must be finite and > 0.");
+  }
   const runtime = loadKratonConfig();
   const senderAccountId = params.senderAccountId ?? runtime.constraints.treasury_account;
-  const a2aEndpoint = `https://${params.agentHandle}.market.near.ai/a2a/v1`;
+  const a2aEndpoint = `https://${safeHandle}.market.near.ai/a2a/v1`;
   const messageId = crypto.randomUUID();
 
   // Step 1: JSON-RPC 2.0 `SendMessage`
@@ -713,7 +793,7 @@ export async function hireAgentViaX402(params: {
   // Step 4: Task completion & Cryptographic Task Receipt
   const taskId = `task-a2a-${crypto
     .createHash("sha256")
-    .update(`${params.agentHandle}:${messageId}`)
+    .update(`${safeHandle}:${messageId}`)
     .digest("hex")
     .slice(0, 16)}`;
   const contextId = `ctx-hire-${taskId.slice(-8)}`;
@@ -732,11 +812,11 @@ export async function hireAgentViaX402(params: {
     params: { id: taskId },
   };
 
-  const artifactText = `# Deliverable: ${params.taskTitle}\nVerified RHEA pool depths and 1Click spread telemetry produced by @${params.agentHandle}.`;
+  const artifactText = `# Deliverable: ${params.taskTitle}\nVerified RHEA pool depths and 1Click spread telemetry produced by @${safeHandle}.`;
   const artifactSha256 = crypto.createHash("sha256").update(artifactText, "utf8").digest("hex");
   const xPaymentSha256 = crypto.createHash("sha256").update(xPaymentBase64, "utf8").digest("hex");
 
-  const receiptPreimage = `${taskId}|${contextId}|${params.agentHandle}|${amountAtomicUsdc}|${artifactSha256}|${xPaymentSha256}`;
+  const receiptPreimage = `${taskId}|${contextId}|${safeHandle}|${amountAtomicUsdc}|${artifactSha256}|${xPaymentSha256}`;
   const receiptSignatureHex = crypto
     .createHmac("sha256", `kraton-receipt-key-${senderAccountId}`)
     .update(receiptPreimage, "utf8")
@@ -754,7 +834,7 @@ export async function hireAgentViaX402(params: {
       receiptId: `rcpt-${taskId}`,
       taskId,
       contextId,
-      agentHandle: params.agentHandle,
+      agentHandle: safeHandle,
       taskState: "TASK_STATE_COMPLETED",
       amountAtomicUsdc,
       amountUsd: params.agreedAmountUsd,
@@ -844,19 +924,19 @@ export function executeSelfHostedWorkerLoop(params: {
       isRework,
     },
     call2_startAssignment: {
-      endpoint: `/v1/assignments/${params.assignment.assignmentId}/start`,
+      endpoint: `/v1/assignments/${encodeURIComponent(params.assignment.assignmentId)}/start`,
       method: "POST",
       startedBeforeCompute: true,
     },
     call3_threadMessage: {
-      endpoint: `/v1/assignments/${params.assignment.assignmentId}/messages`,
+      endpoint: `/v1/assignments/${encodeURIComponent(params.assignment.assignmentId)}/messages`,
       method: "POST",
       progressNote: isRework
         ? `Applying buyer rework feedback: "${params.assignment.latestMessage?.body}"`
         : "Started TEE-attested execution and cross-chain proof verification.",
     },
     call4_submitDeliverable: {
-      endpoint: `/v1/assignments/${params.assignment.assignmentId}/submit`,
+      endpoint: `/v1/assignments/${encodeURIComponent(params.assignment.assignmentId)}/submit`,
       method: "POST",
       deliverableMarkdown: params.deliverableMarkdown,
       deliverableSha256,
@@ -931,6 +1011,9 @@ export class AgentMarketPublicLedger {
    * and partitions net revenue using `config.yaml`'s 70/20/10 split.
    */
   public recordWorkerPayoutAndSplitRevenue(grossJobUsd: number, jobTitle: string): RevenueSplitBreakdown {
+    if (!Number.isFinite(grossJobUsd) || grossJobUsd <= 0) {
+      throw new Error("INVALID_GROSS_JOB_AMOUNT: grossJobUsd must be finite and > 0.");
+    }
     const runtime = loadKratonConfig();
     const splitCfg = runtime.constraints.revenue_split_percentages;
 

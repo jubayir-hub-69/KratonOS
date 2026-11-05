@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -32,11 +32,28 @@ function CopyHashButton({
   onCopyNotify?: (msg: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    },
+    []
+  );
+
   const handleCopy = () => {
-    void navigator.clipboard.writeText(value);
+    navigator.clipboard?.writeText(value).catch(() => {});
     setCopied(true);
     onCopyNotify?.(`Copied ${value.slice(0, 18)}... to clipboard`);
-    setTimeout(() => setCopied(false), 1600);
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = window.setTimeout(() => {
+      setCopied(false);
+      copyTimerRef.current = null;
+    }, 1600);
   };
   return (
     <button
@@ -414,7 +431,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <button
                 type="button"
                 onClick={handleAddInvoiceToBatch}
-                className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-full border border-emerald-500/45 bg-emerald-500/12 px-4 font-mono text-xs font-extrabold tracking-wider uppercase text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/22 cursor-pointer"
+                className="inline-flex min-h-10 h-auto w-full items-center justify-center gap-2 rounded-full border border-emerald-500/45 bg-emerald-500/12 px-4 py-2 text-center font-mono text-xs font-extrabold tracking-wider whitespace-normal uppercase text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/22 cursor-pointer"
               >
                 <Plus className="h-3.5 w-3.5 shrink-0" />
                 <span>
@@ -580,7 +597,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                 type="button"
                 onClick={() => csvFileInputRef.current?.click()}
                 disabled={loading}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 font-mono text-xs font-bold tracking-wider uppercase text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] cursor-pointer"
+                className="inline-flex min-h-10 h-auto items-center justify-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2 text-center font-mono text-xs font-bold tracking-wider whitespace-normal uppercase text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] cursor-pointer"
               >
                 <Upload className="h-3.5 w-3.5 shrink-0" />
                 <span>Upload Custom Payroll CSV</span>
@@ -599,7 +616,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         <CardContent className="space-y-5">
           {batch && (
             <>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                   <span className="text-xs font-semibold text-[var(--text-secondary)]">
                     Rows Imported
@@ -1101,7 +1118,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               </div>
 
               {split && (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
                   <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
                     <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
                       Net Worker Payout (-5% Fee)
@@ -1166,7 +1183,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
             </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                 <span className="text-xs font-semibold text-[var(--text-secondary)]">
                   Uniform Clearing Price
@@ -1326,13 +1343,29 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
 }) {
   const [derivationPath, setDerivationPath] = useState("kratonos-treasury-1");
   const [flashDerived, setFlashDerived] = useState(false);
+  const flashTimerRef = useRef<number | null>(null);
   const mpc = routerData?.mpcSuite;
   const rhea = routerData?.rheaFarms;
+
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current !== null) {
+        window.clearTimeout(flashTimerRef.current);
+      }
+    },
+    []
+  );
 
   const triggerDerivation = (targetPath: string) => {
     setDerivationPath(targetPath);
     setFlashDerived(true);
-    setTimeout(() => setFlashDerived(false), 1200);
+    if (flashTimerRef.current !== null) {
+      window.clearTimeout(flashTimerRef.current);
+    }
+    flashTimerRef.current = window.setTimeout(() => {
+      setFlashDerived(false);
+      flashTimerRef.current = null;
+    }, 1200);
     onRefresh?.(targetPath);
     onNotify?.(
       `Derived 5 Multi-Chain MPC addresses for path '${targetPath}' & refreshed RHEA Farming`,
@@ -1478,7 +1511,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1">
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-2.5 py-1 max-w-full">
                 <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                   Derivation Path:
                 </span>
@@ -1488,7 +1521,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   onChange={(e) => setDerivationPath(e.target.value)}
                   placeholder="kratonos-treasury-1"
                   aria-label="MPC Derivation Path"
-                  className="h-7 w-40 rounded border border-[var(--border-color)] bg-[var(--bg-input)] px-2.5 font-mono text-xs font-bold text-[var(--text-primary)]"
+                  className="h-7 w-full sm:w-40 rounded border border-[var(--border-color)] bg-[var(--bg-input)] px-2.5 font-mono text-xs font-bold text-[var(--text-primary)]"
                 />
               </div>
               {mpc && (
@@ -1579,7 +1612,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 RHEA Finance Autonomous LP Farming &amp; Single-Tx Reward Sweep
               </CardTitle>
               <CardDescription>
-                Uses the official RHEA `"amount": "0"` withdraw_reward optimization to sweep 100% of unclaimed farming rewards in a single transaction without a prior view balance race.
+                Uses the official RHEA <code className="font-mono">"amount": "0"</code> withdraw_reward optimization to sweep 100% of unclaimed farming rewards in a single transaction without a prior view balance race.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -1610,7 +1643,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 </div>
                 <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/12 p-3.5">
                   <span className="text-xs font-bold text-[var(--accent-emerald)]">
-                    4. Single-Tx `"amount": "0"` Sweep
+                    4. Single-Tx <code className="font-mono">"amount": "0"</code> Sweep
                   </span>
                   <p className="mt-1 font-mono text-xs font-bold text-[var(--accent-emerald)]">
                     withdraw_reward(&#123; amount: "0" &#125;)
@@ -1631,7 +1664,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                   <span className="text-xs font-semibold text-[var(--text-secondary)]">
                     Supplied Collateral

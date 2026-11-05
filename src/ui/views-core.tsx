@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ArrowLeftRight,
   CheckCircle2,
-  Cpu,
   ExternalLink,
   Layers,
   Lock,
@@ -55,6 +54,8 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   loopState,
   onRunLoop,
   onNavigateSwap,
+  onOpenDocsQuickstart,
+  onProofCommitted,
   feedItems,
   judgeMode,
 }: {
@@ -68,6 +69,9 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   };
   onRunLoop: () => void;
   onNavigateSwap: () => void;
+  onOpenDocsQuickstart?: () => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  onProofCommitted?: (receipt: any) => void;
   feedItems: TelemetryFeedItem[];
   judgeMode: boolean;
 }) {
@@ -104,19 +108,27 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
       if (res.ok) {
         const data = await res.json();
         setOnChainReceipt(data);
+        onProofCommitted?.(data);
       }
     } finally {
       setCommittingProof(false);
     }
   };
 
+  const recentLiveTxns = Array.isArray(overview?.recentOnChainTxns)
+    ? overview.recentOnChainTxns
+    : [];
+  const unifiedVaultBalance = overview?.vault?.liquidNear
+    ? `${overview.vault.liquidNear} NEAR`
+    : overview?.balanceFormatted ?? "Syncing RPC...";
+
   return (
     <div className="space-y-6 animate-fade-up">
       {/* Compact, Balanced Left-Aligned Hero Card */}
       <Hero
         eyebrow="SOVEREIGN AGENT TREASURY // POC-4 PROTOCOL"
-        title="Autonomous Treasury & Cross-Chain DeFi OS"
-        subtitle="Give your AI agent a cryptographic spending limit, not your master private key. Verify prices inside hardware enclaves, swap across chains at 1-bp fees, and settle batch payroll automatically."
+        title="Give Your AI Agent a Spending Limit, Not Your Master Private Key."
+        subtitle="Set your treasury rules once in config.yaml. KratonOS verifies prices inside hardware enclaves, blocks scam drainers, swaps across chains, and runs batch payroll automatically."
         ctaLabel="Open Cross-Chain Swap dApp"
         onCtaClick={onNavigateSwap}
         secondaryCtaLabel={
@@ -126,6 +138,8 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         }
         onSecondaryCtaClick={onRunLoop}
         secondaryDisabled={loopState.running}
+        walkthroughCtaLabel="2-Min Judge Walkthrough (No Wallet) →"
+        onWalkthroughCtaClick={onOpenDocsQuickstart}
       />
 
       {judgeMode && (
@@ -136,27 +150,27 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         </div>
       )}
 
-      {/* Clean Static 4-Column Partner Integration Strip (2-Line Layout, Zero Truncation) */}
+      {/* Clean Static 4-Column Partner Integration Strip (Mobile-Safe Wrapping) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {PARTNER_PROTOCOLS.slice(0, 4).map((p) => (
           <div
             key={p.name}
-            className="system-card flex flex-col justify-center gap-1 rounded-xl border border-[var(--border-color)] bg-[var(--panel-solid)] px-4 py-3.5"
+            className="system-card flex min-w-0 flex-col justify-center gap-1 rounded-xl border border-[var(--border-color)] bg-[var(--panel-solid)] px-4 py-3.5"
           >
-            <div className="flex items-center gap-2">
-              <span className="card-status-dot" aria-hidden="true" />
-              <span className="font-display text-xs font-bold whitespace-nowrap text-[var(--text-primary)]">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="card-status-dot shrink-0" aria-hidden="true" />
+              <span className="font-display text-xs font-bold break-words text-[var(--text-primary)]">
                 {p.name}
               </span>
             </div>
-            <div className="pl-4 font-mono text-[11px] font-semibold whitespace-nowrap text-[var(--text-secondary)]">
+            <div className="pl-4 font-mono text-[11px] font-semibold break-words text-[var(--text-secondary)]">
               {p.tag}
             </div>
           </div>
         ))}
       </div>
 
-      {/* 4 Executive Impact Benchmark Cards with Punchy 4-5 Word Before/After Comparisons */}
+      {/* 4 Executive Impact Benchmark Cards with Measured Sources & Formulas */}
       <div>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -170,10 +184,18 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               Measured operational gains comparing manual scripts against KratonOS PoC-4 execution.
             </p>
           </div>
-          <Badge variant="emerald" className="font-mono">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            <span>Zero Master Key Exposure</span>
-          </Badge>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="sky" className="font-mono">
+              <span>
+                Vault Liquid: {unifiedVaultBalance}
+                {overview?.vault?.liveRpcVerified ? " (Live RPC)" : ""}
+              </span>
+            </Badge>
+            <Badge variant="emerald" className="font-mono">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              <span>Zero Master Key Exposure</span>
+            </Badge>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -186,7 +208,9 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                 <Activity className="h-4 w-4 text-[var(--accent-emerald)]" />
               </div>
               <div className="font-display mt-2 text-2xl font-extrabold text-[var(--accent-emerald)]">
-                12 Seconds
+                {loopState.result?.elapsedMs
+                  ? `${(loopState.result.elapsedMs / 1000).toFixed(2)}s Live`
+                  : "12 Seconds"}
               </div>
             </CardHeader>
             <CardContent className="mt-1 space-y-1.5 text-xs leading-relaxed">
@@ -195,6 +219,9 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               </div>
               <div className="font-semibold text-[var(--text-primary)]">
                 After: 4-Lane NEP-611 parallel dispatch
+              </div>
+              <div className="border-t border-[var(--border-color)] pt-2 font-mono text-[11px] text-[var(--text-muted)]">
+                Measured API+RPC pipeline latency
               </div>
             </CardContent>
           </Card>
@@ -218,6 +245,9 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               <div className="font-semibold text-[var(--text-primary)]">
                 After: 1Click Private Shard route
               </div>
+              <div className="border-t border-[var(--border-color)] pt-2 font-mono text-[11px] text-[var(--text-muted)]">
+                1Click /v0/quote 1-bp stable tier
+              </div>
             </CardContent>
           </Card>
 
@@ -240,6 +270,9 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               <div className="font-semibold text-[var(--text-primary)]">
                 After: $2.15/unit (0 LLM calls)
               </div>
+              <div className="border-t border-[var(--border-color)] pt-2 font-mono text-[11px] text-[var(--text-muted)]">
+                20 buyers (510u) × ($2.85 ask - $2.15 clearing)
+              </div>
             </CardContent>
           </Card>
 
@@ -261,6 +294,9 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               </div>
               <div className="font-semibold text-[var(--text-primary)]">
                 After: EXACT_OUTPUT ceiling math
+              </div>
+              <div className="border-t border-[var(--border-color)] pt-2 font-mono text-[11px] text-[var(--text-muted)]">
+                ceil((Net × 10000) / (10000 - bps))
               </div>
             </CardContent>
           </Card>
@@ -320,7 +356,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               return (
                 <div
                   key={st.num}
-                  className={`min-w-[180px] rounded-xl border p-4 transition-all duration-300 ${
+                  className={`min-w-0 rounded-xl border p-4 transition-all duration-300 ${
                     isCompleted
                       ? "border-emerald-500/50 bg-emerald-500/12"
                       : isActive
@@ -344,7 +380,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                       {stateBadge}
                     </span>
                   </div>
-                  <div className="font-display mt-2.5 text-sm font-bold whitespace-nowrap text-[var(--text-primary)]">
+                  <div className="font-display mt-2.5 text-sm font-bold break-words text-[var(--text-primary)]">
                     {st.title}
                   </div>
                   <div className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
@@ -355,29 +391,29 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
             })}
           </div>
 
-          {/* Live On-Chain PoC-4 State Proof Signer & Clickable NEARBlocks / Etherscan Verification Links */}
+          {/* Verified On-Chain Proof Panel & Public Explorer Verification Links */}
           <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="font-display text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
-                  Live On-Chain Proof Anchor &amp; Public Explorer Verification
+                  Verified On-Chain Proof Panel &amp; Public Explorer Ledger
                 </div>
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                  Verify live contract accounts on NEARBlocks &amp; Etherscan, or sign &amp; commit the current PoC-4 <code className="font-mono text-[var(--accent-emerald)]">H_master</code> digest on NEAR Testnet.
+                  Inspect real NEAR Testnet transactions for <code className="font-mono text-[var(--accent-emerald)]">jubayir69.testnet</code> on NEARBlocks, or broadcast &amp; anchor a fresh PoC-4 <code className="font-mono text-[var(--accent-emerald)]">H_master</code> digest on-chain.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={handleCommitProofOnChain}
                 disabled={committingProof}
-                className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-3.5 py-2 font-mono text-xs font-extrabold text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/25 cursor-pointer whitespace-nowrap"
+                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-3.5 py-2 font-mono text-xs font-extrabold text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/25 cursor-pointer"
               >
                 {committingProof ? (
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
                 ) : (
-                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                 )}
-                <span>
+                <span className="break-words text-left">
                   {committingProof
                     ? "SIGNING ON-CHAIN PROOF..."
                     : "Verify & Anchor PoC-4 Proof On-Chain"}
@@ -418,45 +454,107 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   href={link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1 font-bold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+                  className="inline-flex max-w-full items-center gap-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1 font-bold break-words text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
                 >
-                  <span>{link.label}</span>
+                  <span className="break-all sm:break-normal">{link.label}</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
               ))}
             </div>
 
+            {/* Real On-Chain NEAR Testnet Transactions Loaded from Indexer / Live Broadcast */}
+            {recentLiveTxns.length > 0 ? (
+              <div className="space-y-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-3 font-mono text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-bold text-[var(--text-secondary)]">
+                  <span>Recent Verified NEAR Testnet Transactions (jubayir69.testnet)</span>
+                  <span className="text-[var(--accent-emerald)]">LIVE NEARBLOCKS LEDGER</span>
+                </div>
+                <div className="divide-y divide-[var(--border-color)]">
+                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                  {recentLiveTxns.slice(0, 3).map((tx: any) => (
+                    <div
+                      key={tx.txHash}
+                      className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-[11px]"
+                    >
+                      <div className="min-w-0 flex-1 break-all text-[var(--text-primary)]">
+                        <span className="font-bold text-[var(--accent-emerald)]">[LIVE ON-CHAIN TX]</span>{" "}
+                        {tx.actionKind ?? "TRANSACTION"} → {tx.receiverId ?? "jubayir69.testnet"}{" "}
+                        <span className="text-[var(--text-muted)]">
+                          ({String(tx.txHash).slice(0, 16)}...)
+                        </span>
+                      </div>
+                      <a
+                        href={tx.explorerTxUrl ?? `https://testnet.nearblocks.io/txns/${tx.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/20"
+                      >
+                        <span>NEARBlocks ↗</span>
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-3 py-2 font-mono text-[11px] text-[var(--text-secondary)]">
+                Indexer telemetry note: click <strong>Verify &amp; Anchor PoC-4 Proof On-Chain</strong> above or open{" "}
+                <a
+                  href="https://testnet.nearblocks.io/address/jubayir69.testnet"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-bold text-[var(--accent-emerald)] underline"
+                >
+                  testnet.nearblocks.io/address/jubayir69.testnet ↗
+                </a>{" "}
+                to inspect live account history.
+              </div>
+            )}
+
             {/* Live On-Chain Proof Receipt */}
             {onChainReceipt && (
               <div className="rounded-lg border border-emerald-500/40 bg-[var(--bg-input)] p-3 font-mono text-xs animate-fade-in">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-[var(--accent-emerald)]" />
-                    <span className="font-bold text-[var(--text-primary)]">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
+                    <span className="font-bold break-words text-[var(--text-primary)]">
+                      {onChainReceipt.liveBroadcast
+                        ? "[LIVE ON-CHAIN TX]"
+                        : "[SIGNED BORSH PROOF (DRY-RUN)]"}{" "}
                       {onChainReceipt.status} ({onChainReceipt.signerAccountId})
                     </span>
                   </div>
-                  <a
-                    href={onChainReceipt.explorerTxUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25"
-                  >
-                    <span>Inspect Tx on NEARBlocks ({onChainReceipt.txHash.slice(0, 12)}...)</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
+                  {onChainReceipt.liveBroadcast ? (
+                    <a
+                      href={onChainReceipt.explorerTxUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25"
+                    >
+                      <span>Inspect Live Tx on NEARBlocks ({onChainReceipt.txHash.slice(0, 12)}...)</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <a
+                      href="https://testnet.nearblocks.io/address/jubayir69.testnet"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-cyan)] hover:bg-sky-500/25"
+                    >
+                      <span>Offline Keyless Sandbox — View Vault on NEARBlocks ↗</span>
+                    </a>
+                  )}
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] text-[var(--text-secondary)] sm:grid-cols-2">
-                  <div className="truncate">
+                  <div className="break-all">
                     <strong>Tx Hash:</strong> {onChainReceipt.txHash}
                   </div>
-                  <div className="truncate">
+                  <div className="break-all">
                     <strong>Signer Key:</strong> {onChainReceipt.signerPublicKey}
                   </div>
-                  <div className="truncate">
+                  <div className="break-all">
                     <strong>Block #{onChainReceipt.blockHeight}:</strong> {onChainReceipt.blockHash}
                   </div>
-                  <div className="truncate">
+                  <div className="break-all">
                     <strong>PoC-4 H_master:</strong> {onChainReceipt.poc4HMaster}
                   </div>
                 </div>
@@ -633,6 +731,15 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
           }),
         });
         const json = await res.json();
+        if (!res.ok) {
+          if (userTriggered && onNotify) {
+            onNotify(
+              `Router validation: ${json?.error ?? "Select two distinct listed assets"}`,
+              "swap"
+            );
+          }
+          return;
+        }
         setQuoteData(json);
         if (userTriggered && onNotify) {
           onNotify(
@@ -844,7 +951,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                         key={s.val}
                         type="button"
                         onClick={() => setSlippageBps(s.val)}
-                        className={`rounded-lg border py-2 font-mono text-xs font-bold transition-colors cursor-pointer ${
+                        className={`rounded-lg border px-2 py-2 font-mono text-[11px] font-bold break-words transition-colors cursor-pointer sm:text-xs ${
                           slippageBps === s.val
                             ? "border-[var(--accent-emerald)] bg-emerald-500/15 text-[var(--accent-emerald)]"
                             : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] text-[var(--text-secondary)]"
@@ -940,6 +1047,49 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
               {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
               {routeResult?.candidates?.map((cand: any) => {
                 const isWinner = cand.venue === routeResult.winningVenue;
+                const nep413 = quoteData?.nep413IntentPreview;
+                const originAssetId =
+                  nep413?.originAssetId ??
+                  routeResult?.originAssetId ??
+                  `nep141:${originToken.id.toLowerCase()}`;
+                const destinationAssetId =
+                  nep413?.destinationAssetId ??
+                  routeResult?.destinationAssetId ??
+                  `nep141:${destinationToken.id.toLowerCase()}`;
+                const inAtomicPreview = (
+                  BigInt(Math.max(1, Math.round(parsedAmountIn * 1_000_000))) *
+                  (originToken.decimals > 6
+                    ? 10n ** BigInt(originToken.decimals - 6)
+                    : 1n)
+                ).toString();
+                const outAtomicPreview = (
+                  BigInt(Math.max(1, Math.round(estimatedOutUnits * 1_000_000))) *
+                  (destinationToken.decimals > 6
+                    ? 10n ** BigInt(destinationToken.decimals - 6)
+                    : 1n)
+                ).toString();
+                const preSignPayloadObj = {
+                  standard: "nep413",
+                  verifying_contract: nep413?.verifyingContract ?? "intents.near",
+                  deposit_type: nep413?.depositType ?? "CONFIDENTIAL_INTENTS",
+                  dry_run_quote_mode: true,
+                  signer_id: "jubayir69.testnet",
+                  recipient: recipient.trim() || "jubayir69.testnet",
+                  nonce:
+                    nep413?.signedEnvelope?.payload?.nonce ??
+                    "a91f3c8e7d6b5a4938271605f4e3d2c1b0a9f8e7d6c5b4a39281706f5e4d3c2b",
+                  intents: [
+                    {
+                      intent: "token_diff",
+                      diff: {
+                        [originAssetId]: `-${inAtomicPreview}`,
+                        [destinationAssetId]: outAtomicPreview,
+                      },
+                      app_fee_bps: cand.appFeeBps,
+                      fee_recipient: routeResult.feeRecipient ?? "jubayir33.near",
+                    },
+                  ],
+                };
                 return (
                   <Card
                     key={cand.venue}
@@ -947,8 +1097,8 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   >
                     <CardHeader className="pb-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2.5">
-                          <CardTitle className="font-mono text-base">
+                        <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+                          <CardTitle className="font-mono text-base break-words">
                             {cand.venue.replace(/_/g, " ")}
                           </CardTitle>
                           {isWinner && <Badge variant="emerald">BEST ROUTE</Badge>}
@@ -962,29 +1112,61 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       </div>
                       <CardDescription>{cand.details}</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5 font-mono text-xs">
-                        <div>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-1 gap-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5 font-mono text-xs sm:grid-cols-3">
+                        <div className="min-w-0">
                           <span className="text-[var(--text-secondary)]">
                             Protocol + App Fee:
                           </span>
-                          <div className="mt-0.5 font-bold text-[var(--text-primary)]">
+                          <div className="mt-0.5 font-bold break-words text-[var(--text-primary)]">
                             {cand.protocolFeeBps} bps + {cand.appFeeBps} bps = {cand.totalFeeBps} bps
                           </div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <span className="text-[var(--text-secondary)]">Price Impact:</span>
-                          <div className="mt-0.5 font-bold text-[var(--text-primary)]">
+                          <div className="mt-0.5 font-bold break-words text-[var(--text-primary)]">
                             {cand.priceImpactBps} bps
                           </div>
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <span className="text-[var(--text-secondary)]">Fee Recipient:</span>
-                          <div className="mt-0.5 font-bold text-[var(--text-primary)]">
+                          <div className="mt-0.5 font-bold break-all text-[var(--text-primary)]">
                             {routeResult.feeRecipient}
                           </div>
                         </div>
                       </div>
+
+                      {isWinner && (
+                        <details className="group rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5 font-mono text-xs">
+                          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-bold text-[var(--accent-emerald)]">
+                            <span>
+                              Inspect Pre-Sign NEP-413 Intent Payload &amp; Token Contracts
+                            </span>
+                            <span className="rounded border border-emerald-500/35 bg-emerald-500/12 px-2 py-0.5 text-[10px]">
+                              NEP-413 JSON ▾
+                            </span>
+                          </summary>
+                          <div className="mt-3 space-y-2.5 border-t border-[var(--border-color)] pt-3">
+                            <div className="grid grid-cols-1 gap-2 text-[11px] sm:grid-cols-2">
+                              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-2.5 break-all">
+                                <span className="text-[var(--text-muted)]">Origin Asset Contract:</span>
+                                <div className="mt-0.5 font-bold text-[var(--text-primary)]">
+                                  {originAssetId}
+                                </div>
+                              </div>
+                              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-2.5 break-all">
+                                <span className="text-[var(--text-muted)]">Destination Asset Contract:</span>
+                                <div className="mt-0.5 font-bold text-[var(--text-primary)]">
+                                  {destinationAssetId}
+                                </div>
+                              </div>
+                            </div>
+                            <pre className="max-h-60 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-3 text-[11px] leading-relaxed text-[var(--accent-emerald)]">
+                              <code>{JSON.stringify(preSignPayloadObj, null, 2)}</code>
+                            </pre>
+                          </div>
+                        </details>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -1157,6 +1339,16 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
   const [evalData, setEvalData] = React.useState<any | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [litSignalStep, setLitSignalStep] = React.useState(4);
+  const shieldTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(
+    () => () => {
+      if (shieldTimerRef.current !== null) {
+        window.clearInterval(shieldTimerRef.current);
+      }
+    },
+    []
+  );
 
   const runScan = React.useCallback(
     async (
@@ -1167,7 +1359,10 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
     ) => {
       setLoading(true);
       setLitSignalStep(0);
-      const stepTimer = window.setInterval(() => {
+      if (shieldTimerRef.current !== null) {
+        window.clearInterval(shieldTimerRef.current);
+      }
+      shieldTimerRef.current = window.setInterval(() => {
         setLitSignalStep((s) => (s < 4 ? s + 1 : 4));
       }, 120);
 
@@ -1191,9 +1386,13 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
           }),
         });
         const json = await res.json();
+        if (!res.ok) {
+          if (userTriggered && onNotify) {
+            onNotify(`Security scan validation: ${json?.error ?? "Invalid parameters"}`, "shield");
+          }
+          return;
+        }
         setEvalData(json);
-        clearInterval(stepTimer);
-        setLitSignalStep(4);
         if (userTriggered && onNotify) {
           onNotify(
             `4-Signal Scam Shield Verdict: ${String(
@@ -1203,7 +1402,10 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
           );
         }
       } finally {
-        clearInterval(stepTimer);
+        if (shieldTimerRef.current !== null) {
+          window.clearInterval(shieldTimerRef.current);
+          shieldTimerRef.current = null;
+        }
         setLitSignalStep(4);
         setLoading(false);
       }
@@ -1361,7 +1563,9 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                   >
                     {verdict.decision === "block"
                       ? `VERDICT: BLOCKED & QUARANTINED (${verdict.riskScore}/100)`
-                      : `VERDICT: CLEARED (${verdict.riskScore}/100)`}
+                      : verdict.decision === "warn"
+                        ? `VERDICT: WARN — COUNCIL REVIEW (${verdict.riskScore}/100)`
+                        : `VERDICT: CLEARED (${verdict.riskScore}/100)`}
                   </Badge>
                 </div>
               </CardHeader>
@@ -1450,14 +1654,14 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
           {/* 4-Lane NEP-611 Parallel Gas-Key Topology */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle className="text-sm">
                   4-Lane NEP-611 Parallel Gas-Key Multiplexer
                 </CardTitle>
                 <Badge variant="emerald">WithdrawFromGasKey Burn Guard Active</Badge>
               </div>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {(
                 overview?.nep611Lanes ?? [
                   { index: 0, role: "scout", subAccountId: "scout.jubayir69.testnet" },
@@ -1469,16 +1673,114 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
               ).map((lane: any) => (
                 <div
                   key={lane.index}
-                  className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3"
+                  className="min-w-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3"
                 >
                   <div className="font-mono text-xs font-bold text-[var(--accent-emerald)]">
                     LANE 0{lane.index} // {lane.role.toUpperCase()}
                   </div>
-                  <div className="mt-1 truncate font-mono text-[11px] text-[var(--text-secondary)]">
+                  <div className="mt-1 break-all font-mono text-[11px] text-[var(--text-secondary)]">
                     {lane.subAccountId}
                   </div>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+
+          {/* Live On-Chain Access Key Auditor (view_access_key_list on jubayir69.testnet) */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-sm">
+                    Live On-Chain Access Key Custody Auditor (view_access_key_list)
+                  </CardTitle>
+                  <CardDescription className="mt-0.5">
+                    Real-time NEAR Testnet RPC key inventory for{" "}
+                    <code className="font-mono text-[var(--accent-emerald)]">
+                      {evalData?.treasuryAccount ?? overview?.treasuryAccount ?? "jubayir69.testnet"}
+                    </code>
+                  </CardDescription>
+                </div>
+                <a
+                  href="https://testnet.nearblocks.io/address/jubayir69.testnet#keys"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/12 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/20"
+                >
+                  <span>Verify Keys on NEARBlocks</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2.5 font-mono text-xs">
+              {(() => {
+                const liveKeys =
+                  Array.isArray(evalData?.accessKeyList) && evalData.accessKeyList.length > 0
+                    ? evalData.accessKeyList
+                    : Array.isArray(overview?.accessKeyList)
+                      ? overview.accessKeyList
+                      : [];
+
+                if (liveKeys.length === 0) {
+                  return (
+                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3 text-[11px] text-[var(--text-secondary)]">
+                      No live RPC key list returned in offline sandbox — when connected to{" "}
+                      <code className="text-[var(--text-primary)]">https://rpc.testnet.near.org</code>,{" "}
+                      <code className="text-[var(--accent-emerald)]">view_access_key_list</code> streams every active{" "}
+                      <code className="text-[var(--text-primary)]">public_key</code>,{" "}
+                      <code className="text-[var(--text-primary)]">nonce</code>, and{" "}
+                      <code className="text-[var(--text-primary)]">permission</code> on{" "}
+                      <code className="text-[var(--accent-emerald)]">jubayir69.testnet</code>.
+                    </div>
+                  );
+                }
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return liveKeys.slice(0, 6).map((k: any, idx: number) => {
+                  const perm = k?.access_key?.permission;
+                  const isFull = perm === "FullAccess";
+                  const fc = typeof perm === "object" && perm !== null ? perm.FunctionCall : null;
+                  return (
+                    <div
+                      key={k.public_key ?? idx}
+                      className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3 space-y-1.5"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="break-all font-bold text-[var(--text-primary)]">
+                          {k.public_key}
+                        </span>
+                        <Badge variant={isFull ? "amber" : "emerald"}>
+                          {isFull ? "FullAccess (Cold Recovery)" : "Scoped FunctionCall"}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--text-secondary)]">
+                        <span>
+                          <strong>Nonce:</strong> {String(k?.access_key?.nonce ?? 0)}
+                        </span>
+                        {fc && (
+                          <>
+                            <span className="break-all">
+                              <strong>Receiver:</strong> {fc.receiver_id}
+                            </span>
+                            <span>
+                              <strong>Methods:</strong>{" "}
+                              {Array.isArray(fc.method_names) && fc.method_names.length > 0
+                                ? fc.method_names.join(", ")
+                                : "* (Contract-Scoped)"}
+                            </span>
+                            <span>
+                              <strong>Allowance:</strong>{" "}
+                              {fc.allowance
+                                ? `${(Number(fc.allowance) / 1e24).toFixed(4)} NEAR`
+                                : "null (Unlimited Gas)"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </CardContent>
           </Card>
         </div>
@@ -1496,6 +1798,9 @@ function renderInlineFormattedText(raw: string): React.ReactNode {
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, "")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
     .trim();
 
   const tokenRegex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
@@ -1835,6 +2140,16 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
     )
   );
   const [verifiedStepsCount, setVerifiedStepsCount] = React.useState(8);
+  const teeStepTimerRef = React.useRef<number | null>(null);
+
+  React.useEffect(
+    () => () => {
+      if (teeStepTimerRef.current !== null) {
+        window.clearInterval(teeStepTimerRef.current);
+      }
+    },
+    []
+  );
 
   const runVerification = React.useCallback(
     async (userTriggered = false, overridePrompt?: string) => {
@@ -1845,7 +2160,10 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
       if (userTriggered) {
         setTeeData(buildClientFallbackTeeData(activePrompt));
       }
-      const stepTimer = window.setInterval(() => {
+      if (teeStepTimerRef.current !== null) {
+        window.clearInterval(teeStepTimerRef.current);
+      }
+      teeStepTimerRef.current = window.setInterval(() => {
         setVerifiedStepsCount((prev) => (prev < 8 ? prev + 1 : 8));
       }, 110);
 
@@ -1888,7 +2206,10 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
           );
         }
       } finally {
-        clearInterval(stepTimer);
+        if (teeStepTimerRef.current !== null) {
+          window.clearInterval(teeStepTimerRef.current);
+          teeStepTimerRef.current = null;
+        }
         setVerifiedStepsCount(8);
         setLoading(false);
       }
@@ -1908,6 +2229,10 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
   const liveReasoning = teeData?.liveReasoning;
   const oracle = teeData?.oracleSnap;
 
+  const isLiveNearAiUsed = Boolean(
+    liveReasoning?.usedLiveApi || liveReasoning?.liveApiUsed || tee8?.liveApiUsed
+  );
+
   const checklist = [
     {
       step: "Step 1: Fresh 32-Byte Enclave Nonce",
@@ -1916,7 +2241,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
     {
       step: "Step 2: NEAR AI Cloud Gateway & Model",
       detail: `${liveReasoning?.model ?? "zai-org/GLM-5.1-FP8"} (liveApiUsed=${String(
-        liveReasoning?.usedLiveApi ?? true
+        isLiveNearAiUsed
       )})`,
     },
     {
@@ -2037,8 +2362,8 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-sm">Signed Enclave Reasoning &amp; Market Report</CardTitle>
-                  <Badge variant="sky" className="font-mono">
-                    liveApiUsed: {String(liveReasoning.usedLiveApi)}
+                  <Badge variant={isLiveNearAiUsed ? "emerald" : "sky"} className="font-mono">
+                    liveApiUsed: {String(isLiveNearAiUsed)}
                   </Badge>
                 </div>
               </CardHeader>
@@ -2052,9 +2377,9 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                     }
                   />
                 </div>
-                <div className="font-mono text-[11px] text-[var(--text-secondary)]">
-                  <div>Signing Address: {liveReasoning.signingAddress}</div>
-                  <div className="truncate">Signature: {liveReasoning.signature}</div>
+                <div className="font-mono text-[11px] text-[var(--text-secondary)] space-y-0.5">
+                  <div className="break-all">Signing Address: {liveReasoning.signingAddress}</div>
+                  <div className="break-all">Signature: {liveReasoning.signature}</div>
                 </div>
               </CardContent>
             </Card>
@@ -2064,7 +2389,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
           {oracle && (
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-sm">
                     OutLayer WASI P2 Ethereum Mainnet EIP-1186 &amp; Multi-Asset Median Oracle
                   </CardTitle>
@@ -2073,7 +2398,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3 font-mono text-xs sm:grid-cols-3">
+              <CardContent className="grid grid-cols-1 gap-3 font-mono text-xs sm:grid-cols-2 md:grid-cols-3">
                 {(oracle.dynamicAssetQuotes && oracle.dynamicAssetQuotes.length > 0
                   ? oracle.dynamicAssetQuotes
                   : [
@@ -2118,7 +2443,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                   return (
                     <div
                       key={q.pair || idx}
-                      className={`rounded-lg border p-3 ${
+                      className={`min-w-0 rounded-lg border p-3 ${
                         isUnlisted
                           ? "border-rose-500/40 bg-rose-500/5"
                           : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
@@ -2178,11 +2503,11 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                     </div>
                   );
                 })}
-                <div className="col-span-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3 sm:col-span-3">
+                <div className="col-span-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3 sm:col-span-2 md:col-span-3">
                   <div className="text-[var(--text-secondary)]">
                     Verified Ethereum StateRoot (Keccak-256 Trie):
                   </div>
-                  <div className="mt-1 truncate font-bold text-[var(--text-primary)]">
+                  <div className="mt-1 break-all font-bold text-[var(--text-primary)]">
                     {oracle.stateRoot}
                   </div>
                 </div>

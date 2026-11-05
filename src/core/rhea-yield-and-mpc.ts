@@ -99,7 +99,10 @@ export async function scanAndHarvestRheaFarms(params?: {
   const exchangeContractId = runtime.env.RHEA_EXCHANGE_CONTRACT_ID; // "ref-finance.testnet"
   const seedId = params?.seedId ?? `${exchangeContractId}@0`;
   const rewardTokenId = params?.rewardTokenId ?? "wrap.testnet";
-  const lpSharesAmount = params?.lpSharesAmount ?? "1000000000000000000";
+  const lpSharesAmount = (params?.lpSharesAmount ?? "1000000000000000000").trim();
+  if (!/^\d+$/.test(lpSharesAmount) || BigInt(lpSharesAmount) <= 0n) {
+    throw new Error("INVALID_LP_SHARES_AMOUNT: lpSharesAmount must be a positive integer string.");
+  }
 
   let liveContractVerified = false;
   let metadata: RheaFarmMetadata = {
@@ -311,8 +314,11 @@ export async function deriveMpcMultiChainAddresses(params?: {
 }): Promise<MpcDerivedMultiChainSuite> {
   const runtime = loadKratonConfig();
   const rpc = params?.rpcClient ?? new NearRpcClient();
-  const nearAccountId = params?.nearAccountId ?? runtime.constraints.treasury_account;
-  const derivationPath = params?.derivationPath ?? "kratonos/invoice-101";
+  const nearAccountId = (params?.nearAccountId ?? runtime.constraints.treasury_account).trim();
+  const derivationPath = (params?.derivationPath ?? "kratonos/invoice-101").trim();
+  if (!nearAccountId || !derivationPath) {
+    throw new Error("INVALID_MPC_DERIVATION_INPUT: nearAccountId and derivationPath must be non-empty.");
+  }
   const mpcSignerContractId = runtime.env.MPC_SIGNER_CONTRACT_ID; // "v1.signer-prod.testnet"
 
   let mpcContractExistsOnChain = true;
@@ -366,8 +372,11 @@ export async function deriveMpcMultiChainAddresses(params?: {
     value: 1_000_000_000_000_000n,
   });
 
-  // 2. Bitcoin Native SegWit (`bc1q...`) P2WPKH Address (RIPEMD160(SHA256(childPubKey)))
-  const sha256Digest = crypto.createHash("sha256").update(epsilonBuffer).digest();
+  // 2. Bitcoin Native SegWit (`bc1q...`) P2WPKH Address (RIPEMD160(SHA256(compressedSecp256k1PubKey33)))
+  const secp256k1Ecdh = crypto.createECDH("secp256k1");
+  secp256k1Ecdh.setPrivateKey(epsilonBuffer);
+  const compressedPubKey33 = secp256k1Ecdh.getPublicKey(undefined, "compressed");
+  const sha256Digest = crypto.createHash("sha256").update(compressedPubKey33).digest();
   const hash160 = crypto.createHash("ripemd160").update(sha256Digest).digest();
   const bitcoinSegwitAddress = encodeSegwitBech32Address("bc", 0, hash160);
 

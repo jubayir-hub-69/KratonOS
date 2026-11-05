@@ -1,4 +1,3 @@
-import "dotenv/config";
 import crypto from "node:crypto";
 import { OneClickService, OpenAPI } from "@defuse-protocol/one-click-sdk-typescript";
 import { loadKratonConfig } from "./config.js";
@@ -179,14 +178,24 @@ export async function fetchLiveOneClickTokens(): Promise<{
   try {
     const sdkTokens = await OneClickService.getTokens();
     if (Array.isArray(sdkTokens) && sdkTokens.length > 0) {
-      const normalized: OneClickTokenInfo[] = sdkTokens.map((t) => ({
-        assetId: String(t.assetId),
-        symbol: String(t.symbol),
-        decimals: Number(t.decimals),
-        blockchain: String(t.blockchain),
-        price: Number(t.price ?? 0),
-        contractAddress: t.contractAddress ? String(t.contractAddress) : undefined,
-      }));
+      const normalized: OneClickTokenInfo[] = sdkTokens.map((t) => {
+        const symbol = String(t.symbol ?? "");
+        const rawPrice = Number(t.price ?? 0);
+        const safePrice =
+          Number.isFinite(rawPrice) && rawPrice > 0
+            ? rawPrice
+            : STABLECOIN_SYMBOLS.has(symbol.toUpperCase())
+              ? 1.0
+              : 0;
+        return {
+          assetId: String(t.assetId),
+          symbol,
+          decimals: Number(t.decimals),
+          blockchain: String(t.blockchain),
+          price: safePrice,
+          contractAddress: t.contractAddress ? String(t.contractAddress) : undefined,
+        };
+      });
       return {
         tokens: normalized,
         liveFetched: true,
@@ -197,25 +206,34 @@ export async function fetchLiveOneClickTokens(): Promise<{
     // Fallback to direct fetch with timeout if SDK wrapper encountered network isolation
   }
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 7000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 7000);
     const res = await fetch(`${baseUrl}/v0/tokens`, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
     });
-    clearTimeout(timer);
 
     if (res.ok) {
       const raw = (await res.json()) as Array<Record<string, unknown>>;
-      const normalized: OneClickTokenInfo[] = raw.map((t) => ({
-        assetId: String(t.assetId),
-        symbol: String(t.symbol),
-        decimals: Number(t.decimals ?? 6),
-        blockchain: String(t.blockchain ?? "near"),
-        price: Number(t.price ?? 1),
-        contractAddress: t.contractAddress ? String(t.contractAddress) : undefined,
-      }));
+      const normalized: OneClickTokenInfo[] = raw.map((t) => {
+        const symbol = String(t.symbol ?? "");
+        const rawPrice = Number(t.price ?? 0);
+        const safePrice =
+          Number.isFinite(rawPrice) && rawPrice > 0
+            ? rawPrice
+            : STABLECOIN_SYMBOLS.has(symbol.toUpperCase())
+              ? 1.0
+              : 0;
+        return {
+          assetId: String(t.assetId),
+          symbol,
+          decimals: Number(t.decimals ?? 6),
+          blockchain: String(t.blockchain ?? "near"),
+          price: safePrice,
+          contractAddress: t.contractAddress ? String(t.contractAddress) : undefined,
+        };
+      });
       return {
         tokens: normalized,
         liveFetched: true,
@@ -224,6 +242,8 @@ export async function fetchLiveOneClickTokens(): Promise<{
     }
   } catch {
     // Sandbox fallback with real canonical 1Click assetIds
+  } finally {
+    clearTimeout(timer);
   }
 
   return {
@@ -312,6 +332,22 @@ export async function fetchLiveOneClickTokens(): Promise<{
 // 2. Tri-Venue Smart Router (`1Click` + `RHEA V1 AMM` + `RHEA V2 DCL`)
 // ============================================================================
 
+function parseDecimalToAtomicBigInt(humanAmount: number, decimals: number): bigint {
+  if (!Number.isFinite(humanAmount) || humanAmount <= 0) {
+    throw new Error("INVALID_ROUTER_AMOUNT: amountInHuman must be a finite positive number.");
+  }
+  const safeDecimals = Math.max(0, Math.min(36, Math.trunc(decimals)));
+  const fixedStr = humanAmount.toFixed(Math.min(safeDecimals, 12));
+  const [intPartRaw, fracPartRaw = ""] = fixedStr.split(".");
+  const intPart = intPartRaw.replace(/^0+(?=\d)/, "") || "0";
+  const paddedFrac = fracPartRaw.padEnd(safeDecimals, "0").slice(0, safeDecimals);
+  const atomic = BigInt(`${intPart}${paddedFrac}`);
+  if (atomic <= 0n) {
+    throw new Error("INVALID_ROUTER_AMOUNT: atomic swap amount resolved to 0.");
+  }
+  return atomic;
+}
+
 export async function findOptimalTriVenueRoute(params: {
   originSymbol?: string;
   destinationSymbol?: string;
@@ -322,10 +358,28 @@ export async function findOptimalTriVenueRoute(params: {
 }): Promise<TriVenueRouteResult> {
   const runtime = loadKratonConfig();
   const rpc = params.rpcClient ?? new NearRpcClient();
-  const originSym = (params.originSymbol ?? "USDC").toUpperCase();
-  const destSym = (params.destinationSymbol ?? "USDT").toUpperCase();
+  const originSym = (params.originSymbol ?? "USDC").trim().toUpperCase();
+  const destSym = (params.destinationSymbol ?? "USDT").trim().toUpperCase();
   const amountInHuman = params.amountInHuman ?? 100.0; // $100.00 swap
   const effectiveSlippageBps = params.slippageBps ?? runtime.constraints.max_slippage_bps;
+
+  if (!originSym || !destSym) {
+    throw new Error("UNLISTED_ROUTER_TOKEN: Origin and destination token symbols must be non-empty.");
+  }
+  if (!Number.isFinite(amountInHuman) || amountInHuman <= 0 || amountInHuman > 1_000_000_000) {
+    throw new Error(
+      `INVALID_ROUTER_AMOUNT: amountInHuman (${String(amountInHuman)}) must be in (0, 1000000000].`
+    );
+  }
+  if (
+    !Number.isFinite(effectiveSlippageBps) ||
+    effectiveSlippageBps < 0 ||
+    effectiveSlippageBps > runtime.constraints.max_slippage_bps
+  ) {
+    throw new Error(
+      `INVALID_ROUTER_SLIPPAGE: slippageBps (${String(effectiveSlippageBps)}) must be within [0, ${runtime.constraints.max_slippage_bps}].`
+    );
+  }
 
   const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near";
   const hasOneClickApiKey = Boolean(runtime.env.ONECLICK_API_KEY && runtime.env.ONECLICK_API_KEY.trim());
@@ -350,33 +404,58 @@ export async function findOptimalTriVenueRoute(params: {
   const safeAppFeeBps = Math.min(requestedAppFeeBps, maxAllowedAppFee);
   const totalOneClickFeeBps = safeAppFeeBps + oneClickProtocolFeeBps;
 
-  // 1. Discover live tokens from 1Click `/v0/tokens`
+  // 1. Discover live tokens from 1Click `/v0/tokens` (strictly reject unlisted or identical same-chain swaps)
   const tokenRegistry = await fetchLiveOneClickTokens();
   const originToken =
     tokenRegistry.tokens.find(
       (t) => t.symbol.toUpperCase() === originSym && t.blockchain.toLowerCase() === "near"
-    ) ??
-    tokenRegistry.tokens.find((t) => t.symbol.toUpperCase() === originSym) ??
-    tokenRegistry.tokens[0];
+    ) ?? tokenRegistry.tokens.find((t) => t.symbol.toUpperCase() === originSym);
+
+  if (!originToken) {
+    throw new Error(
+      `UNLISTED_ROUTER_TOKEN: Origin asset "${originSym}" is not listed in the verified 1Click/RHEA registry.`
+    );
+  }
+
+  const destMatchesSymbol = tokenRegistry.tokens.filter(
+    (t) => t.symbol.toUpperCase() === destSym
+  );
+  if (destMatchesSymbol.length === 0) {
+    throw new Error(
+      `UNLISTED_ROUTER_TOKEN: Destination asset "${destSym}" is not listed in the verified 1Click/RHEA registry.`
+    );
+  }
 
   const destToken =
-    tokenRegistry.tokens.find(
-      (t) =>
-        t.symbol.toUpperCase() === destSym &&
-        t.assetId !== originToken.assetId &&
-        t.blockchain.toLowerCase() === "near"
-    ) ??
-    tokenRegistry.tokens.find(
-      (t) => t.symbol.toUpperCase() === destSym && t.assetId !== originToken.assetId
-    ) ??
-    tokenRegistry.tokens[1];
+    destMatchesSymbol.find(
+      (t) => t.assetId !== originToken.assetId && t.blockchain.toLowerCase() === "near"
+    ) ?? destMatchesSymbol.find((t) => t.assetId !== originToken.assetId);
 
-  const amountInAtomic = BigInt(
-    Math.round(amountInHuman * 10 ** Math.min(originToken.decimals, 6))
-  ) * (originToken.decimals > 6 ? 10n ** BigInt(originToken.decimals - 6) : 1n);
+  if (!destToken || destToken.assetId === originToken.assetId) {
+    throw new Error(
+      `IDENTICAL_ASSET_SWAP_REJECTED: Origin and destination resolve to the same asset (${originToken.assetId}).`
+    );
+  }
 
-  const originPriceUsd = originToken.price && originToken.price > 0 ? originToken.price : 1.0;
-  const destPriceUsd = destToken.price && destToken.price > 0 ? destToken.price : 1.0;
+  const amountInAtomic = parseDecimalToAtomicBigInt(amountInHuman, originToken.decimals);
+
+  const originPriceUsd =
+    originToken.price && originToken.price > 0
+      ? originToken.price
+      : STABLECOIN_SYMBOLS.has(originSym)
+        ? 1.0
+        : 0;
+  const destPriceUsd =
+    destToken.price && destToken.price > 0
+      ? destToken.price
+      : STABLECOIN_SYMBOLS.has(destSym)
+        ? 1.0
+        : 0;
+  if (!isStableOrSameAsset && (originPriceUsd <= 0 || destPriceUsd <= 0)) {
+    throw new Error(
+      `ORACLE_PRICE_UNAVAILABLE: Missing verified USD reference price for ${originSym}/${destSym}.`
+    );
+  }
   const priceRatio = isStableOrSameAsset ? 1.0 : originPriceUsd / destPriceUsd;
   const grossDestHuman = amountInHuman * priceRatio;
 
@@ -392,25 +471,29 @@ export async function findOptimalTriVenueRoute(params: {
     ? feeRecipient
     : runtime.constraints.treasury_account;
 
+  const originIsNear = originToken.blockchain.toLowerCase() === "near";
+  const destIsNear = destToken.blockchain.toLowerCase() === "near";
+
   const quoteRequestBody = {
     dry: true,
     swapType: "EXACT_INPUT",
     originAsset: originToken.assetId,
-    depositType: "ORIGIN_CHAIN",
+    depositType: originIsNear ? "ORIGIN_CHAIN" : "INTENTS",
     destinationAsset: destToken.assetId,
     amount: amountInAtomic.toString(),
     recipient: mainnetQuoteAccount,
-    recipientType: "DESTINATION_CHAIN",
+    recipientType: destIsNear ? "DESTINATION_CHAIN" : "INTENTS",
     refundTo: mainnetQuoteAccount,
-    refundType: "ORIGIN_CHAIN",
+    refundType: originIsNear ? "ORIGIN_CHAIN" : "INTENTS",
     slippageTolerance: effectiveSlippageBps,
     deadline: deadlineIso,
+    confidentiality: "basic",
     appFees: [{ recipient: feeRecipient, fee: safeAppFeeBps }],
   };
 
+  const quoteController = new AbortController();
+  const quoteTimer = setTimeout(() => quoteController.abort(), 8000);
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -423,9 +506,8 @@ export async function findOptimalTriVenueRoute(params: {
       method: "POST",
       headers,
       body: JSON.stringify(quoteRequestBody),
-      signal: controller.signal,
+      signal: quoteController.signal,
     });
-    clearTimeout(timer);
 
     if (res.ok) {
       const data = (await res.json()) as {
@@ -441,6 +523,8 @@ export async function findOptimalTriVenueRoute(params: {
     }
   } catch {
     // Fallback calculation if sandbox blocks outbound POST
+  } finally {
+    clearTimeout(quoteTimer);
   }
 
   if (!oneClickOutAtomic) {
@@ -488,9 +572,9 @@ export async function findOptimalTriVenueRoute(params: {
     10_000n;
 
   // For 1-bp stablecoin routes, 1Click Intents solver provides zero-impact 1-bp spread
-  const oneClickEffectiveOutForComparison = isStableOrSameAsset
-    ? (BigInt(Math.round(grossDestHuman * 1_000_000)) * BigInt(10_000 - (1 + safeAppFeeBps))) / 10_000n
-    : BigInt(oneClickOutAtomic.slice(0, 12) || "0");
+  const oneClickStableMicroUnits =
+    (BigInt(Math.round(grossDestHuman * 1_000_000)) * BigInt(10_000 - (1 + safeAppFeeBps))) /
+    10_000n;
 
   const targetRecipientLabel = params.recipient ? `, recipient=${params.recipient}` : "";
 
@@ -501,10 +585,10 @@ export async function findOptimalTriVenueRoute(params: {
       destinationAssetId: destToken.assetId,
       amountInAtomic: amountInAtomic.toString(),
       expectedAmountOutAtomic: isStableOrSameAsset
-        ? oneClickEffectiveOutForComparison.toString()
+        ? oneClickStableMicroUnits.toString()
         : oneClickOutAtomic,
       expectedAmountOutFormatted: isStableOrSameAsset
-        ? (Number(oneClickEffectiveOutForComparison) / 1_000_000).toFixed(6)
+        ? (Number(oneClickStableMicroUnits) / 1_000_000).toFixed(6)
         : oneClickOutFormatted,
       protocolFeeBps: isStableOrSameAsset ? 1 : oneClickProtocolFeeBps,
       appFeeBps: safeAppFeeBps,
@@ -624,6 +708,12 @@ export function buildAndSignOffChainIntent(params: {
   deadlineIso?: string;
   seed?: string;
 }): OffChainSignedIntentSubmission {
+  if (!params.signerId || !params.signerId.trim()) {
+    throw new Error("INVALID_INTENT_SIGNER: signerId must be non-empty.");
+  }
+  if (!params.tokenDiff || Object.keys(params.tokenDiff).length === 0) {
+    throw new Error("INVALID_TOKEN_DIFF: tokenDiff must contain at least one asset delta.");
+  }
   const depositType = params.depositType ?? "CONFIDENTIAL_INTENTS";
   const standard = params.standard ?? "raw_ed25519";
   const deadline = params.deadlineIso ?? new Date(Date.now() + 600_000).toISOString();
@@ -691,9 +781,29 @@ export function computeLimitOrderQuoteCeilingAtomic(params: {
   baseDecimals: number;
   quoteDecimals: number;
 }): bigint {
-  const [intPart, fracPart = ""] = params.priceHumanString.trim().split(".");
+  if (params.quantityBaseAtomic <= 0n) {
+    throw new Error("INVALID_LIMIT_ORDER_QUANTITY: quantityBaseAtomic must be > 0.");
+  }
+  const trimmedPrice = params.priceHumanString.trim();
+  if (!/^\d+(?:\.\d+)?$/.test(trimmedPrice)) {
+    throw new Error(`INVALID_LIMIT_ORDER_PRICE: "${params.priceHumanString}" is not a positive decimal.`);
+  }
+  if (
+    !Number.isInteger(params.baseDecimals) ||
+    params.baseDecimals < 0 ||
+    params.baseDecimals > 36 ||
+    !Number.isInteger(params.quoteDecimals) ||
+    params.quoteDecimals < 0 ||
+    params.quoteDecimals > 36
+  ) {
+    throw new Error("INVALID_LIMIT_ORDER_DECIMALS: decimals must be integers in [0, 36].");
+  }
+  const [intPart, fracPart = ""] = trimmedPrice.split(".");
   const priceScaleDecimals = fracPart.length;
   const priceScaledBigInt = BigInt(`${intPart}${fracPart}`);
+  if (priceScaledBigInt <= 0n) {
+    throw new Error("INVALID_LIMIT_ORDER_PRICE: limit order price must be > 0.");
+  }
 
   const numerator =
     params.quantityBaseAtomic * priceScaledBigInt * 10n ** BigInt(params.quoteDecimals);
@@ -721,6 +831,9 @@ export function createConfidentialLimitOrder(params: {
   refundTo?: string;
   vrfRequestId?: number;
 }): ConfidentialLimitOrderResult {
+  if (!/^\d+$/.test(params.quantityBaseAtomic.trim())) {
+    throw new Error("INVALID_LIMIT_ORDER_QUANTITY: quantityBaseAtomic must be an unsigned integer string.");
+  }
   const runtime = loadKratonConfig();
   const recipient = params.recipient ?? runtime.constraints.treasury_account;
   const refundTo = params.refundTo ?? runtime.constraints.treasury_account;
@@ -846,9 +959,9 @@ export async function fetchOneClickExplorerTelemetry(): Promise<OneClickExplorer
   const explorerUrl = "https://explorer.near-intents.org/api/v0/transactions?numberOfTransactions=5";
 
   if (explorerKey.length > 0) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 6000);
     try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 6000);
       const res = await fetch(explorerUrl, {
         headers: {
           Accept: "application/json",
@@ -856,7 +969,6 @@ export async function fetchOneClickExplorerTelemetry(): Promise<OneClickExplorer
         },
         signal: controller.signal,
       });
-      clearTimeout(timer);
 
       if (res.ok) {
         const data = (await res.json().catch(() => ([]))) as
@@ -880,6 +992,8 @@ export async function fetchOneClickExplorerTelemetry(): Promise<OneClickExplorer
       }
     } catch {
       // Fall back to /v0/tokens cross-chain index below
+    } finally {
+      clearTimeout(timer);
     }
   }
 

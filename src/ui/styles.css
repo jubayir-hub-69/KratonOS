@@ -37,7 +37,6 @@ html.light,
   --accent-cyan: #0891b2;
   --card-shadow: 0 2px 6px rgba(11, 26, 16, 0.05), 0 12px 28px -8px rgba(11, 26, 16, 0.08);
   --dot-color: rgba(22, 163, 74, 0.16);
-  --hero-veil-bg: radial-gradient(ellipse at center, rgba(244, 247, 244, 0.78) 0%, rgba(244, 247, 244, 0.94) 100%);
 }
 
 html.dark,
@@ -71,7 +70,6 @@ html.dark,
   --accent-cyan: #22d3ee;
   --card-shadow: 0 14px 36px -10px rgba(0, 0, 0, 0.72), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   --dot-color: rgba(34, 197, 94, 0.14);
-  --hero-veil-bg: radial-gradient(ellipse at center, rgba(5, 8, 15, 0.62) 0%, rgba(5, 8, 15, 0.92) 100%);
 }
 
 html,
@@ -125,12 +123,8 @@ select option {
 }
 
 /* ============================================================================
-   HERO VEIL, SYSTEM CARDS, PULSING STATUS DOTS, JUDGE NOTES, & TOASTS
+   SYSTEM CARDS, PULSING STATUS DOTS, JUDGE NOTES, & TOASTS
    ============================================================================ */
-
-.hero-veil {
-  background: var(--hero-veil-bg);
-}
 
 .system-card,
 .paper-card {
@@ -237,34 +231,6 @@ select option {
 
 .animate-feed-in {
   animation: feedIn 0.38s var(--spring-ease) both;
-}
-
-/* Partner Logo Marquee Track */
-.logo-marquee-shell {
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
-}
-
-.logo-marquee-track {
-  display: flex;
-  width: max-content;
-  gap: 0.75rem;
-  animation: partner-marquee 34s linear infinite;
-}
-
-.logo-marquee-track:hover {
-  animation-play-state: paused;
-}
-
-@keyframes partner-marquee {
-  0% {
-    transform: translate3d(0, 0, 0);
-  }
-  100% {
-    transform: translate3d(-50%, 0, 0);
-  }
 }
 
 /* Subtle Orbital SVG Stage */
@@ -956,4 +922,60 @@ html.light .btn-huly-btn,
     background-position: 200% center;
   }
 }
+
+/* ============================================================================
+   7. MOBILE & TABLET VIEWPORT OVERFLOW GUARD (< 1024px & < 640px)
+   ============================================================================ */
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+@media (max-width: 639px) {
+  .toasts {
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .btn-huly-root,
+  .btn-huly-btn,
+  .btn-hold-wrap,
+  .btn-hold-btn,
+  .btn-unseen-enter,
+  .btn-run-compiler {
+    max-width: 100%;
+    flex-shrink: 1;
+  }
+
+  .btn-huly-btn,
+  .btn-unseen-enter {
+    font-size: 0.68rem;
+    padding: 0.5rem 0.9rem;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .btn-hold-btn {
+    font-size: 0.68rem;
+    padding: 0.35rem 0.65rem;
+  }
+
+  .ue-label-wrap {
+    height: auto;
+    white-space: normal;
+  }
+
+  .ue-label--clone {
+    display: none;
+  }
+
+  .btn-unseen-enter:hover .ue-label {
+    transform: none;
+  }
+}
+
 

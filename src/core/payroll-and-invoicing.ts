@@ -108,6 +108,42 @@ export interface FaultIsolatedPayrollBatchResult {
 // 1. `EXACT_OUTPUT` Ceiling-Math Cross-Chain Invoicing (`execute_ceil_exact_output_invoice`)
 // ============================================================================
 
+function formatAtomicBigInt(value: bigint, decimals: number): string {
+  const safeDecimals = Math.max(0, Math.min(24, Math.trunc(decimals)));
+  if (safeDecimals === 0) return value.toString();
+  const scale = 10n ** BigInt(safeDecimals);
+  const whole = value / scale;
+  const frac = (value % scale).toString().padStart(safeDecimals, "0");
+  return `${whole}.${frac}`;
+}
+
+function isValidNearAccountSyntax(accountId: string): boolean {
+  if (accountId.length < 2 || accountId.length > 64) return false;
+  if (/^[0-9a-f]{64}$/.test(accountId)) return true;
+  return /^(?:[a-z0-9]+(?:[-_][a-z0-9]+)*)(?:\.(?:[a-z0-9]+(?:[-_][a-z0-9]+)*))*$/.test(accountId);
+}
+
+export function escapeHtml(raw: string): string {
+  return String(raw)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export function escapeCsvCell(raw: string): string {
+  let str = String(raw);
+  // Neutralize spreadsheet formula injection (=, +, -, @, \t, \r at cell start)
+  if (/^[\s]*[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
+  if (/[",\r\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 /**
  * Computes the exact `BigInt` ceiling gross input required so that after deducting
  * `totalFeeBps`, the freelancer receives `>= requestedNetOutputAtomic` down to 1 atomic unit:
@@ -119,11 +155,29 @@ export function execute_ceil_exact_output_invoice(
   const runtime = loadKratonConfig();
   const invoiceId = input.invoiceId ?? `INV-2026-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
   const decimals = input.decimals ?? 6;
+  if (!Number.isInteger(decimals) || decimals < 0 || decimals > 24) {
+    throw new Error(`Invalid invoice decimals (${String(decimals)}); must be an integer in [0, 24].`);
+  }
+  if (!input.freelancerAccountId?.trim() || !input.payerRefundAddress?.trim()) {
+    throw new Error("Invoice freelancerAccountId and payerRefundAddress must be non-empty.");
+  }
+
   const requestedNet = BigInt(input.requestedNetOutputAtomic);
+  if (requestedNet <= 0n) {
+    throw new Error(`Invoice requestedNetOutputAtomic (${requestedNet}) must be > 0.`);
+  }
 
   const appFeeBps = input.appFeeBps ?? runtime.constraints.app_fee_bps; // 40 bps
   const protocolFeeBps = input.protocolFeeBps ?? 1; // 1 bp on stablecoin / same-asset route
-  const totalFeeBps = appFeeBps + protocolFeeBps;
+  if (
+    !Number.isFinite(appFeeBps) ||
+    !Number.isFinite(protocolFeeBps) ||
+    appFeeBps < 0 ||
+    protocolFeeBps < 0
+  ) {
+    throw new Error("Protocol Invariant Violation: invoice fee basis points must be finite and >= 0.");
+  }
+  const totalFeeBps = Math.round(appFeeBps + protocolFeeBps);
 
   if (totalFeeBps < 0 || totalFeeBps > 500) {
     throw new Error(`Protocol Invariant Violation: totalFeeBps (${totalFeeBps}) must be <= 500 bps.`);
@@ -144,10 +198,9 @@ export function execute_ceil_exact_output_invoice(
     );
   }
 
-  const scale = 10 ** decimals;
-  const requestedFormatted = (Number(requestedNet) / scale).toFixed(decimals);
-  const grossFormatted = (Number(grossInputCeiling) / scale).toFixed(decimals);
-  const netSettledFormatted = (Number(netSettled) / scale).toFixed(decimals);
+  const requestedFormatted = formatAtomicBigInt(requestedNet, decimals);
+  const grossFormatted = formatAtomicBigInt(grossInputCeiling, decimals);
+  const netSettledFormatted = formatAtomicBigInt(netSettled, decimals);
 
   const chainLabel = input.originChainLabel ?? "Ethereum Mainnet (USDC)";
   const originChainAssetMap: Record<string, string> = {
@@ -275,12 +328,13 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
 
     if (cols.length >= 6) {
       [recipientId, role, originAsset, destinationAsset] = cols;
-      amountUsdc = Number(cols[4]) || 25;
+      const parsedAmt = Number(cols[4]);
+      amountUsdc = Number.isFinite(parsedAmt) ? parsedAmt : 0;
       invoiceRef = cols[5] || invoiceRef;
     } else if (cols.length >= 2) {
       recipientId = cols[0];
-      const numericCol = cols.slice(1).find((c) => !Number.isNaN(Number(c)) && Number(c) > 0);
-      if (numericCol) {
+      const numericCol = cols.slice(1).find((c) => c !== "" && Number.isFinite(Number(c)));
+      if (numericCol !== undefined) {
         amountUsdc = Number(numericCol);
       }
       if (cols.length >= 3 && Number.isNaN(Number(cols[1]))) {
@@ -291,7 +345,10 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
       }
     }
 
-    const amountAtomicUsdc = BigInt(Math.max(1, Math.round(amountUsdc * 1_000_000))).toString();
+    const amountAtomicUsdc =
+      Number.isFinite(amountUsdc) && amountUsdc > 0
+        ? BigInt(Math.round(amountUsdc * 1_000_000)).toString()
+        : "0";
 
     rows.push({
       rowNumber: rows.length + 1,
@@ -387,19 +444,32 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
       .digest("hex")
       .slice(0, 16)}`;
 
-    // Fault Isolation Check: Quarantine known scam/blacklisted or invalid account IDs without failing the batch
-    if (
-      KNOWN_SCAM_BLOCKLIST[normalizedRecipient] ||
+    // Fault Isolation Check: Quarantine known scam/blacklisted, invalid account syntax, or non-positive amounts without failing the batch
+    const isScamListed =
+      Boolean(KNOWN_SCAM_BLOCKLIST[normalizedRecipient]) ||
       normalizedRecipient.includes("scam") ||
-      normalizedRecipient.includes("drainer")
-    ) {
+      normalizedRecipient.includes("drainer");
+    const isSyntaxValid = isValidNearAccountSyntax(normalizedRecipient) && row.recipientId === normalizedRecipient;
+    const isPositiveAmount =
+      Number.isFinite(row.amountUsdc) &&
+      row.amountUsdc > 0 &&
+      row.amountUsdc <= 100_000_000 &&
+      row.amountAtomicUsdc !== "0";
+
+    if (isScamListed || !isSyntaxValid || !isPositiveAmount) {
       totalIsolatedFailedCount++;
+      const failureReason = isScamListed
+        ? KNOWN_SCAM_BLOCKLIST[normalizedRecipient] ??
+          "Quarantined by 4-Signal Counterparty Security Shield"
+        : !isSyntaxValid
+          ? `Quarantined malformed or non-canonical NEAR account ID ("${row.recipientId}")`
+          : `Quarantined invalid or non-positive payroll amount (${String(row.amountUsdc)} USDC)`;
       outcomes.push({
         rowNumber: row.rowNumber,
         recipientId: row.recipientId,
         invoiceRef: row.invoiceRef,
-        amountUsdc: row.amountUsdc,
-        amountAtomicUsdc: row.amountAtomicUsdc,
+        amountUsdc: Number.isFinite(row.amountUsdc) && row.amountUsdc > 0 ? row.amountUsdc : 0,
+        amountAtomicUsdc: isPositiveAmount ? row.amountAtomicUsdc : "0",
         status: "ISOLATED_QUARANTINED",
         batchChunkIndex,
         storageRegisteredPrior: false,
@@ -407,9 +477,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
         retryAttemptsUsed: 1,
         actionsBuilt: [],
         confidentialShardShieldUnshieldHashes: "NONE_BLOCKED",
-        failureReason:
-          KNOWN_SCAM_BLOCKLIST[normalizedRecipient] ??
-          "Quarantined by 4-Signal Counterparty Security Shield",
+        failureReason,
       });
       continue;
     }
@@ -425,7 +493,9 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
         break;
       } catch {
         storageRegisteredPrior = false;
-        break;
+        if (attempt < MAX_RETRY_ATTEMPTS) {
+          await new Promise((r) => setTimeout(r, 15 * attempt));
+        }
       }
     }
 
@@ -560,7 +630,9 @@ export function exportBookkeeperCsv(params: {
         o.status,
         o.confidentialShardShieldUnshieldHashes,
         params.poc4HMaster,
-      ].join(",")
+      ]
+        .map(escapeCsvCell)
+        .join(",")
     );
   }
 
@@ -597,6 +669,10 @@ export function generateVisualAuditStatementHtml(params: {
   const quarantinedRows = params.outcomes.filter((o) => o.status !== "SETTLED");
   const totalSettledUsd = settledRows.reduce((acc, o) => acc + o.amountUsdc, 0);
 
+  const safeTreasuryAccount = escapeHtml(treasuryAccount);
+  const safeFeeRecipient = escapeHtml(feeRecipient);
+  const safePoc4HMaster = escapeHtml(params.poc4HMaster);
+
   const tableRowsHtml = params.outcomes
     .map((o) => {
       const isSettled = o.status === "SETTLED";
@@ -607,15 +683,19 @@ export function generateVisualAuditStatementHtml(params: {
         o.storageDepositPrependedYocto && o.storageDepositPrependedYocto !== "0"
           ? `<span style="display:inline-block;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;font-size:10px;font-family:monospace;">+0.00125 NEAR</span>`
           : `<span style="color:#6b7280;font-size:11px;">Registered</span>`;
+      const safeInvoiceRef = escapeHtml(o.invoiceRef);
+      const safeRecipientId = escapeHtml(o.recipientId);
+      const safeStatus = escapeHtml(o.status);
+      const safeShieldHashes = escapeHtml(o.confidentialShardShieldUnshieldHashes.slice(0, 38));
       return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
-        <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:600;color:#111827;">#${o.rowNumber} · ${o.invoiceRef}</td>
-        <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#1f2937;">${o.recipientId}</td>
+        <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:600;color:#111827;">#${o.rowNumber} · ${safeInvoiceRef}</td>
+        <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#1f2937;">${safeRecipientId}</td>
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:700;color:#111827;">$${o.amountUsdc.toFixed(2)} USDC</td>
         <td style="padding:10px 12px;">${storageTag}</td>
         <td style="padding:10px 12px;">
-          <span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${o.status}</span>
+          <span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${safeStatus}</span>
         </td>
-        <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#4b5563;">${o.confidentialShardShieldUnshieldHashes.slice(0, 38)}...</td>
+        <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#4b5563;">${safeShieldHashes}...</td>
       </tr>`;
     })
     .join("\n");
@@ -730,13 +810,13 @@ export function generateVisualAuditStatementHtml(params: {
       </div>
       <div style="text-align:right;font-family:monospace;font-size:12px;color:#374151;">
         <div><strong>Generated:</strong> ${nowIso}</div>
-        <div><strong>Treasury Vault:</strong> ${treasuryAccount}</div>
-        <div><strong>Fee Recipient (41 bps):</strong> ${feeRecipient}</div>
+        <div><strong>Treasury Vault:</strong> ${safeTreasuryAccount}</div>
+        <div><strong>Fee Recipient (41 bps):</strong> ${safeFeeRecipient}</div>
       </div>
     </div>
 
     <div style="margin-top:18px;padding:12px 16px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-family:monospace;font-size:12px;color:#065f46;">
-      <strong>PoC-4 Quad-Attested Master Commitment (H_master):</strong> ${params.poc4HMaster}
+      <strong>PoC-4 Quad-Attested Master Commitment (H_master):</strong> ${safePoc4HMaster}
     </div>
 
     <div class="kpi-grid">

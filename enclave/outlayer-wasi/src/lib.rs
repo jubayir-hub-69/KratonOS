@@ -1,9 +1,12 @@
+use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest as Sha2Digest, Sha256};
 use sha3::Keccak256;
 
 /// Maximum permitted price deviation across independent oracle feeds (5.0%)
 pub const MAX_PRICE_DEVIATION_PERCENT: f64 = 5.0;
+/// Maximum sane token price ceiling ($1,000,000,000,000 USD) to prevent float overflow attacks
+pub const MAX_SANE_PRICE_USD: f64 = 1_000_000_000_000.0;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Eip1186StorageProofNode {
@@ -75,8 +78,27 @@ pub fn verify_eip1186_and_median_oracle_wasip2(
     if proof.storage_proof.is_empty() || proof.storage_proof[0].proof.is_empty() {
         return Err("EIP1186_EMPTY_STORAGE_PROOF: storageProof[0].proof cannot be empty".to_string());
     }
+    if proof.storage_proof[0].key.trim().is_empty()
+        || proof.storage_proof[0].value.trim().is_empty()
+    {
+        return Err(
+            "EIP1186_EMPTY_STORAGE_SLOT: storageProof[0] key and value must be non-empty"
+                .to_string(),
+        );
+    }
     if oracle_samples.len() < 3 {
         return Err("ORACLE_INSUFFICIENT_SOURCES: At least 3 independent price sources are required".to_string());
+    }
+    let mut unique_sources = HashSet::with_capacity(oracle_samples.len());
+    for s in oracle_samples {
+        let normalized_id = s.source_id.trim().to_ascii_lowercase();
+        if normalized_id.is_empty() {
+            return Err("ORACLE_EMPTY_SOURCE_ID: Each oracle sample must declare a non-empty source_id".to_string());
+        }
+        unique_sources.insert(normalized_id);
+    }
+    if unique_sources.len() < 3 {
+        return Err("ORACLE_DUPLICATE_SOURCES: At least 3 distinct oracle source_ids are required".to_string());
     }
 
     // 1. Verify World State Trie root node hash matches block header stateRoot
@@ -112,29 +134,32 @@ pub fn verify_eip1186_and_median_oracle_wasip2(
     // 3. Multi-Source Mathematical Median & Deviation Bound Check
     let mut prices: Vec<f64> = oracle_samples.iter().map(|s| s.price_usd).collect();
     for p in &prices {
-        if !p.is_finite() || *p <= 0.0 {
-            return Err("ORACLE_INVALID_PRICE: All source prices must be finite positive numbers".to_string());
+        if !p.is_finite() || *p <= 0.0 || *p > MAX_SANE_PRICE_USD {
+            return Err("ORACLE_INVALID_PRICE: All source prices must be finite positive numbers <= 1e12".to_string());
         }
     }
-    prices.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    prices.sort_by(|a, b| a.total_cmp(b));
 
     let mid = prices.len() / 2;
     let median_price_usd = if prices.len() % 2 == 1 {
         prices[mid]
     } else {
-        (prices[mid - 1] + prices[mid]) / 2.0
+        prices[mid - 1] + (prices[mid] - prices[mid - 1]) / 2.0
     };
 
     let mut max_deviation_percent = 0.0_f64;
     for p in &prices {
         let dev = ((*p - median_price_usd).abs() / median_price_usd) * 100.0;
+        if !dev.is_finite() {
+            return Err("ORACLE_INVALID_DEVIATION: Computed deviation is non-finite".to_string());
+        }
         if dev > max_deviation_percent {
             max_deviation_percent = dev;
         }
     }
 
-    let limit = if max_allowed_deviation_percent > 0.0 {
-        max_allowed_deviation_percent
+    let limit = if max_allowed_deviation_percent.is_finite() && max_allowed_deviation_percent > 0.0 {
+        max_allowed_deviation_percent.min(MAX_PRICE_DEVIATION_PERCENT)
     } else {
         MAX_PRICE_DEVIATION_PERCENT
     };
@@ -147,11 +172,19 @@ pub fn verify_eip1186_and_median_oracle_wasip2(
     }
 
     // 4. Derive deterministic 48-byte (96 hex chars) Intel TDX RTMR3 measurement & 32-byte receipt
+    let normalized_contract = normalize_hex_0x(&proof.contract_address);
+    let normalized_block_hash = normalize_hex_0x(&proof.block_hash);
+    let normalized_slot_key = normalize_hex_0x(&proof.storage_proof[0].key);
+    let normalized_slot_val = normalize_hex_0x(&proof.storage_proof[0].value);
     let binding_preimage = format!(
-        "outlayer:wasip2:v1|block:{}|state_root:{}|storage_hash:{}|median:{:.4}|dev:{:.4}",
+        "outlayer:wasip2:v1|block:{}|block_hash:{}|contract:{}|state_root:{}|storage_hash:{}|slot:{}={}|median:{:.4}|dev:{:.4}",
         proof.block_number,
+        normalized_block_hash,
+        normalized_contract,
         expected_state_root,
         expected_storage_hash,
+        normalized_slot_key,
+        normalized_slot_val,
         median_price_usd,
         max_deviation_percent
     );
@@ -196,6 +229,9 @@ pub fn compute_vrf_anti_mev_slices_wasip1(
             ed25519_signature.len()
         ));
     }
+    if sender_id.trim().is_empty() || seed.trim().is_empty() {
+        return Err("VRF_INVALID_INPUT: sender_id and seed must be non-empty".to_string());
+    }
     let count = slice_count.clamp(2, 8);
     let alpha = format!("vrf:{}:{}:{}", request_id, sender_id, seed);
     let vrf_digest = Sha256::digest(ed25519_signature);
@@ -206,7 +242,9 @@ pub fn compute_vrf_anti_mev_slices_wasip1(
     for i in 0..count {
         let w = u32::from(vrf_digest[i % 32]) + 64; // strictly positive weight
         raw_weights.push(w);
-        weight_sum += w;
+        weight_sum = weight_sum
+            .checked_add(w)
+            .ok_or_else(|| "VRF_WEIGHT_OVERFLOW: Slice weight sum overflowed".to_string())?;
     }
 
     let mut allocated_bps: u16 = 0;
@@ -217,7 +255,9 @@ pub fn compute_vrf_anti_mev_slices_wasip1(
             10_000u16.saturating_sub(allocated_bps)
         } else {
             let share = ((raw_weights[i] as u64 * 10_000) / weight_sum as u64) as u16;
-            allocated_bps += share;
+            allocated_bps = allocated_bps
+                .checked_add(share)
+                .ok_or_else(|| "VRF_BPS_OVERFLOW: Allocated bps overflowed".to_string())?;
             share
         };
 
@@ -251,10 +291,11 @@ pub fn compute_vrf_anti_mev_slices_wasip1(
 fn verify_trie_hash_chain(nodes: &[String], label: &str) -> Result<(), String> {
     for i in 1..nodes.len() {
         let child_bytes = decode_hex(&nodes[i])?;
-        // In Ethereum Merkle-Patricia Tries, RLP nodes >= 32 bytes are referenced by their 32-byte Keccak-256 hash
+        let parent_hex = strip_0x_prefix(&nodes[i - 1]).to_ascii_lowercase();
+        // In Ethereum Merkle-Patricia Tries, RLP nodes >= 32 bytes are referenced by their 32-byte Keccak-256 hash;
+        // nodes < 32 bytes are embedded inline inside the parent RLP list.
         if child_bytes.len() >= 32 {
             let child_hash_hex = encode_hex(&Keccak256::digest(&child_bytes));
-            let parent_hex = nodes[i - 1].trim().trim_start_matches("0x").to_lowercase();
             if !parent_hex.contains(&child_hash_hex) {
                 return Err(format!(
                     "EIP1186_TRIE_LINK_BROKEN: {}[{}] keccak256 ({}) not embedded in parent node {}[{}]",
@@ -265,18 +306,40 @@ fn verify_trie_hash_chain(nodes: &[String], label: &str) -> Result<(), String> {
                     i - 1
                 ));
             }
+        } else {
+            let inline_child_hex = encode_hex(&child_bytes);
+            if !parent_hex.contains(&inline_child_hex) {
+                return Err(format!(
+                    "EIP1186_INLINE_TRIE_LINK_BROKEN: {}[{}] inline RLP ({}) not embedded in parent node {}[{}]",
+                    label,
+                    i,
+                    inline_child_hex,
+                    label,
+                    i - 1
+                ));
+            }
         }
     }
     Ok(())
 }
 
+fn strip_0x_prefix(input: &str) -> &str {
+    let trimmed = input.trim();
+    trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+        .unwrap_or(trimmed)
+}
+
 fn normalize_hex_0x(input: &str) -> String {
-    let stripped = input.trim().trim_start_matches("0x").to_lowercase();
-    format!("0x{}", stripped)
+    format!("0x{}", strip_0x_prefix(input).to_ascii_lowercase())
 }
 
 fn decode_hex(input: &str) -> Result<Vec<u8>, String> {
-    let cleaned = input.trim().trim_start_matches("0x");
+    let cleaned = strip_0x_prefix(input);
+    if cleaned.is_empty() {
+        return Err("Empty hex string".to_string());
+    }
     if cleaned.len() % 2 != 0 {
         return Err("Odd-length hex string".to_string());
     }
@@ -315,6 +378,51 @@ mod tests {
         let total_bps: u16 = out.slices.iter().map(|s| s.amount_bps).sum();
         assert_eq!(total_bps, 10_000);
         assert_eq!(out.slices.len(), 4);
+    }
+
+    #[test]
+    fn test_wasip2_eip1186_and_median_oracle_verification() {
+        let acct_root = vec![0xaa_u8; 40];
+        let stor_root = vec![0xbb_u8; 40];
+        let state_root = format!("0x{}", encode_hex(&Keccak256::digest(&acct_root)));
+        let storage_hash = format!("0x{}", encode_hex(&Keccak256::digest(&stor_root)));
+
+        let proof = Eip1186ProofPayload {
+            block_number: 22_100_000,
+            block_hash: format!("0x{}", "11".repeat(32)),
+            state_root,
+            contract_address: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419".to_string(),
+            storage_hash,
+            account_proof: vec![format!("0x{}", encode_hex(&acct_root))],
+            storage_proof: vec![Eip1186StorageProofNode {
+                key: "0x0".to_string(),
+                value: "0x01".to_string(),
+                proof: vec![format!("0x{}", encode_hex(&stor_root))],
+            }],
+        };
+
+        let samples = vec![
+            OracleSourceSample {
+                source_id: "chainlink".to_string(),
+                price_usd: 2250.0,
+                timestamp_sec: 1_730_000_000,
+            },
+            OracleSourceSample {
+                source_id: "coinbase".to_string(),
+                price_usd: 2252.5,
+                timestamp_sec: 1_730_000_001,
+            },
+            OracleSourceSample {
+                source_id: "kraken".to_string(),
+                price_usd: 2248.0,
+                timestamp_sec: 1_730_000_002,
+            },
+        ];
+
+        let out = verify_eip1186_and_median_oracle_wasip2(&proof, &samples, 5.0).unwrap();
+        assert!(out.valid);
+        assert_eq!(out.median_price_usd, 2250.0);
+        assert_eq!(out.rtmr3_measurement_hex.len(), 96);
     }
 }
 

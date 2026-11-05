@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import type http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import {
   AgentMarketPublicLedger,
@@ -28,6 +29,8 @@ import {
 import {
   execute_ceil_exact_output_invoice,
   executeFaultIsolatedBatchPayroll,
+  exportBookkeeperCsv,
+  generateVisualAuditStatementHtml,
 } from "../core/payroll-and-invoicing.js";
 import {
   escalate_sha256_to_sputnik_bounty,
@@ -233,6 +236,12 @@ async function runMasterVerificationSuite(): Promise<void> {
   const swarm = runSwarmSealedBidMarketRound();
   assert.equal(swarm.llmCallsMade, 0);
   assert.equal(swarm.commitmentsVerified, 25);
+  assert.ok(
+    swarm.buyerAllocations.every((b) => b.allocatedUnits <= b.requestedUnits),
+    "Bounded Largest-Remainder pro-rata clearing must never allocate more units than requested"
+  );
+  const tamperedSwarm = runSwarmSealedBidMarketRound({ tamperParticipantIndices: [1] });
+  assert.equal(tamperedSwarm.tamperedRevealsRejected, 1, "Tampered reveal must be rejected");
   console.log(
     `  ✓ Suite 3 PASS: 8-Step TEE=${teeResult.status} (liveApiUsed=${teeResult.liveApiUsed}) | Zero-Retention=0B remaining | WorkerAuth=${marketDiscovery.workerAuth.liveApiUsed} | Swarm Saved=$${swarm.totalSwarmSavingsUsd.toFixed(2)}\n`
   );
@@ -288,6 +297,31 @@ async function runMasterVerificationSuite(): Promise<void> {
   assert.equal(payrollBatch.totalSettledCount, 11);
   assert.equal(payrollBatch.totalIsolatedFailedCount, 1);
 
+  // Verify XSS HTML escaping & CSV formula-injection neutralization
+  const xssHtml = generateVisualAuditStatementHtml({
+    outcomes: [
+      {
+        ...payrollBatch.outcomes[0],
+        invoiceRef: `<script>alert(1)</script>`,
+      },
+    ],
+    poc4HMaster: payrollBatch.poc4HMaster,
+  });
+  assert.ok(!xssHtml.includes("<script>alert(1)</script>"), "Audit HTML statement must escape XSS tags");
+  assert.ok(xssHtml.includes("&lt;script&gt;alert(1)&lt;/script&gt;"), "Audit HTML must render escaped entities");
+
+  const formulaCsv = exportBookkeeperCsv({
+    outcomes: [
+      {
+        ...payrollBatch.outcomes[0],
+        invoiceRef: "=cmd|' /C calc'!A0",
+      },
+    ],
+    poc4HMaster: payrollBatch.poc4HMaster,
+    outputPath: path.join(os.tmpdir(), "kratonos-formula-guard-test.csv"),
+  });
+  assert.ok(!formulaCsv.includes(",=cmd|"), "Bookkeeper CSV must neutralize formula-injection prefixes");
+
   console.log(
     `  ✓ Suite 4 PASS: 1Click Assets=${tokensReg.tokens.length} (jwtAuth=${routeResult.oneClickJwtAuthenticated}, explorerLive=${explorerReport.liveApiUsed}) | RHEA Farm=${rheaFarms.highestRunningFarmId} | MPC Chains=5 | Payroll=11/12 Settled\n`
   );
@@ -321,8 +355,10 @@ async function runMasterVerificationSuite(): Promise<void> {
 
   const requiredFiles = [
     "README.md",
+    "public/kratonos-banner.svg",
     "THESIS.md",
     "RULES.md",
+    "STRESS.md",
     "config.yaml",
     "LICENSE",
     "vercel.json",
@@ -334,6 +370,44 @@ async function runMasterVerificationSuite(): Promise<void> {
   ];
   for (const rel of requiredFiles) {
     assert.ok(fs.existsSync(path.join(rootDir, rel)), `Required file ${rel} must exist`);
+  }
+
+  // Verify Tier 3 Official Reference URLs in README.md
+  const readmeText = fs.readFileSync(path.join(rootDir, "README.md"), "utf8");
+  const requiredReferenceUrls = [
+    "https://nearhackathon.com/HACKATHON.md",
+    "https://github.com/nearai/near-hackathon-prompt-examples",
+    "https://kraton-os-taupe.vercel.app",
+    "https://kraton-os-taupe.vercel.app/docs",
+    "https://kraton-os-taupe.vercel.app/llms.txt",
+    "https://kraton-os-taupe.vercel.app/openapi.json",
+    "https://github.com/jubayir-hub-69/KratonOS",
+    "https://docs.near.org/",
+    "https://1click.chaindefuser.com",
+    "https://explorer.near-intents.org/api/v0/transactions",
+    "https://docs.near-intents.org/",
+    "https://cloud-api.near.ai/v1",
+    "https://cloud.near.ai",
+    "https://docs.near.ai/",
+    "https://market.near.ai",
+    "https://docs.market.near.ai/",
+    "https://outlayer.ai/",
+    "https://app.outlayer.ai/docs/getting-started",
+    "https://testnet.nearblocks.io/address/outlayer.testnet",
+    "https://rhea.finance/",
+    "https://guide.rhea.finance/",
+    "https://testnet.nearblocks.io/address/ref-finance.testnet",
+    "https://testnet.nearblocks.io/address/ref-farming.testnet",
+    "https://docs.hotdao.ai/",
+    "https://github.com/near-daos/sputnik-dao-contract",
+    "https://trezu.org/",
+    "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
+    "https://testnet.nearblocks.io/address/jubayir69.testnet",
+    "https://nearblocks.io/address/jubayir33.near",
+    "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+  ];
+  for (const url of requiredReferenceUrls) {
+    assert.ok(readmeText.includes(url), `README.md must reference official URL: ${url}`);
   }
 
   // Ensure .env.example has empty secret placeholders

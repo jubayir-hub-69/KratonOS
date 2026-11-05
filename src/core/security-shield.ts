@@ -26,7 +26,7 @@ export function encodeBase58(buffer: Uint8Array): string {
     zeroes++;
   }
 
-  const digits: number[] = [0];
+  const digits: number[] = [];
   for (let i = zeroes; i < buffer.length; i++) {
     let carry = buffer[i];
     for (let j = 0; j < digits.length; j++) {
@@ -40,10 +40,7 @@ export function encodeBase58(buffer: Uint8Array): string {
     }
   }
 
-  let result = "";
-  for (let i = 0; i < zeroes; i++) {
-    result += "1";
-  }
+  let result = "1".repeat(zeroes);
   for (let i = digits.length - 1; i >= 0; i--) {
     result += BASE58_ALPHABET[digits[i]];
   }
@@ -60,7 +57,7 @@ export function decodeBase58(input: string): Buffer {
     zeroes++;
   }
 
-  const bytes: number[] = [0];
+  const bytes: number[] = [];
   for (let i = zeroes; i < input.length; i++) {
     const charIndex = BASE58_ALPHABET.indexOf(input[i]);
     if (charIndex === -1) {
@@ -79,9 +76,6 @@ export function decodeBase58(input: string): Buffer {
   }
 
   const out = Buffer.alloc(zeroes + bytes.length);
-  for (let i = 0; i < zeroes; i++) {
-    out[i] = 0;
-  }
   for (let i = 0; i < bytes.length; i++) {
     out[zeroes + i] = bytes[bytes.length - 1 - i];
   }
@@ -312,6 +306,16 @@ export async function auditAccountSecurity(
     } else if (pk.startsWith("ml-dsa-65-hash:")) {
       curveType = "ml-dsa-65-hash";
       mlDsa65Count++;
+      try {
+        const decodedDigest = decodeBase58(pk.slice("ml-dsa-65-hash:".length));
+        if (decodedDigest.length !== 32) {
+          warnings.push(
+            `Post-quantum key ${pk} has invalid SHA3-256 digest length (${decodedDigest.length} != 32 bytes).`
+          );
+        }
+      } catch {
+        warnings.push(`Post-quantum key ${pk} contains invalid Base58 encoding.`);
+      }
     }
 
     if (item.access_key.permission === "FullAccess") {
@@ -398,34 +402,63 @@ const INJECTION_PATTERNS: Array<{ name: string; regex: RegExp }> = [
   },
   {
     name: "SYSTEM_ROLE_SPOOFING",
-    regex: /(\[SYSTEM\s*OVERRIDE\]|<\/?system>|ADMIN_AUTH_BYPASS|SUDO_TREASURY)/gi,
+    regex: /(\[SYSTEM\s*OVERRIDE\]|<\/?(?:system|assistant|developer|tool_call|instructions)>|ADMIN_AUTH_BYPASS|SUDO_TREASURY)/gi,
+  },
+  {
+    name: "JAILBREAK_OR_KEY_EXFILTRATION",
+    regex: /(\b(?:act\s+as|you\s+are\s+now)\s+(?:dan|unrestricted|root|developer\s+mode)\b|\b(?:print|reveal|dump|export|leak)\s+(?:the\s+)?(?:private[_\s-]?key|seed\s+phrase|mnemonic|api[_\s-]?key)\b)/gi,
   },
 ];
+
+function foldObfuscatedPrompt(input: string): string {
+  return input
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "")
+    .replace(/0/g, "o")
+    .replace(/1/g, "i")
+    .replace(/3/g, "e")
+    .replace(/4/g, "a")
+    .replace(/5/g, "s")
+    .replace(/7/g, "t");
+}
 
 /**
  * Wraps untrusted buyer briefs and worker messages inside `<untrusted_data>` tags
  * and strips/flags prompt-injection instruction overrides.
  */
 export function sanitizeUntrustedBrief(rawBrief: string): SanitizedBriefResult {
+  const safeRaw = typeof rawBrief === "string" ? rawBrief : String(rawBrief ?? "");
   const matchedPatterns: string[] = [];
-  let sanitizedText = rawBrief;
+  // Strip invisible zero-width and bidi override characters
+  let sanitizedText = safeRaw.replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, "");
 
-  // Prevent escaping out of <untrusted_data> XML boundary
-  sanitizedText = sanitizedText.replace(/<\/?untrusted_data>/gi, "[STRIPPED_TAG]");
+  // Prevent escaping out of <untrusted_data> XML boundary (including whitespace/attribute variants)
+  if (/<\/?\s*untrusted[\s_-]*data[^>]*>/i.test(sanitizedText)) {
+    matchedPatterns.push("BOUNDARY_TAG_ESCAPE");
+    sanitizedText = sanitizedText.replace(/<\/?\s*untrusted[\s_-]*data[^>]*>/gi, "[STRIPPED_TAG]");
+  }
+
+  const foldedProbe = foldObfuscatedPrompt(sanitizedText);
 
   for (const pattern of INJECTION_PATTERNS) {
     pattern.regex.lastIndex = 0;
-    if (pattern.regex.test(sanitizedText)) {
+    const directHit = pattern.regex.test(sanitizedText);
+    pattern.regex.lastIndex = 0;
+    const foldedHit = !directHit && pattern.regex.test(foldedProbe);
+    if (directHit || foldedHit) {
       matchedPatterns.push(pattern.name);
-      sanitizedText = sanitizedText.replace(
-        pattern.regex,
-        `[REDACTED_INJECTION:${pattern.name}]`
-      );
+      if (directHit) {
+        pattern.regex.lastIndex = 0;
+        sanitizedText = sanitizedText.replace(
+          pattern.regex,
+          `[REDACTED_INJECTION:${pattern.name}]`
+        );
+      }
     }
   }
 
-  // Extract any NEAR accounts mentioned in the raw brief for downstream risk inspection
-  const accountMatches = rawBrief.match(/\b[a-z0-9_-]+(?:\.[a-z0-9_-]+)+\.(?:testnet|near)\b/gi) ?? [];
+  // Extract any NEAR accounts mentioned in the raw brief (including 1-dot `name.testnet` and multi-dot subaccounts)
+  const accountMatches = safeRaw.match(/\b[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.(?:testnet|near)\b/gi) ?? [];
   const extractedSuspiciousAccounts = Array.from(new Set(accountMatches.map((a) => a.toLowerCase())));
 
   const wrappedPrompt = [
@@ -515,6 +548,14 @@ export class AgentReputationTracker {
     return rec;
   }
 
+  public setScore(agentId: string, score: number): AgentReputationRecord {
+    const rec = this.getOrInit(agentId);
+    const clamped = Number.isFinite(score) ? Math.max(0, Math.min(1000, Math.round(score))) : 0;
+    rec.reputationScore = clamped;
+    rec.effectiveMaxSingleTxUsd = this.computeScaledLimit(clamped);
+    return rec;
+  }
+
   private computeScaledLimit(score: number): number {
     // Dynamic spend-limit scaling (0..1000 score maps to 0%..100% of max_single_tx_usd)
     const factor = Math.max(0, Math.min(1, score / 800));
@@ -567,6 +608,71 @@ export interface CounterpartyRiskVerdict {
   reasons: string[];
 }
 
+const PROTECTED_CANONICAL_ACCOUNTS = [
+  "jubayir69.testnet",
+  "jubayir33.near",
+  "ref-finance.testnet",
+  "ref-farming.testnet",
+  "v2.ref-finance.near",
+  "dclv2.ref-labs.near",
+  "outlayer.testnet",
+  "worker.outlayer.testnet",
+  "outlayer.near",
+  "v1.signer-prod.testnet",
+  "kratonos-dao.sputnikv2.testnet",
+  "intents.near",
+];
+
+function computeEditDistance(a: string, b: string): number {
+  const dp: number[] = Array.from({ length: b.length + 1 }, (_, idx) => idx);
+  for (let i = 1; i <= a.length; i++) {
+    let prevDiag = dp[0];
+    dp[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const temp = dp[j];
+      if (a[i - 1] === b[j - 1]) {
+        dp[j] = prevDiag;
+      } else {
+        dp[j] = 1 + Math.min(prevDiag, dp[j - 1], dp[j]);
+      }
+      prevDiag = temp;
+    }
+  }
+  return dp[b.length];
+}
+
+function visualSkeleton(accountId: string): string {
+  return accountId
+    .replace(/rn/g, "m")
+    .replace(/vv/g, "w")
+    .replace(/[1li]/g, "l")
+    .replace(/0/g, "o");
+}
+
+function detectLookalikeProtectedAccount(accountId: string): string | null {
+  if (PROTECTED_CANONICAL_ACCOUNTS.includes(accountId)) {
+    return null;
+  }
+  const skel = visualSkeleton(accountId);
+  for (const canonical of PROTECTED_CANONICAL_ACCOUNTS) {
+    if (skel === visualSkeleton(canonical)) {
+      return canonical;
+    }
+    if (canonical.length >= 10 && Math.abs(accountId.length - canonical.length) <= 1) {
+      if (computeEditDistance(accountId, canonical) === 1) {
+        return canonical;
+      }
+    }
+  }
+  return null;
+}
+
+function isValidNearAccountSyntax(accountId: string): boolean {
+  if (/^[a-f0-9]{64}$/.test(accountId)) return true;
+  if (accountId.length < 2 || accountId.length > 64) return false;
+  return /^[a-z0-9]+(?:[_-][a-z0-9]+)*(?:\.[a-z0-9]+(?:[_-][a-z0-9]+)*)*$/.test(accountId);
+}
+
 /**
  * Evaluates a target receiver & token across all 4 security signals using live NEAR RPC calls
  * and live `get_whitelisted_tokens` on `ref-finance.testnet`.
@@ -579,14 +685,22 @@ export async function evaluateCounterpartyRisk(
   const tracker =
     input.reputationTracker ?? new AgentReputationTracker(runtime.constraints.max_single_tx_usd);
 
-  const receiverId = input.receiverId.trim().toLowerCase();
+  const rawReceiver = typeof input.receiverId === "string" ? input.receiverId.trim() : "";
+  const hasNonAsciiOrHomoglyph = /[^\x20-\x7E]/.test(rawReceiver) || rawReceiver.toLowerCase().includes("xn--");
+  const receiverId = rawReceiver.toLowerCase();
   const reasons: string[] = [];
   let totalRiskScore = 0;
 
-  // --- Signal 4A: Evidence-Backed Scam Blocklist & Prompt-Injection Check ---
+  // --- Signal 4A: Evidence-Backed Scam Blocklist, Homoglyph/Typosquat & Prompt-Injection Check ---
   let blocklistHit = false;
   let blocklistEvidence: string | undefined;
-  if (KNOWN_SCAM_BLOCKLIST[receiverId]) {
+  if (!receiverId || hasNonAsciiOrHomoglyph || !isValidNearAccountSyntax(receiverId)) {
+    blocklistHit = true;
+    blocklistEvidence = hasNonAsciiOrHomoglyph
+      ? `Unicode homoglyph / Punycode spoofing detected in receiver '${rawReceiver}'.`
+      : `Malformed or invalid NEAR account identifier '${rawReceiver}'.`;
+    reasons.push(`HOMOGLYPH_OR_SYNTAX_BLOCK: ${blocklistEvidence}`);
+  } else if (KNOWN_SCAM_BLOCKLIST[receiverId]) {
     blocklistHit = true;
     blocklistEvidence = KNOWN_SCAM_BLOCKLIST[receiverId];
     reasons.push(`BLOCKLIST_MATCH: ${receiverId} — ${blocklistEvidence}`);
@@ -594,6 +708,13 @@ export async function evaluateCounterpartyRisk(
     blocklistHit = true;
     blocklistEvidence = `Heuristic phishing/drainer account pattern detected in '${receiverId}'.`;
     reasons.push(`HEURISTIC_BLOCKLIST_MATCH: ${blocklistEvidence}`);
+  } else {
+    const lookalikeTarget = detectLookalikeProtectedAccount(receiverId);
+    if (lookalikeTarget) {
+      blocklistHit = true;
+      blocklistEvidence = `Lookalike/typosquatted domain '${receiverId}' impersonating protected account '${lookalikeTarget}'.`;
+      reasons.push(`LOOKALIKE_IMPOSTOR_BLOCK: ${blocklistEvidence}`);
+    }
   }
 
   let promptInjectionDetected = false;
@@ -644,13 +765,13 @@ export async function evaluateCounterpartyRisk(
 
   // --- Signal 3: Prior Agent-Receiver History & Reputation (0..1000) ---
   const agentId = input.agentId ?? runtime.constraints.nep611_gas_key_lanes.lane_1;
-  const repRecord = tracker.getOrInit(agentId, input.agentReputationScore ?? 850);
+  let repRecord = tracker.getOrInit(agentId, input.agentReputationScore ?? 850);
   if (input.agentReputationScore !== undefined) {
-    repRecord.reputationScore = input.agentReputationScore;
+    repRecord = tracker.setScore(agentId, input.agentReputationScore);
   }
 
   if (blocklistHit || promptInjectionDetected) {
-    tracker.slashReputation(agentId, 250);
+    repRecord = tracker.slashReputation(agentId, 250);
   }
 
   let s3Penalty = 0;
@@ -681,6 +802,17 @@ export async function evaluateCounterpartyRisk(
     if (!tokenVerifiedOnRhea) {
       reasons.push(
         `Token contract '${input.tokenContractId}' is NOT in RHEA Finance (${runtime.env.RHEA_EXCHANGE_CONTRACT_ID}) get_whitelisted_tokens.`
+      );
+    }
+  }
+  if (input.tokenSymbol && input.tokenSymbol.trim() !== "") {
+    const symAllowed = runtime.constraints.allowed_tokens.some(
+      (t) => t.toLowerCase() === input.tokenSymbol!.trim().toLowerCase()
+    );
+    if (!symAllowed) {
+      tokenVerifiedOnRhea = false;
+      reasons.push(
+        `Token symbol '${input.tokenSymbol}' is NOT in Policy Vault allowed_tokens (${runtime.constraints.allowed_tokens.join(", ")}).`
       );
     }
   }

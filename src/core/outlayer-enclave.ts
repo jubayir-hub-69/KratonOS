@@ -231,7 +231,6 @@ async function callEthRpc<T>(
       }),
       signal: controller.signal,
     });
-    clearTimeout(timer);
 
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} from ${endpoint}`);
@@ -244,9 +243,8 @@ async function callEthRpc<T>(
       throw new Error(`Null RPC result for ${method} from ${endpoint}`);
     }
     return json.result;
-  } catch (err) {
+  } finally {
     clearTimeout(timer);
-    throw err;
   }
 }
 
@@ -452,6 +450,7 @@ export async function fetchAndVerifyLiveEip1186Proof(
     stateRootMatches &&
     accountProofChainLinked &&
     accountLeafContainsStorageHash &&
+    storageProofNodes.length > 0 &&
     storageRootMatches &&
     storageProofChainLinked;
 
@@ -471,8 +470,8 @@ export async function fetchAndVerifyLiveEip1186Proof(
     storageProofRootKeccak256,
     storageProofDepth: storageProofNodes.length,
     storageProofChainLinked,
-    storageSlot0Key: slot0Proof.key,
-    storageSlot0Value: slot0Proof.value,
+    storageSlot0Key: slot0Proof?.key ?? slot0,
+    storageSlot0Value: slot0Proof?.value ?? ("0x0" as Hex),
     rawProof,
   };
 }
@@ -489,14 +488,12 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 6000): Promise<T
       headers: { Accept: "application/json", "User-Agent": "KratonOS-Oracle-Verifier/1.0" },
       signal: controller.signal,
     });
-    clearTimeout(timer);
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} from ${url}`);
     }
     return (await res.json()) as T;
-  } catch (err) {
+  } finally {
     clearTimeout(timer);
-    throw err;
   }
 }
 
@@ -504,13 +501,16 @@ export function computeMedianAndMaxDeviation(values: number[]): {
   median: number;
   maxDeviationPercent: number;
 } {
-  if (values.length === 0) {
-    throw new Error("Cannot compute median of empty price array");
+  const finitePositive = values.filter((v) => Number.isFinite(v) && v > 0);
+  if (finitePositive.length === 0) {
+    throw new Error("Cannot compute median of empty or non-positive price array");
   }
-  const sorted = [...values].sort((a, b) => a - b);
+  const sorted = [...finitePositive].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   const median =
-    sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+    sorted.length % 2 === 1
+      ? sorted[mid]
+      : sorted[mid - 1] + (sorted[mid] - sorted[mid - 1]) / 2;
 
   let maxDeviationPercent = 0;
   for (const v of sorted) {
@@ -968,7 +968,36 @@ const ENGLISH_STOP_WORDS = new Set([
   "BY",
   "OR",
   "AN",
+  "IF",
+  "DROP",
+  "TABLE",
+  "SELECT",
+  "UNION",
+  "INSERT",
+  "DELETE",
+  "SCRIPT",
+  "ALERT",
+  "EVAL",
+  "BEST",
+  "HIGH",
+  "LOW",
+  "SPOT",
+  "LATEST",
+  "NULL",
+  "TRUE",
+  "FALSE",
 ]);
+
+const WRAPPED_TO_CANONICAL_SYMBOL: Record<string, string> = {
+  WETH: "ETH",
+  WBTC: "BTC",
+  WNEAR: "NEAR",
+  WSOL: "SOL",
+  WMATIC: "MATIC",
+  WPOL: "POL",
+  WAVAX: "AVAX",
+  WBNB: "BNB",
+};
 
 const EXPLICIT_TYPO_SUGGESTIONS: Record<string, string> = {
   AVEX: "AVAX",
@@ -1072,6 +1101,12 @@ export function extractRequestedCryptoSymbols(prompt?: string): string[] {
       addSymbol(match[1]);
     }
 
+    // 2B. Match "PRICE OF <SYM>" or "QUOTE FOR <SYM>"
+    const priceAfterRegex = /\b(?:PRICE|QUOTE)\s+(?:OF|FOR)\s+([A-Z0-9]{2,10})\b/g;
+    while ((match = priceAfterRegex.exec(upper)) !== null) {
+      addSymbol(match[1]);
+    }
+
     // 3. Match known tickers or full names mentioned standalone in the prompt
     const words = upper.split(/[^A-Z0-9]+/).filter(Boolean);
     for (const w of words) {
@@ -1107,11 +1142,11 @@ async function getOneClickTokenPriceMap(): Promise<Map<string, number>> {
     >("https://1click.chaindefuser.com/v0/tokens", 3200);
     if (Array.isArray(tokens)) {
       for (const t of tokens) {
-        const sym = (t.symbol ?? "").toUpperCase().replace(/^W/, "");
-        const rawSym = (t.symbol ?? "").toUpperCase();
-        if (typeof t.price === "number" && t.price > 0) {
-          if (!map.has(rawSym)) map.set(rawSym, t.price);
-          if (sym && !map.has(sym)) map.set(sym, t.price);
+        const rawSym = (t.symbol ?? "").trim().toUpperCase();
+        const canonicalWrapped = WRAPPED_TO_CANONICAL_SYMBOL[rawSym];
+        if (typeof t.price === "number" && Number.isFinite(t.price) && t.price > 0) {
+          if (rawSym && !map.has(rawSym)) map.set(rawSym, t.price);
+          if (canonicalWrapped && !map.has(canonicalWrapped)) map.set(canonicalWrapped, t.price);
         }
       }
     }
@@ -1121,6 +1156,22 @@ async function getOneClickTokenPriceMap(): Promise<Map<string, number>> {
   cachedOneClickPrices = { fetchedAtMs: Date.now(), map };
   return map;
 }
+
+const dynamicSnapshotCache = new Map<
+  string,
+  {
+    expiresAtMs: number;
+    snapshot: {
+      ethUsd: number;
+      nearUsd: number;
+      solUsd: number;
+      btcUsd: number;
+      xrpUsd: number;
+      liveFetched: boolean;
+      quotes: DynamicAssetQuote[];
+    };
+  }
+>();
 
 export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   ethUsd: number;
@@ -1132,6 +1183,12 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   quotes: DynamicAssetQuote[];
 }> {
   const initialSymbols = extractRequestedCryptoSymbols(prompt);
+  const snapshotKey = initialSymbols.join(",");
+  const cachedSnap = dynamicSnapshotCache.get(snapshotKey);
+  if (cachedSnap && Date.now() < cachedSnap.expiresAtMs) {
+    return cachedSnap.snapshot;
+  }
+
   const oneClickMap = await getOneClickTokenPriceMap();
 
   const allValidKnownSymbols = Array.from(
@@ -1154,13 +1211,13 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   }
 
   let liveFetched = false;
-  const fsyms = symbolsToQuery.slice(0, 15).join(",");
+  const fsyms = symbolsToQuery.slice(0, 16).join(",");
   const [ccData, ...cbResults] = await Promise.all([
     fetchJsonWithTimeout<Record<string, { USD?: number }>>(
       `https://min-api.cryptocompare.com/data/pricemulti?fsyms=${encodeURIComponent(fsyms)}&tsyms=USD`,
       3000
     ).catch(() => null),
-    ...symbolsToQuery.slice(0, 10).map((sym) =>
+    ...symbolsToQuery.slice(0, 16).map((sym) =>
       fetchJsonWithTimeout<{ data: { amount: string } }>(
         `https://api.coinbase.com/v2/prices/${encodeURIComponent(sym)}-USD/spot`,
         2800
@@ -1287,7 +1344,7 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
     }
   }
 
-  return {
+  const snapshot = {
     ethUsd: resolvedMap.get("ETH")?.priceUsd ?? 2219.86,
     nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? 4.18,
     solUsd: resolvedMap.get("SOL")?.priceUsd ?? 86.25,
@@ -1296,6 +1353,15 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
     liveFetched,
     quotes,
   };
+  if (dynamicSnapshotCache.size >= 100) {
+    const oldestKey = dynamicSnapshotCache.keys().next().value;
+    if (oldestKey !== undefined) dynamicSnapshotCache.delete(oldestKey);
+  }
+  dynamicSnapshotCache.set(snapshotKey, {
+    expiresAtMs: Date.now() + 15_000,
+    snapshot,
+  });
+  return snapshot;
 }
 
 /**
@@ -1633,23 +1699,29 @@ export function verifyOfflineOutLayerBundle(bundlePath: string): {
   }
 
   // 2. Recompute Keccak-256 over Ethereum EIP-1186 accountProof & storageProof
-  const recomputedStateRoot = keccak256(bundle.ethereumEip1186Proof.accountProof[0]).toLowerCase();
+  const acctProofArr = bundle.ethereumEip1186Proof?.accountProof;
+  const storProofArr = bundle.ethereumEip1186Proof?.storageProofSlot0?.proof;
+  const recomputedStateRoot =
+    Array.isArray(acctProofArr) && acctProofArr.length > 0
+      ? keccak256(acctProofArr[0]).toLowerCase()
+      : "0x0";
   const stateRootMatches =
-    recomputedStateRoot === bundle.ethereumEip1186Proof.stateRoot.toLowerCase();
+    recomputedStateRoot === (bundle.ethereumEip1186Proof?.stateRoot ?? "").toLowerCase();
   if (!stateRootMatches) {
     errors.push(
-      `StateRoot mismatch in offline bundle: keccak256(accountProof[0])=${recomputedStateRoot} != ${bundle.ethereumEip1186Proof.stateRoot}`
+      `StateRoot mismatch in offline bundle: keccak256(accountProof[0])=${recomputedStateRoot} != ${bundle.ethereumEip1186Proof?.stateRoot}`
     );
   }
 
-  const recomputedStorageHash = keccak256(
-    bundle.ethereumEip1186Proof.storageProofSlot0.proof[0]
-  ).toLowerCase();
+  const recomputedStorageHash =
+    Array.isArray(storProofArr) && storProofArr.length > 0
+      ? keccak256(storProofArr[0]).toLowerCase()
+      : "0x0";
   const storageHashMatches =
-    recomputedStorageHash === bundle.ethereumEip1186Proof.storageHash.toLowerCase();
+    recomputedStorageHash === (bundle.ethereumEip1186Proof?.storageHash ?? "").toLowerCase();
   if (!storageHashMatches) {
     errors.push(
-      `StorageHash mismatch in offline bundle: keccak256(storageProof[0])=${recomputedStorageHash} != ${bundle.ethereumEip1186Proof.storageHash}`
+      `StorageHash mismatch in offline bundle: keccak256(storageProof[0])=${recomputedStorageHash} != ${bundle.ethereumEip1186Proof?.storageHash}`
     );
   }
 

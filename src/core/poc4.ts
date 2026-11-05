@@ -86,6 +86,7 @@ export interface GovernanceOperationInput {
   agentId: string;
   agentReputationScore: number; // 0..1000
   counterpartyRiskDecision: "allow" | "warn" | "block";
+  currentDaySpendUsd?: number;
   hMaster?: string;
   functionCallSpec?: {
     targetContractId: string;
@@ -187,15 +188,24 @@ export function verify_poc4_enclave_gate(input: PoC4GateInput): PoC4GateResult {
     violations.push("INVALID_1CLICK_QUOTE_ADDRESS: 1Click quote deposit address is missing or malformed.");
   }
 
-  if (input.slippageBps < 0 || input.slippageBps > config.max_slippage_bps) {
+  if (
+    !Number.isFinite(input.slippageBps) ||
+    input.slippageBps < 0 ||
+    input.slippageBps > config.max_slippage_bps
+  ) {
     violations.push(
-      `SLIPPAGE_EXCEEDED: Requested ${input.slippageBps} bps exceeds max_slippage_bps (${config.max_slippage_bps} bps).`
+      `SLIPPAGE_EXCEEDED: Requested ${input.slippageBps} bps is invalid or exceeds max_slippage_bps (${config.max_slippage_bps} bps).`
     );
   }
 
-  if (input.oracleDeviationPercent < 0 || input.oracleDeviationPercent > config.max_oracle_deviation_percent) {
+  if (
+    !Number.isFinite(input.oracleDeviationPercent) ||
+    input.oracleDeviationPercent < 0 ||
+    input.oracleDeviationPercent > config.max_oracle_deviation_percent ||
+    input.oracleDeviationPercent > 5.0
+  ) {
     violations.push(
-      `ORACLE_DEVIATION_EXCEEDED: Deviation ${input.oracleDeviationPercent}% exceeds max_oracle_deviation_percent (${config.max_oracle_deviation_percent}%).`
+      `ORACLE_DEVIATION_EXCEEDED: Deviation ${input.oracleDeviationPercent}% is invalid or exceeds max_oracle_deviation_percent (${config.max_oracle_deviation_percent}%).`
     );
   }
 
@@ -211,8 +221,13 @@ export function verify_poc4_enclave_gate(input: PoC4GateInput): PoC4GateResult {
 
   const appFee = input.appFeeBps ?? config.app_fee_bps;
   const oneClickFee = input.oneClickFeeBps ?? 0;
+  if (!Number.isFinite(appFee) || appFee < 0 || !Number.isFinite(oneClickFee) || oneClickFee < 0) {
+    violations.push(
+      `INVALID_FEE_PARAMETERS: appFeeBps (${appFee}) and oneClickFeeBps (${oneClickFee}) must be finite non-negative numbers.`
+    );
+  }
   const totalFeeBps = appFee + oneClickFee;
-  if (totalFeeBps > 500 || totalFeeBps > config.max_total_fee_bps) {
+  if (!Number.isFinite(totalFeeBps) || totalFeeBps > 500 || totalFeeBps > config.max_total_fee_bps) {
     violations.push(
       `TOTAL_FEE_CEILING_EXCEEDED: Combined fee (${totalFeeBps} bps) exceeds hard protocol cap (500 bps).`
     );
@@ -254,11 +269,17 @@ export function escalate_sha256_to_sputnik_bounty(
     config.governance_tiers?.sputnik_dao_contract_id ??
     runtime.env.SPUTNIK_DAO_CONTRACT_ID;
 
+  const safeAmountUsd = Number.isFinite(operation.amountUsd) ? Number(operation.amountUsd.toFixed(2)) : -1;
+  const safeRep = Number.isFinite(operation.agentReputationScore)
+    ? Math.max(0, Math.min(1000, Math.round(operation.agentReputationScore)))
+    : -1;
+  const rawUnits = String(operation.amountYoctoOrUnits ?? "").trim();
+
   const canonicalOpPayload = {
     agentId: operation.agentId,
-    agentReputationScore: operation.agentReputationScore,
-    amountUsd: Number(operation.amountUsd.toFixed(2)),
-    amountYoctoOrUnits: operation.amountYoctoOrUnits,
+    agentReputationScore: safeRep,
+    amountUsd: safeAmountUsd,
+    amountYoctoOrUnits: rawUnits,
     counterpartyRiskDecision: operation.counterpartyRiskDecision,
     hMaster: operation.hMaster ?? "UNSET",
     intentSummary: operation.intentSummary,
@@ -272,6 +293,22 @@ export function escalate_sha256_to_sputnik_bounty(
     .createHash("sha256")
     .update(JSON.stringify(canonicalOpPayload), "utf8")
     .digest("hex");
+
+  if (
+    !Number.isFinite(operation.amountUsd) ||
+    operation.amountUsd <= 0 ||
+    !Number.isFinite(operation.agentReputationScore) ||
+    !/^\d+$/.test(rawUnits) ||
+    BigInt(rawUnits) <= 0n
+  ) {
+    return {
+      tier: "BLOCKED",
+      decision: "block",
+      operationSha256,
+      reason: "INVALID_OPERATION_AMOUNT: Spend amount, atomic units, and reputation score must be finite positive numbers.",
+      requiresCouncilApproval: true,
+    };
+  }
 
   // Hard block if emergency kill switch is active or counterparty risk is 'block'
   if (config.emergency_kill_switch) {
@@ -352,12 +389,24 @@ export function escalate_sha256_to_sputnik_bounty(
     };
   };
 
-  // Check if spend exceeds max_single_tx_usd ($150.00) or agent reputation is critically low (< 400)
-  if (operation.amountUsd > config.max_single_tx_usd || operation.agentReputationScore < 400) {
+  const priorDaySpendUsd =
+    Number.isFinite(operation.currentDaySpendUsd) && (operation.currentDaySpendUsd ?? 0) > 0
+      ? (operation.currentDaySpendUsd as number)
+      : 0;
+  const projectedDailySpendUsd = priorDaySpendUsd + operation.amountUsd;
+
+  // Check if spend exceeds max_single_tx_usd ($150.00), daily_spend_limit_usd ($500.00), or agent reputation is critically low (< 400)
+  if (
+    operation.amountUsd > config.max_single_tx_usd ||
+    projectedDailySpendUsd > config.daily_spend_limit_usd ||
+    safeRep < 400
+  ) {
     const reason =
       operation.amountUsd > config.max_single_tx_usd
         ? `Requested spend ($${operation.amountUsd.toFixed(2)}) exceeds max_single_tx_usd ($${config.max_single_tx_usd.toFixed(2)}); escalated to Sputnik DAO V2 on-chain proposal.`
-        : `Agent reputation (${operation.agentReputationScore}/1000) is below autonomous threshold; escalated to Sputnik DAO V2 on-chain proposal.`;
+        : projectedDailySpendUsd > config.daily_spend_limit_usd
+          ? `Projected daily spend ($${projectedDailySpendUsd.toFixed(2)}) exceeds daily_spend_limit_usd ($${config.daily_spend_limit_usd.toFixed(2)}); escalated to Sputnik DAO V2 on-chain proposal.`
+          : `Agent reputation (${safeRep}/1000) is below autonomous threshold; escalated to Sputnik DAO V2 on-chain proposal.`;
 
     return {
       tier: "SPUTNIK_DAO_PROPOSAL",
@@ -370,23 +419,24 @@ export function escalate_sha256_to_sputnik_bounty(
   }
 
   // Tier 1: AUTO_APPROVE
-  // amountUsd <= config.max_single_tx_usd AND agentReputationScore >= 700 AND counterpartyRiskDecision === 'allow'
+  // amountUsd <= config.max_single_tx_usd AND projectedDailySpendUsd <= config.daily_spend_limit_usd AND agentReputationScore >= 700 AND counterpartyRiskDecision === 'allow'
   if (
     operation.amountUsd <= config.max_single_tx_usd &&
-    operation.agentReputationScore >= 700 &&
+    projectedDailySpendUsd <= config.daily_spend_limit_usd &&
+    safeRep >= 700 &&
     operation.counterpartyRiskDecision === "allow"
   ) {
     return {
       tier: "AUTO_APPROVE",
       decision: "allow",
       operationSha256,
-      reason: `Tier 1 Auto-Approved: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.max_single_tx_usd.toFixed(2)}), high reputation (${operation.agentReputationScore}/1000 >= 700), and counterparty risk 'allow'.`,
+      reason: `Tier 1 Auto-Approved: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.max_single_tx_usd.toFixed(2)}), high reputation (${safeRep}/1000 >= 700), and counterparty risk 'allow'.`,
       requiresCouncilApproval: false,
     };
   }
 
   // Tier 2: ONE_COUNCIL_FAST_TRACK (e.g., counterparty decision === 'warn' or moderate reputation 400..699 within limit)
-  const tier2Reason = `Tier 2 Single-Council Fast-Track: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.daily_spend_limit_usd.toFixed(2)}) with counterparty='${operation.counterpartyRiskDecision}' and reputation=${operation.agentReputationScore}/1000.`;
+  const tier2Reason = `Tier 2 Single-Council Fast-Track: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.max_single_tx_usd.toFixed(2)}) with counterparty='${operation.counterpartyRiskDecision}' and reputation=${safeRep}/1000.`;
   return {
     tier: "ONE_COUNCIL_FAST_TRACK",
     decision: "warn",

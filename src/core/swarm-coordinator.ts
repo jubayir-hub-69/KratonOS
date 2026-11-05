@@ -99,6 +99,7 @@ export function computeSealedBidCommitment(order: {
 export function runSwarmSealedBidMarketRound(options?: {
   rootAccountId?: string;
   roundSeed?: string;
+  tamperParticipantIndices?: number[];
 }): SwarmRoundSettlementResult {
   const startPerf = performance.now();
   const runtime = loadKratonConfig();
@@ -174,26 +175,37 @@ export function runSwarmSealedBidMarketRound(options?: {
   // --------------------------------------------------------------------------
   // PHASE 3: Reveal & Cryptographic Commitment Verification
   // --------------------------------------------------------------------------
+  const tamperedSet = new Set(options?.tamperParticipantIndices ?? []);
+  const verifiedBuyers: SwarmRevealedOrder[] = [];
+  const verifiedSellers: SwarmRevealedOrder[] = [];
   let commitmentsVerified = 0;
   let tamperedRevealsRejected = 0;
 
   for (let idx = 0; idx < allOrders.length; idx++) {
-    const revealed = allOrders[idx];
+    const original = allOrders[idx];
+    const revealed: SwarmRevealedOrder = tamperedSet.has(original.participantIndex)
+      ? { ...original, limitPriceUsd: Number((original.limitPriceUsd + 0.25).toFixed(4)) }
+      : original;
     const commit = sealedCommits[idx];
     const recomputedHash = computeSealedBidCommitment(revealed);
     if (recomputedHash === commit.commitmentSha256) {
       commitmentsVerified++;
+      if (revealed.side === "BUYER") {
+        verifiedBuyers.push(revealed);
+      } else {
+        verifiedSellers.push(revealed);
+      }
     } else {
       tamperedRevealsRejected++;
     }
   }
 
   // --------------------------------------------------------------------------
-  // PHASE 4: Uniform Clearing Price & Pro-Rata Intent Settlement
+  // PHASE 4: Uniform Clearing Price & Bounded Largest-Remainder (Hamilton) Pro-Rata Settlement
   // --------------------------------------------------------------------------
-  // Sort buyers descending by willingness to pay, sellers ascending by ask price
-  const sortedBuyers = [...revealedBuyers].sort((a, b) => b.limitPriceUsd - a.limitPriceUsd);
-  const sortedSellers = [...revealedSellers].sort((a, b) => a.limitPriceUsd - b.limitPriceUsd);
+  // Sort verified buyers descending by willingness to pay, verified sellers ascending by ask price
+  const sortedBuyers = [...verifiedBuyers].sort((a, b) => b.limitPriceUsd - a.limitPriceUsd);
+  const sortedSellers = [...verifiedSellers].sort((a, b) => a.limitPriceUsd - b.limitPriceUsd);
 
   // Determine uniform clearing price where marginal seller ask <= marginal buyer bid
   const uniformClearingPriceUsd = 2.15; // Bulk clearing price ($2.15/unit vs $2.85 retail = 24.56% savings!)
@@ -205,15 +217,46 @@ export function runSwarmSealedBidMarketRound(options?: {
   const pooledSellerSupplyUnits = qualifiedSellers.reduce((sum, s) => sum + s.quantityUnits, 0);
   const clearedVolumeUnits = Math.min(pooledBuyerDemandUnits, pooledSellerSupplyUnits);
 
-  // Pro-rata buyer allocation across all qualified buyers
-  let allocatedBuyerSum = 0;
-  const buyerAllocations: SwarmBuyerAllocation[] = qualifiedBuyers.map((buyer, idx) => {
-    const isLast = idx === qualifiedBuyers.length - 1;
-    const proRataUnits = isLast
-      ? clearedVolumeUnits - allocatedBuyerSum
-      : Math.floor((buyer.quantityUnits * clearedVolumeUnits) / pooledBuyerDemandUnits);
-    allocatedBuyerSum += proRataUnits;
+  // Bounded Largest-Remainder (Hamilton) Pro-Rata Allocation:
+  // Guarantees `allocatedUnits <= requestedUnits` for EVERY buyer AND `sum(allocatedUnits) === clearedVolumeUnits`.
+  const allocatedUnitsByBuyer = new Array<number>(qualifiedBuyers.length).fill(0);
+  if (clearedVolumeUnits > 0 && pooledBuyerDemandUnits > 0) {
+    if (clearedVolumeUnits >= pooledBuyerDemandUnits) {
+      for (let i = 0; i < qualifiedBuyers.length; i++) {
+        allocatedUnitsByBuyer[i] = qualifiedBuyers[i].quantityUnits;
+      }
+    } else {
+      const remainders: Array<{ idx: number; frac: number }> = [];
+      let baseSum = 0;
+      for (let i = 0; i < qualifiedBuyers.length; i++) {
+        const exact = (qualifiedBuyers[i].quantityUnits * clearedVolumeUnits) / pooledBuyerDemandUnits;
+        const floorUnits = Math.min(qualifiedBuyers[i].quantityUnits, Math.floor(exact));
+        allocatedUnitsByBuyer[i] = floorUnits;
+        baseSum += floorUnits;
+        remainders.push({ idx: i, frac: exact - Math.floor(exact) });
+      }
+      let leftover = clearedVolumeUnits - baseSum;
+      remainders.sort(
+        (a, b) =>
+          b.frac - a.frac ||
+          qualifiedBuyers[b.idx].limitPriceUsd - qualifiedBuyers[a.idx].limitPriceUsd ||
+          qualifiedBuyers[a.idx].participantIndex - qualifiedBuyers[b.idx].participantIndex
+      );
+      let cursor = 0;
+      while (leftover > 0 && remainders.length > 0) {
+        const targetIdx = remainders[cursor % remainders.length].idx;
+        if (allocatedUnitsByBuyer[targetIdx] < qualifiedBuyers[targetIdx].quantityUnits) {
+          allocatedUnitsByBuyer[targetIdx] += 1;
+          leftover -= 1;
+        }
+        cursor += 1;
+        if (cursor > remainders.length * 4) break;
+      }
+    }
+  }
 
+  const buyerAllocations: SwarmBuyerAllocation[] = qualifiedBuyers.map((buyer, idx) => {
+    const proRataUnits = allocatedUnitsByBuyer[idx];
     const totalCostAtClearingUsd = Number((proRataUnits * uniformClearingPriceUsd).toFixed(2));
     const retailCostWithoutSwarmUsd = Number(
       (proRataUnits * buyer.retailBenchmarkPriceUsd).toFixed(2)

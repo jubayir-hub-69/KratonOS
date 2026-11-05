@@ -134,8 +134,8 @@ export function HoldConfirmButton({
   testId?: string;
   className?: string;
 }) {
-  const wrapRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const timersRef = useRef<number[]>([]);
   const startTimeRef = useRef<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [draining, setDraining] = useState(false);
@@ -149,20 +149,29 @@ export function HoldConfirmButton({
     }
   };
 
+  const clearTimers = () => {
+    for (const id of timersRef.current) {
+      window.clearTimeout(id);
+    }
+    timersRef.current = [];
+  };
+
   const triggerSuccess = () => {
     clearRaf();
+    clearTimers();
     setProgress(100);
     setDraining(false);
     setDone(true);
     setBursting(true);
     void onConfirm();
-    setTimeout(() => {
+    const t1 = window.setTimeout(() => {
       setBursting(false);
     }, 600);
-    setTimeout(() => {
+    const t2 = window.setTimeout(() => {
       setDone(false);
       setProgress(0);
     }, 1800);
+    timersRef.current.push(t1, t2);
   };
 
   const startHold = () => {
@@ -194,11 +203,13 @@ export function HoldConfirmButton({
     }
   };
 
-  useEffect(() => () => clearRaf(), []);
+  useEffect(() => () => {
+    clearRaf();
+    clearTimers();
+  }, []);
 
   return (
     <div
-      ref={wrapRef}
       style={{ ["--hold" as string]: `${progress.toFixed(1)}%` }}
       className={`btn-hold-wrap shrink-0 whitespace-nowrap ${
         draining ? "is-draining" : ""
@@ -213,6 +224,7 @@ export function HoldConfirmButton({
         onPointerLeave={cancelHold}
         onPointerCancel={cancelHold}
         onKeyDown={(e) => {
+          if (e.repeat) return;
           if (e.key === " " || e.key === "Enter") {
             startHold();
           }
@@ -312,7 +324,6 @@ export function RunCompilerButton({
         {[0, 1, 2, 3, 4, 5].map((idx) => (
           <span
             key={idx}
-            style={{ ["--i" as string]: idx }}
             className={`btn-run-compiler__box ${idx < litBoxes ? "is-lit" : ""}`}
           />
         ))}

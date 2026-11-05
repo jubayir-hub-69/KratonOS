@@ -182,10 +182,14 @@ impl KratonPolicyVault {
     /// Computes deterministic SHA-256 hex digest of the active on-chain policy constraints.
     pub fn compute_policy_hash(&self) -> String {
         let preimage = format!(
-            "owner:{}|dao:{}|kill:{}|daily:{}|single:{}|slippage:{}|tokens:{}",
+            "owner:{}|dao:{}|outlayer:{}|worker:{}|mpc:{}|kill:{}|locked:{}|daily:{}|single:{}|slippage:{}|tokens:{}",
             self.owner_id,
             self.sputnik_dao_id,
+            self.outlayer_contract_id,
+            self.outlayer_worker_contract_id,
+            self.mpc_signer_id,
             self.emergency_kill_switch,
+            self.vault_locked,
             self.daily_spend_limit_usd_cents,
             self.max_single_tx_usd_cents,
             self.max_slippage_bps,
@@ -196,7 +200,7 @@ impl KratonPolicyVault {
 
     /// Verifies the Quad-Attested Proof of Constraint (`PoC-4`) gate:
     /// `H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)`
-    /// Enforces replay protection, kill switch, slippage cap, fee cap (<= 500 bps), token whitelist, and counterparty blocklist.
+    /// Enforces caller authorization, vault lock, replay protection, kill switch, slippage cap, fee cap (<= 500 bps), token whitelist, and counterparty blocklist.
     pub fn verify_poc4_enclave_gate(
         &mut self,
         sig_near_ai_tee: String,
@@ -207,6 +211,11 @@ impl KratonPolicyVault {
         slippage_bps: u16,
         total_fee_bps: u16,
     ) -> String {
+        self.assert_authorized_caller(None);
+        assert!(
+            !self.vault_locked,
+            "POC4_REJECTED: Vault account is locked"
+        );
         assert!(
             !self.emergency_kill_switch,
             "POC4_REJECTED: Emergency kill switch is active"
@@ -239,15 +248,16 @@ impl KratonPolicyVault {
                 && !address_1click_quote.trim().is_empty(),
             "POC4_REJECTED: All 4 attestation inputs must be non-empty"
         );
-        assert_eq!(
-            rtmr3_outlayer_eip1186, self.approved_tdx_measurements.rtmr3,
+        assert!(
+            rtmr3_outlayer_eip1186.eq_ignore_ascii_case(&self.approved_tdx_measurements.rtmr3),
             "POC4_REJECTED: OutLayer RTMR3 measurement mismatch against approved TDX register"
         );
 
+        let normalized_rtmr3 = rtmr3_outlayer_eip1186.to_ascii_lowercase();
         let hash_policy = self.compute_policy_hash();
         let master_preimage = format!(
             "{}||{}||{}||{}",
-            hash_policy, sig_near_ai_tee, rtmr3_outlayer_eip1186, address_1click_quote
+            hash_policy, sig_near_ai_tee, normalized_rtmr3, address_1click_quote
         );
         let h_master = hex_encode(&Sha256::digest(master_preimage.as_bytes()));
 
@@ -359,6 +369,12 @@ impl KratonPolicyVault {
         total_fee_bps: u16,
     ) -> IntentExecutionOutcome {
         assert!(!self.emergency_kill_switch, "Emergency kill switch is active");
+        assert!(!self.vault_locked, "Vault account is locked");
+        self.assert_authorized_caller(Some(&agent_id));
+        assert!(
+            amount_usd_cents > 0 && amount_yocto.0 > 0,
+            "Amount in USD cents and yocto/atomic units must be strictly positive"
+        );
 
         // Roll daily spend window if UTC day advanced
         let current_day = env::block_timestamp() / NANOS_PER_DAY;
@@ -405,7 +421,8 @@ impl KratonPolicyVault {
 
         let projected_daily = self
             .current_day_spend_usd_cents
-            .saturating_add(amount_usd_cents);
+            .checked_add(amount_usd_cents)
+            .expect("Daily spend USD cents overflow");
 
         // Tier 1: Autonomous Fast-Lane
         if amount_usd_cents <= self.max_single_tx_usd_cents
@@ -431,8 +448,11 @@ impl KratonPolicyVault {
             };
         }
 
-        // Tier 2 or Tier 3: Escalate to Sputnik DAO V2 via `add_proposal` (1 NEAR bond, 150 TGas)
-        let tier = if amount_usd_cents <= self.daily_spend_limit_usd_cents && current_rep >= 400 {
+        // Tier 2 (medium reputation within single-tx & daily caps) vs Tier 3 (> $150 single-tx, > $500 daily, or < 400 reputation)
+        let tier = if amount_usd_cents <= self.max_single_tx_usd_cents
+            && projected_daily <= self.daily_spend_limit_usd_cents
+            && current_rep >= 400
+        {
             "ONE_COUNCIL_FAST_TRACK"
         } else {
             "SPUTNIK_DAO_PROPOSAL"
@@ -489,8 +509,16 @@ impl KratonPolicyVault {
         reward_yocto: U128,
     ) -> u64 {
         self.assert_owner_or_dao();
+        assert!(!self.vault_locked, "Vault account is locked");
+        assert!(
+            !title.trim().is_empty() && reward_usd_cents > 0 && reward_yocto.0 > 0,
+            "Invalid bounty parameters: title and rewards must be non-empty and positive"
+        );
         let bounty_id = self.next_bounty_id;
-        self.next_bounty_id += 1;
+        self.next_bounty_id = self
+            .next_bounty_id
+            .checked_add(1)
+            .expect("Bounty ID counter overflow");
 
         let bounty = AgentBounty {
             bounty_id,
@@ -507,6 +535,20 @@ impl KratonPolicyVault {
 
     /// Claims an open sub-agent bounty.
     pub fn claim_agent_bounty(&mut self, bounty_id: u64, worker_id: AccountId) {
+        assert!(!self.vault_locked, "Vault account is locked");
+        assert!(!self.emergency_kill_switch, "Emergency kill switch is active");
+        let caller = env::predecessor_account_id();
+        assert!(
+            caller == worker_id || caller == self.owner_id || caller == self.sputnik_dao_id,
+            "UNAUTHORIZED: Caller '{}' cannot claim bounty on behalf of '{}'",
+            caller,
+            worker_id
+        );
+        assert!(
+            !self.blocked_counterparties.contains(&worker_id),
+            "SECURITY_BLOCKED: Blocked counterparty '{}' cannot claim bounties",
+            worker_id
+        );
         let mut bounty = self
             .agent_bounties
             .get(&bounty_id)
@@ -519,12 +561,29 @@ impl KratonPolicyVault {
 
     /// Completes a claimed bounty and records the deliverable SHA-256 proof.
     pub fn complete_agent_bounty(&mut self, bounty_id: u64, deliverable_sha256: String) {
+        assert!(!self.vault_locked, "Vault account is locked");
+        assert!(!self.emergency_kill_switch, "Emergency kill switch is active");
+        assert!(
+            deliverable_sha256.len() == 64
+                && deliverable_sha256.chars().all(|c| c.is_ascii_hexdigit()),
+            "Deliverable SHA-256 must be a valid 64-character hex digest"
+        );
         let mut bounty = self
             .agent_bounties
             .get(&bounty_id)
             .expect("Bounty does not exist");
         assert_eq!(bounty.status, BountyStatus::Claimed, "Bounty must be claimed first");
-        bounty.deliverable_sha256 = Some(deliverable_sha256);
+        let caller = env::predecessor_account_id();
+        let is_assigned_worker = bounty
+            .worker_id
+            .as_ref()
+            .map(|w| *w == caller)
+            .unwrap_or(false);
+        assert!(
+            is_assigned_worker || caller == self.owner_id || caller == self.sputnik_dao_id,
+            "UNAUTHORIZED: Only assigned worker, owner, or Sputnik DAO can complete bounty"
+        );
+        bounty.deliverable_sha256 = Some(deliverable_sha256.to_ascii_lowercase());
         bounty.status = BountyStatus::Completed;
         self.agent_bounties.insert(&bounty_id, &bounty);
     }
@@ -538,6 +597,42 @@ impl KratonPolicyVault {
 
     pub fn get_agent_reputation(&self, agent_id: AccountId) -> u16 {
         self.agent_reputations.get(&agent_id).unwrap_or(750)
+    }
+
+    fn is_registered_agent(&self, account_id: &AccountId) -> bool {
+        if self.agent_reputations.contains_key(account_id) {
+            return true;
+        }
+        for prefix in ["scout", "executor", "payroll", "yield"] {
+            if account_id.as_str() == format!("{}.{}", prefix, self.owner_id) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn assert_authorized_caller(&self, expected_agent_id: Option<&AccountId>) {
+        let caller = env::predecessor_account_id();
+        if caller == self.owner_id
+            || caller == self.sputnik_dao_id
+            || caller == env::current_account_id()
+        {
+            return;
+        }
+        if let Some(agent_id) = expected_agent_id {
+            assert!(
+                caller == *agent_id && self.is_registered_agent(&caller),
+                "UNAUTHORIZED: Caller '{}' is not authorized to execute intent for '{}'",
+                caller,
+                agent_id
+            );
+        } else {
+            assert!(
+                self.is_registered_agent(&caller),
+                "UNAUTHORIZED: Caller '{}' is not a registered Policy Vault agent or owner",
+                caller
+            );
+        }
     }
 
     fn assert_owner_or_dao(&self) {
@@ -558,10 +653,11 @@ impl KratonPolicyVault {
             ("rtmr2", &m.rtmr2),
             ("rtmr3", &m.rtmr3),
         ] {
-            assert_eq!(
-                val.len(),
-                96,
-                "TDX register '{}' must be 48 bytes (96 hex characters)",
+            assert!(
+                val.len() == 96
+                    && val.chars().all(|c| c.is_ascii_hexdigit())
+                    && val.chars().any(|c| c != '0'),
+                "TDX register '{}' must be 48 non-zero bytes (96 valid hex characters)",
                 name
             );
         }
@@ -704,8 +800,30 @@ mod tests {
             40,
             50,
         );
+        assert_eq!(outcome.tier, "SPUTNIK_DAO_PROPOSAL");
         assert_eq!(outcome.decision, "warn");
         assert!(outcome.escalated_to_dao);
+    }
+
+    #[test]
+    #[should_panic(expected = "UNAUTHORIZED")]
+    fn test_unauthorized_caller_rejected() {
+        let mut vault = setup_vault();
+        let attacker_ctx = VMContextBuilder::new()
+            .predecessor_account_id("mallory-attacker.testnet".parse().unwrap())
+            .block_timestamp(1_730_000_000_000_000_000)
+            .build();
+        testing_env!(attacker_ctx);
+
+        vault.verify_poc4_enclave_gate(
+            "sig_forged".to_string(),
+            "e5".repeat(48),
+            "intents.near:q-forged".to_string(),
+            "USDC".to_string(),
+            "mallory-attacker.testnet".parse().unwrap(),
+            10,
+            20,
+        );
     }
 
     #[test]

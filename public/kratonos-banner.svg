@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" fill="none" role="img" aria-label="KratonOS — Sovereign Financial &amp; Verifiable Agent Operating System on NEAR Protocol">
+  <defs>
+    <!-- Deep Obsidian Glass Background -->
+    <linearGradient id="bgGlassGrad" x1="0" y1="0" x2="1200" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#050B11" />
+      <stop offset="50%" stop-color="#08131D" />
+      <stop offset="100%" stop-color="#050C13" />
+    </linearGradient>
+
+    <!-- Animated Outer Card Border Shimmer -->
+    <linearGradient id="cardBorderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00EC97" stop-opacity="0.55">
+        <animate attributeName="stop-opacity" values="0.35;0.75;0.35" dur="5s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="50%" stop-color="#38BDF8" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#1E293B" stop-opacity="0.85" />
+    </linearGradient>
+
+    <!-- Ambient Radial Glow Behind Glassy K Emblem -->
+    <radialGradient id="emblemAura" cx="176" cy="140" r="155" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00EC97" stop-opacity="0.34" />
+      <stop offset="48%" stop-color="#38BDF8" stop-opacity="0.14" />
+      <stop offset="100%" stop-color="#050B11" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Secondary Ambient Cyan Glow -->
+    <radialGradient id="titleAura" cx="620" cy="128" r="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.11" />
+      <stop offset="60%" stop-color="#00EC97" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#050B11" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Dark Frosted Glass Emblem Surface -->
+    <linearGradient id="kBoxSurface" x1="112" y1="76" x2="240" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0F2430" stop-opacity="0.95" />
+      <stop offset="52%" stop-color="#091620" stop-opacity="0.98" />
+      <stop offset="100%" stop-color="#061018" stop-opacity="0.98" />
+    </linearGradient>
+
+    <!-- Glassy Emblem Rim Gradient -->
+    <linearGradient id="kBoxRim" x1="112" y1="76" x2="240" y2="204" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00EC97" stop-opacity="0.85" />
+      <stop offset="50%" stop-color="#38BDF8" stop-opacity="0.65" />
+      <stop offset="100%" stop-color="#00EC97" stop-opacity="0.35" />
+    </linearGradient>
+
+    <!-- Animated Shimmer Gradient for the Geometric "K" Monogram -->
+    <linearGradient id="kMonogramShimmer" x1="0%" y1="0%" x2="200%" y2="200%">
+      <stop offset="0%" stop-color="#00EC97" />
+      <stop offset="32%" stop-color="#38BDF8" />
+      <stop offset="52%" stop-color="#E2FFF4" />
+      <stop offset="72%" stop-color="#00EC97" />
+      <stop offset="100%" stop-color="#38BDF8" />
+      <animate attributeName="x1" values="-100%;100%" dur="3.8s" repeatCount="indefinite" />
+      <animate attributeName="x2" values="100%;300%" dur="3.8s" repeatCount="indefinite" />
+    </linearGradient>
+
+    <!-- Animated Shimmer Gradient for "KratonOS" Display Typography -->
+    <linearGradient id="titleShimmer" x1="0%" y1="0%" x2="220%" y2="0%">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="28%" stop-color="#FFFFFF" />
+      <stop offset="46%" stop-color="#00EC97" />
+      <stop offset="60%" stop-color="#38BDF8" />
+      <stop offset="76%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#FFFFFF" />
+      <animate attributeName="x1" values="-120%;100%" dur="5.2s" repeatCount="indefinite" />
+      <animate attributeName="x2" values="100%;320%" dur="5.2s" repeatCount="indefinite" />
+    </linearGradient>
+
+    <!-- Subtle Architectural Dot Grid Pattern -->
+    <pattern id="dotMatrix" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#94A3B8" fill-opacity="0.12" />
+    </pattern>
+
+    <!-- Soft Drop Shadow & Neon Glow Filter -->
+    <filter id="kGlowFilter" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer Rounded Obsidian Glass Container -->
+  <rect x="2" y="2" width="1196" height="276" rx="22" fill="url(#bgGlassGrad)" stroke="url(#cardBorderGrad)" stroke-width="1.5" />
+  <rect x="2" y="2" width="1196" height="276" rx="22" fill="url(#dotMatrix)" />
+
+  <!-- Top Specular Glass Highlight Line -->
+  <line x1="64" y1="3" x2="1136" y2="3" stroke="#38BDF8" stroke-opacity="0.28" stroke-width="1" />
+
+  <!-- Ambient Breathing Glows -->
+  <circle cx="176" cy="140" r="150" fill="url(#emblemAura)">
+    <animate attributeName="opacity" values="0.65;1;0.65" dur="4.2s" repeatCount="indefinite" />
+  </circle>
+  <ellipse cx="620" cy="134" rx="340" ry="125" fill="url(#titleAura)" />
+
+  <!-- ====================================================================== -->
+  <!-- SIGNATURE ROUNDED DARK-GLASS "K" EMBLEM                                -->
+  <!-- ====================================================================== -->
+  <g transform="translate(112, 76)">
+    <!-- Outer Animated Pulse Halo -->
+    <rect x="-6" y="-6" width="140" height="140" rx="34" stroke="#00EC97" stroke-opacity="0.24" stroke-width="1.2">
+      <animate attributeName="stroke-opacity" values="0.12;0.42;0.12" dur="3.6s" repeatCount="indefinite" />
+    </rect>
+
+    <!-- Rounded Dark-Glass Box -->
+    <rect x="0" y="0" width="128" height="128" rx="30" fill="url(#kBoxSurface)" stroke="url(#kBoxRim)" stroke-width="1.75" />
+
+    <!-- Top-Left Glass Specular Sheen -->
+    <path d="M16 14C36 7 92 7 112 14" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5" stroke-linecap="round" />
+    <rect x="8" y="8" width="112" height="112" rx="23" stroke="#38BDF8" stroke-opacity="0.14" stroke-width="1" />
+
+    <!-- Scaled Geometric Sovereign "K" Monogram -->
+    <g transform="translate(22, 22) scale(3.5)" filter="url(#kGlowFilter)">
+      <path
+        d="M5.5 4.25C5.5 3.56 6.06 3 6.75 3H8.5C9.19 3 9.75 3.56 9.75 4.25V19.75C9.75 20.44 9.19 21 8.5 21H6.75C6.06 21 5.5 20.44 5.5 19.75V4.25Z"
+        fill="url(#kMonogramShimmer)"
+      />
+      <path
+        d="M16.22 3.38C16.68 2.91 17.44 2.9 17.92 3.36L19.16 4.56C19.65 5.03 19.66 5.82 19.17 6.3L13.55 11.85L19.34 17.68C19.81 18.16 19.8 18.93 19.32 19.4L18.08 20.61C17.6 21.08 16.82 21.07 16.35 20.58L9.85 13.88C9.12 13.13 9.12 11.93 9.85 11.18L16.22 3.38Z"
+        fill="url(#kMonogramShimmer)"
+      />
+      <circle cx="18.2" cy="12" r="1.55" fill="#38BDF8">
+        <animate attributeName="r" values="1.35;1.85;1.35" dur="2.6s" repeatCount="indefinite" />
+        <animate attributeName="fill" values="#38BDF8;#00EC97;#38BDF8" dur="2.6s" repeatCount="indefinite" />
+      </circle>
+    </g>
+  </g>
+
+  <!-- ====================================================================== -->
+  <!-- KRATONOS HERO WORDMARK, SUBTITLE & VERIFIABLE PILLAR CAPSULES          -->
+  <!-- ====================================================================== -->
+  <g transform="translate(282, 0)">
+    <!-- Eyebrow Protocol Status Pill -->
+    <rect x="0" y="50" width="356" height="26" rx="13" fill="#00EC97" fill-opacity="0.1" stroke="#00EC97" stroke-opacity="0.4" stroke-width="1" />
+    <circle cx="15" cy="63" r="4" fill="#00EC97">
+      <animate attributeName="opacity" values="1;0.35;1" dur="1.8s" repeatCount="indefinite" />
+    </circle>
+    <text x="28" y="67" fill="#00EC97" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="700" letter-spacing="1.1">
+      POC-4 QUAD-ATTESTED // NEAR PROTOCOL V88
+    </text>
+
+    <!-- Main KratonOS Title with Animated Gradient Shimmer -->
+    <text x="-2" y="143" fill="url(#titleShimmer)" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="68" font-weight="800" letter-spacing="-1.8">
+      KratonOS
+    </text>
+
+    <!-- Subtitle -->
+    <text x="0" y="178" fill="#CBD5E1" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18.5" font-weight="500" letter-spacing="-0.15">
+      Sovereign Financial &amp; Verifiable Agent Operating System on NEAR Protocol
+    </text>
+
+    <!-- Bottom Cryptographic Pillar Capsules -->
+    <g transform="translate(0, 202)" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="11" font-weight="600">
+      <rect x="0" y="0" width="214" height="28" rx="8" fill="#0D1F2D" stroke="#1E3A4C" stroke-width="1" />
+      <text x="12" y="18" fill="#38BDF8">GLM-5.1 H100 + Intel TDX TEE</text>
+
+      <rect x="224" y="0" width="184" height="28" rx="8" fill="#0D1F2D" stroke="#1E3A4C" stroke-width="1" />
+      <text x="236" y="18" fill="#00EC97">OutLayer EIP-1186 Trie</text>
+
+      <rect x="418" y="0" width="204" height="28" rx="8" fill="#0D1F2D" stroke="#1E3A4C" stroke-width="1" />
+      <text x="430" y="18" fill="#38BDF8">1Click Confidential Intents</text>
+
+      <rect x="632" y="0" width="194" height="28" rx="8" fill="#0D1F2D" stroke="#1E3A4C" stroke-width="1" />
+      <text x="644" y="18" fill="#00EC97">NEP-611 4-Lane Gas Keys</text>
+    </g>
+  </g>
+</svg>
+
