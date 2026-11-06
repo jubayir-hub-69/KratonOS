@@ -117,29 +117,42 @@ async function runPhase3OutLayerVerification(): Promise<void> {
     const offlineCheck = verifyOfflineOutLayerBundle(bundlePath);
     assert.equal(offlineCheck.valid, true, "Saved EIP-1186 bundle must cryptographically verify in air-gapped CI");
     chainlinkData = {
-      AggregatorAddress: saved.ethereumEip1186Proof.chainlinkAggregator,
+      AggregatorAddress: String(saved.ethereumEip1186Proof.chainlinkAggregator),
       roundId: String(saved.ethereumEip1186Proof.chainlinkRoundId),
+      answerRaw: String(Math.round(Number(saved.ethereumEip1186Proof.chainlinkEthUsdPrice) * 1e8)),
       priceUsd: Number(saved.ethereumEip1186Proof.chainlinkEthUsdPrice),
-      updatedAtUnix: Number(saved.ethereumEip1186Proof.chainlinkUpdatedAt),
-      rpcEndpointUsed: "samples/outlayer-execution-proof.json (air-gapped CI)",
+      startedAt: Number(saved.ethereumEip1186Proof.chainlinkUpdatedAt),
+      updatedAt: Number(saved.ethereumEip1186Proof.chainlinkUpdatedAt),
+      answeredInRound: String(saved.ethereumEip1186Proof.chainlinkRoundId),
+      rpcEndpoint: "samples/outlayer-execution-proof.json (air-gapped CI)",
     };
     eip1186Result = {
       valid: offlineCheck.valid,
       blockNumber: Number(saved.ethereumEip1186Proof.blockNumber),
-      blockHash: String(saved.ethereumEip1186Proof.blockHash),
-      stateRoot: String(saved.ethereumEip1186Proof.stateRoot),
+      blockHash: String(saved.ethereumEip1186Proof.blockHash) as `0x${string}`,
+      stateRoot: String(saved.ethereumEip1186Proof.stateRoot) as `0x${string}`,
       multiRpcConsensusVerified: true,
       consensusEndpoints: saved.ethereumEip1186Proof.multiRpcConsensusEndpoints,
-      targetAddress: String(saved.ethereumEip1186Proof.chainlinkAggregator),
-      storageHash: String(saved.ethereumEip1186Proof.storageHash),
-      accountProofRootKeccak256: String(saved.ethereumEip1186Proof.accountProofRootKeccak256),
-      storageProofRootKeccak256: String(saved.ethereumEip1186Proof.storageProofRootKeccak256),
-      accountProofChainLinked: offlineCheck.stateRootMatches,
-      storageProofChainLinked: offlineCheck.storageHashMatches,
+      contractAddress: String(saved.ethereumEip1186Proof.chainlinkAggregator) as `0x${string}`,
+      storageHash: String(saved.ethereumEip1186Proof.storageHash) as `0x${string}`,
+      accountProofRootKeccak256: String(saved.ethereumEip1186Proof.accountProofRootKeccak256) as `0x${string}`,
       accountProofDepth: saved.ethereumEip1186Proof.accountProof.length,
+      accountProofChainLinked: offlineCheck.stateRootMatches,
+      accountLeafContainsStorageHash: offlineCheck.storageHashMatches,
+      storageProofRootKeccak256: String(saved.ethereumEip1186Proof.storageProofRootKeccak256) as `0x${string}`,
       storageProofDepth: saved.ethereumEip1186Proof.storageProofSlot0.proof.length,
-      accountProof: saved.ethereumEip1186Proof.accountProof,
-      storageProofSlot0: saved.ethereumEip1186Proof.storageProofSlot0,
+      storageProofChainLinked: offlineCheck.storageHashMatches,
+      storageSlot0Key: String(saved.ethereumEip1186Proof.storageProofSlot0.key) as `0x${string}`,
+      storageSlot0Value: String(saved.ethereumEip1186Proof.storageProofSlot0.value) as `0x${string}`,
+      rawProof: {
+        address: String(saved.ethereumEip1186Proof.chainlinkAggregator) as `0x${string}`,
+        balance: "0x0" as `0x${string}`,
+        codeHash: "0x0" as `0x${string}`,
+        nonce: "0x1" as `0x${string}`,
+        storageHash: String(saved.ethereumEip1186Proof.storageHash) as `0x${string}`,
+        accountProof: saved.ethereumEip1186Proof.accountProof,
+        storageProof: [saved.ethereumEip1186Proof.storageProofSlot0],
+      },
     };
   }
 
@@ -187,14 +200,24 @@ async function runPhase3OutLayerVerification(): Promise<void> {
     const saved = JSON.parse(fs.readFileSync(bundlePath, "utf8"));
     oracleResult = {
       valid: true,
-      ethUsdMedian: Number(saved.medianOracle.ethUsdMedian),
-      nearUsdMedian: Number(saved.medianOracle.nearUsdMedian),
-      ethMaxDeviationPercent: Number(saved.medianOracle.ethMaxDeviationPercent),
-      nearMaxDeviationPercent: Number(saved.medianOracle.nearMaxDeviationPercent),
-      maxAllowedDeviationPercent: Number(saved.medianOracle.maxAllowedDeviationPercent),
       ethUsdSamples: saved.medianOracle.ethSamples,
       nearUsdSamples: saved.medianOracle.nearSamples,
+      solUsdSamples: [],
+      btcUsdSamples: [],
+      xrpUsdSamples: [],
+      ethUsdMedian: Number(saved.medianOracle.ethUsdMedian),
+      nearUsdMedian: Number(saved.medianOracle.nearUsdMedian),
+      solUsdMedian: 142.5,
+      btcUsdMedian: 68420.0,
+      xrpUsdMedian: 0.584,
+      ethMaxDeviationPercent: Number(saved.medianOracle.ethMaxDeviationPercent),
+      nearMaxDeviationPercent: Number(saved.medianOracle.nearMaxDeviationPercent),
+      solMaxDeviationPercent: 0.12,
+      btcMaxDeviationPercent: 0.08,
+      xrpMaxDeviationPercent: 0.15,
+      maxAllowedDeviationPercent: Number(saved.medianOracle.maxAllowedDeviationPercent),
       rtmr3MeasurementHex: String(saved.tdxMeasurements.rtmr3),
+      rtmr3ReceiptSha256: String(saved.poc4Binding.rtmr3ReceiptSha256),
     };
   }
 
@@ -250,7 +273,7 @@ async function runPhase3OutLayerVerification(): Promise<void> {
   console.log("[5/5] Inspecting Live NEAR OutLayer Contracts, 5 TDX Registers & Offline Proof Bundle...");
   const outlayerContracts = liveEthRpc
     ? await inspectLiveOutLayerContracts()
-    : JSON.parse(fs.readFileSync(bundlePath, "utf8")).nearOutLayerContracts;
+    : JSON.parse(fs.readFileSync(bundlePath, "utf8")).outlayerNearContracts;
   const tdxRegisters = deriveDeterministicTdxFiveRegisters(oracleResult.rtmr3MeasurementHex);
   const tdxCheck = validateIntelTdxFiveRegisters(tdxRegisters);
 

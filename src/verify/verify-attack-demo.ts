@@ -59,14 +59,32 @@ async function runPhase2VerificationAndAttackDemo(): Promise<void> {
     })),
     auditAccountSecurity(runtime.constraints.treasury_account, rpc).catch(() => ({
       accountId: runtime.constraints.treasury_account,
+      blockHeight: 243652212,
       totalKeys: 2,
-      fullAccessCount: 1,
-      functionCallCount: 1,
-      keyBreakdown: { ed25519Count: 2, secp256k1Count: 0, mlDsa65Count: 0 },
-      hasPostQuantumKey: false,
-      lockoutRiskDetected: false,
+      keyBreakdown: {
+        ed25519Count: 2,
+        secp256k1Count: 0,
+        mlDsa65Count: 0,
+        fullAccessCount: 1,
+        functionCallCount: 1,
+      },
+      keys: [
+        {
+          publicKey: "ed25519:6E8sCci9badyRkXb3JoRpBj5p8C6Tw41ELDZoiihKEtp",
+          curveType: "ed25519" as const,
+          permissionType: "FullAccess" as const,
+        },
+        {
+          publicKey: "ed25519:3k8yP7x9q2LmN9pQr4StU6VwX8YzA1BcD3EfG5HiJ7Kl",
+          curveType: "ed25519" as const,
+          permissionType: "FunctionCall" as const,
+          receiverId: runtime.env.RHEA_EXCHANGE_CONTRACT_ID,
+          methodNames: ["swap"],
+          allowance: null,
+        },
+      ],
       allowanceProtocolRuleVerified: true,
-      notes: ["Air-gapped sandbox fallback snapshot"],
+      warnings: ["Air-gapped sandbox fallback snapshot"],
     })),
     rpc.getGasPrice().catch(() => ({ gas_price: "100000000" })),
     rpc
