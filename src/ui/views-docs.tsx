@@ -740,7 +740,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
     ARCHITECTURE_STAGE_NODES[0];
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-[var(--bg-card)]/95 animate-fade-in">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[var(--bg-card)]/95 animate-fade-in">
       {/* ================================================================== */}
       {/* FULL-VIEWPORT STICKY MINTLIFY TOP HEADER BAR                       */}
       {/* ================================================================== */}
@@ -1440,21 +1440,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
               )}
 
-              {/* Public On-Chain Explorer & Official Reference Links */}
-              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4 space-y-2.5">
-                <div className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
-                  Live Production URLs, Public On-Chain Explorers &amp; Official Protocol Reference Links
+              {/* Compact 5-Link Primary Bar + Collapsible Full 26-Link Reference Directory */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--text-primary)]">
+                    Primary Live Deployment &amp; Machine-Readable Spec Links
+                  </div>
+                  <Badge variant="emerald" className="font-mono text-[10px]">
+                    5 Primary Endpoints
+                  </Badge>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
                   {[
-                    {
-                      label: "Hackathon Spec: nearhackathon.com/HACKATHON.md",
-                      href: "https://nearhackathon.com/HACKATHON.md",
-                    },
-                    {
-                      label: "Track Specs: near-hackathon-prompt-examples",
-                      href: "https://github.com/nearai/near-hackathon-prompt-examples",
-                    },
                     {
                       label: "Live App: kraton-os-taupe.vercel.app",
                       href: "https://kraton-os-taupe.vercel.app",
@@ -1464,112 +1461,16 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       href: "https://kraton-os-taupe.vercel.app/docs",
                     },
                     {
-                      label: "LLM Index: kraton-os-taupe.vercel.app/llms.txt",
+                      label: "LLM Index: /llms.txt",
                       href: "https://kraton-os-taupe.vercel.app/llms.txt",
                     },
                     {
-                      label: "OpenAPI 3.1: kraton-os-taupe.vercel.app/openapi.json",
+                      label: "OpenAPI 3.1: /openapi.json",
                       href: "https://kraton-os-taupe.vercel.app/openapi.json",
                     },
                     {
                       label: "GitHub: jubayir-hub-69/KratonOS",
                       href: "https://github.com/jubayir-hub-69/KratonOS",
-                    },
-                    {
-                      label: "NEAR Docs: docs.near.org",
-                      href: "https://docs.near.org/",
-                    },
-                    {
-                      label: "1Click API: 1click.chaindefuser.com",
-                      href: "https://1click.chaindefuser.com",
-                    },
-                    {
-                      label: "1Click Explorer: explorer.near-intents.org",
-                      href: "https://explorer.near-intents.org/api/v0/transactions",
-                    },
-                    {
-                      label: "1Click Docs: docs.near-intents.org",
-                      href: "https://docs.near-intents.org/",
-                    },
-                    {
-                      label: "NEAR AI Cloud API: cloud-api.near.ai/v1",
-                      href: "https://cloud-api.near.ai/v1",
-                    },
-                    {
-                      label: "NEAR AI Console: cloud.near.ai",
-                      href: "https://cloud.near.ai",
-                    },
-                    {
-                      label: "NEAR AI Docs: docs.near.ai",
-                      href: "https://docs.near.ai/",
-                    },
-                    {
-                      label: "Agent Market: market.near.ai",
-                      href: "https://market.near.ai",
-                    },
-                    {
-                      label: "Agent Market Docs: docs.market.near.ai",
-                      href: "https://docs.market.near.ai/",
-                    },
-                    {
-                      label: "OutLayer: outlayer.ai",
-                      href: "https://outlayer.ai/",
-                    },
-                    {
-                      label: "OutLayer Docs: app.outlayer.ai/docs",
-                      href: "https://app.outlayer.ai/docs/getting-started",
-                    },
-                    {
-                      label: "OutLayer Contract: outlayer.testnet",
-                      href: "https://testnet.nearblocks.io/address/outlayer.testnet",
-                    },
-                    {
-                      label: "OutLayer Worker: worker.outlayer.testnet",
-                      href: "https://testnet.nearblocks.io/address/worker.outlayer.testnet",
-                    },
-                    {
-                      label: "RHEA Finance: rhea.finance",
-                      href: "https://rhea.finance/",
-                    },
-                    {
-                      label: "RHEA Guide: guide.rhea.finance",
-                      href: "https://guide.rhea.finance/",
-                    },
-                    {
-                      label: "RHEA DEX: ref-finance.testnet",
-                      href: "https://testnet.nearblocks.io/address/ref-finance.testnet",
-                    },
-                    {
-                      label: "RHEA Farming: ref-farming.testnet",
-                      href: "https://testnet.nearblocks.io/address/ref-farming.testnet",
-                    },
-                    {
-                      label: "HOT Connect Docs: docs.hotdao.ai",
-                      href: "https://docs.hotdao.ai/",
-                    },
-                    {
-                      label: "Sputnik DAO V2: near-daos/sputnik-dao-contract",
-                      href: "https://github.com/near-daos/sputnik-dao-contract",
-                    },
-                    {
-                      label: "Trezu Multisig: trezu.org",
-                      href: "https://trezu.org/",
-                    },
-                    {
-                      label: "MPC Signer: v1.signer-prod.testnet",
-                      href: "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
-                    },
-                    {
-                      label: "Vault: jubayir69.testnet",
-                      href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
-                    },
-                    {
-                      label: "Fee Recipient: jubayir33.near",
-                      href: "https://nearblocks.io/address/jubayir33.near",
-                    },
-                    {
-                      label: "Chainlink ETH/USD: 0x5f4e...8419",
-                      href: "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
                     },
                   ].map((link) => (
                     <a
@@ -1577,13 +1478,141 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       href={link.href}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1.5 font-bold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-1.5 font-bold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/20"
                     >
                       <span>{link.label}</span>
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   ))}
                 </div>
+
+                <details className="group rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3">
+                  <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
+                    <span>
+                      View Complete 26-Link Official Protocol, Explorer &amp; Contract Reference Directory
+                    </span>
+                    <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90 text-[var(--accent-emerald)]" />
+                  </summary>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border-color)] pt-3 font-mono text-xs">
+                    {[
+                      {
+                        label: "Hackathon Spec: nearhackathon.com/HACKATHON.md",
+                        href: "https://nearhackathon.com/HACKATHON.md",
+                      },
+                      {
+                        label: "Track Specs: near-hackathon-prompt-examples",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples",
+                      },
+                      {
+                        label: "NEAR Docs: docs.near.org",
+                        href: "https://docs.near.org/",
+                      },
+                      {
+                        label: "1Click API: 1click.chaindefuser.com",
+                        href: "https://1click.chaindefuser.com",
+                      },
+                      {
+                        label: "1Click Explorer: explorer.near-intents.org",
+                        href: "https://explorer.near-intents.org/api/v0/transactions",
+                      },
+                      {
+                        label: "1Click Docs: docs.near-intents.org",
+                        href: "https://docs.near-intents.org/",
+                      },
+                      {
+                        label: "NEAR AI Cloud API: cloud-api.near.ai/v1",
+                        href: "https://cloud-api.near.ai/v1",
+                      },
+                      {
+                        label: "NEAR AI Console: cloud.near.ai",
+                        href: "https://cloud.near.ai",
+                      },
+                      {
+                        label: "NEAR AI Docs: docs.near.ai",
+                        href: "https://docs.near.ai/",
+                      },
+                      {
+                        label: "Agent Market: market.near.ai",
+                        href: "https://market.near.ai",
+                      },
+                      {
+                        label: "Agent Market Docs: docs.market.near.ai",
+                        href: "https://docs.market.near.ai/",
+                      },
+                      {
+                        label: "OutLayer: outlayer.ai",
+                        href: "https://outlayer.ai/",
+                      },
+                      {
+                        label: "OutLayer Docs: app.outlayer.ai/docs",
+                        href: "https://app.outlayer.ai/docs/getting-started",
+                      },
+                      {
+                        label: "OutLayer Contract: outlayer.testnet",
+                        href: "https://testnet.nearblocks.io/address/outlayer.testnet",
+                      },
+                      {
+                        label: "OutLayer Worker: worker.outlayer.testnet",
+                        href: "https://testnet.nearblocks.io/address/worker.outlayer.testnet",
+                      },
+                      {
+                        label: "RHEA Finance: rhea.finance",
+                        href: "https://rhea.finance/",
+                      },
+                      {
+                        label: "RHEA Guide: guide.rhea.finance",
+                        href: "https://guide.rhea.finance/",
+                      },
+                      {
+                        label: "RHEA DEX: ref-finance.testnet",
+                        href: "https://testnet.nearblocks.io/address/ref-finance.testnet",
+                      },
+                      {
+                        label: "RHEA Farming: ref-farming.testnet",
+                        href: "https://testnet.nearblocks.io/address/ref-farming.testnet",
+                      },
+                      {
+                        label: "HOT Connect Docs: docs.hotdao.ai",
+                        href: "https://docs.hotdao.ai/",
+                      },
+                      {
+                        label: "Sputnik DAO V2: near-daos/sputnik-dao-contract",
+                        href: "https://github.com/near-daos/sputnik-dao-contract",
+                      },
+                      {
+                        label: "Trezu Multisig: trezu.org",
+                        href: "https://trezu.org/",
+                      },
+                      {
+                        label: "MPC Signer: v1.signer-prod.testnet",
+                        href: "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
+                      },
+                      {
+                        label: "Vault: jubayir69.testnet",
+                        href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
+                      },
+                      {
+                        label: "Fee Recipient: jubayir33.near",
+                        href: "https://nearblocks.io/address/jubayir33.near",
+                      },
+                      {
+                        label: "Chainlink ETH/USD: 0x5f4e...8419",
+                        href: "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+                      },
+                    ].map((link) => (
+                      <a
+                        key={link.href}
+                        href={link.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-1.5 font-bold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+                      >
+                        <span>{link.label}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    ))}
+                  </div>
+                </details>
               </div>
 
               {/* Before vs After Measured Impact Table */}
@@ -1647,14 +1676,132 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </p>
               </div>
 
-              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5">
-                <h3 className="font-display text-sm font-bold text-[var(--text-primary)]">
-                  Quad-Attested Master Commitment Equation
-                </h3>
-                <div className="mt-3 overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-4 font-mono text-xs text-[var(--accent-emerald)]">
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-display text-sm font-bold text-[var(--text-primary)]">
+                    Quad-Attested Master Commitment Equation &amp; Live Motion-Graphics Pipeline
+                  </h3>
+                  <Badge variant="emerald" className="font-mono text-[10px]">
+                    4-Leaf SHA-256 -&gt; 3-Tier Governance Gate
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-4 font-mono text-xs text-[var(--accent-emerald)]">
                   H_master = SHA256( Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote )
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-[var(--text-secondary)]">
+
+                {/* Animated SVG Diagram for Chapter 2 (PoC-4 Master Hash & 3-Tier Governance Escalator) */}
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                  <svg
+                    viewBox="0 0 880 210"
+                    className="w-full min-w-[660px] h-auto select-none"
+                    role="img"
+                    aria-label="PoC-4 4-Leaf SHA-256 Master Hash & 3-Tier Governance Escalator Animation"
+                  >
+                    {/* 4 Cryptographic Leaf Nodes */}
+                    {[
+                      { y: 14, title: "1. H_policy", sub: "config.yaml SHA-256", color: "#00EC97" },
+                      { y: 62, title: "2. H_tee", sub: "GLM-5.1 ECDSA Sig", color: "#38BDF8" },
+                      { y: 110, title: "3. H_eip1186", sub: "OutLayer RTMR3 + Trie", color: "#00EC97" },
+                      { y: 158, title: "4. H_quote", sub: "1Click Private Shard", color: "#38BDF8" },
+                    ].map((leaf, idx) => (
+                      <g key={leaf.title}>
+                        <rect
+                          x={16}
+                          y={leaf.y}
+                          width={185}
+                          height={38}
+                          rx={8}
+                          fill="rgba(0, 236, 151, 0.08)"
+                          stroke={leaf.color}
+                          strokeWidth="1.5"
+                        />
+                        <text x={28} y={leaf.y + 16} fill={leaf.color} className="font-mono text-[10px] font-extrabold">
+                          {leaf.title}
+                        </text>
+                        <text x={28} y={leaf.y + 30} fill="currentColor" className="font-mono text-[9.5px] opacity-80">
+                          {leaf.sub}
+                        </text>
+                        <path
+                          d={`M 201 ${leaf.y + 19} C 260 ${leaf.y + 19}, 270 105, 325 105`}
+                          fill="none"
+                          stroke={leaf.color}
+                          strokeWidth="1.75"
+                          strokeDasharray="4 4"
+                        />
+                        <circle r="3.5" fill={leaf.color}>
+                          <animateMotion
+                            dur={`${1.5 + idx * 0.2}s`}
+                            repeatCount="indefinite"
+                            path={`M 201 ${leaf.y + 19} C 260 ${leaf.y + 19}, 270 105, 325 105`}
+                          />
+                        </circle>
+                      </g>
+                    ))}
+
+                    {/* Central PoC-4 Master Hash Enclave Gate */}
+                    <rect
+                      x={325}
+                      y={62}
+                      width={210}
+                      height={86}
+                      rx={12}
+                      fill="rgba(0, 236, 151, 0.14)"
+                      stroke="#00EC97"
+                      strokeWidth="2.2"
+                    />
+                    <text x={430} y={88} textAnchor="middle" fill="#00EC97" className="font-mono text-[11px] font-extrabold">
+                      PoC-4 ENCLAVE GATE
+                    </text>
+                    <text x={430} y={108} textAnchor="middle" fill="currentColor" className="font-mono text-[10px] font-bold">
+                      H_master (32-Byte Digest)
+                    </text>
+                    <text x={430} y={128} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
+                      Dev &lt;= 5.0% · Fee &lt;= 500 bps
+                    </text>
+
+                    {/* 3-Tier Earned-Trust Governance Escalator Outputs */}
+                    {[
+                      { y: 20, title: "TIER 1: AUTO-EXECUTE", sub: "<= $50 ($150 Verified)", stroke: "#00EC97" },
+                      { y: 84, title: "TIER 2: 1-COUNCIL FAST-TRACK", sub: "$50.01 - $150.00 / Warn", stroke: "#38BDF8" },
+                      { y: 148, title: "TIER 3: SPUTNIK DAO V2", sub: "> $150 Tx · 1 NEAR Bond", stroke: "#F59E0B" },
+                    ].map((tier, idx) => (
+                      <g key={tier.title}>
+                        <path
+                          d={`M 535 105 C 585 105, 595 ${tier.y + 22}, 640 ${tier.y + 22}`}
+                          fill="none"
+                          stroke={tier.stroke}
+                          strokeWidth="1.75"
+                          strokeDasharray="4 4"
+                        />
+                        <circle r="3.5" fill={tier.stroke}>
+                          <animateMotion
+                            dur={`${1.6 + idx * 0.25}s`}
+                            repeatCount="indefinite"
+                            path={`M 535 105 C 585 105, 595 ${tier.y + 22}, 640 ${tier.y + 22}`}
+                          />
+                        </circle>
+                        <rect
+                          x={640}
+                          y={tier.y}
+                          width={224}
+                          height={44}
+                          rx={8}
+                          fill="rgba(56, 189, 248, 0.08)"
+                          stroke={tier.stroke}
+                          strokeWidth="1.6"
+                        />
+                        <text x={654} y={tier.y + 18} fill={tier.stroke} className="font-mono text-[10px] font-extrabold">
+                          {tier.title}
+                        </text>
+                        <text x={654} y={tier.y + 33} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
+                          {tier.sub}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
+                </div>
+
+                <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
                   Every autonomous payout or rebalance enforces 3-Tier Earned-Trust Governance: <code className="font-mono">&lt;= $50.00</code> (<code className="font-mono">&lt;= $150.00</code> verified counterparty) executes autonomously, <code className="font-mono">$50.01 - $150.00</code> queues for 1-Council Fast-Track co-signature, and <code className="font-mono">&gt; $150.00</code> single-tx (or <code className="font-mono">&gt; $500.00</code> daily) escalates via <code className="font-mono">escalate_sha256_to_sputnik_bounty()</code> to <code className="font-mono">kratonos-dao.sputnikv2.testnet</code> with a <code className="font-mono">1 NEAR</code> bond.
                 </p>
               </div>
@@ -1703,6 +1850,107 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   Implemented in <code className="font-mono text-[var(--accent-emerald)]">src/core/gas-keys.ts</code> and <code className="font-mono text-[var(--accent-emerald)]">src/core/security-shield.ts</code>.
                 </p>
+              </div>
+
+              {/* Animated SVG Diagram for Chapter 3: 4-Lane NEP-611 Parallel Nonce Multiplexer & ML-DSA-65 PQ Shield */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--accent-emerald)]">
+                    Live Motion-Graphics: 4-Lane Parallel Nonce Multiplexer &amp; NIST FIPS 204 ML-DSA-65
+                  </span>
+                  <Badge variant="sky" className="font-mono text-[10px]">
+                    0 Nonce Collisions · ~1.2s Cross-Lane Finality
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                  <svg
+                    viewBox="0 0 880 215"
+                    className="w-full min-w-[660px] h-auto select-none"
+                    role="img"
+                    aria-label="NEP-611 4-Lane Parallel Nonce Multiplexer & ML-DSA-65 Post-Quantum Shield Animation"
+                  >
+                    <rect x={14} y={55} width={190} height={105} rx={12} fill="rgba(0, 236, 151, 0.12)" stroke="#00EC97" strokeWidth="2" />
+                    <text x={109} y={84} textAnchor="middle" fill="#00EC97" className="font-mono text-[10.5px] font-extrabold">
+                      FIPS 204 ML-DSA-65
+                    </text>
+                    <text x={109} y={104} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      1,952B PubKey · 3,309B Sig
+                    </text>
+                    <text x={109} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                      SHA3-256 Vault Anchor
+                    </text>
+                    <text x={109} y={144} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px] font-bold">
+                      4-Signal Scam Shield Gate
+                    </text>
+
+                    {[
+                      { idx: 0, y: 14, lane: "LANE 00: scout.jubayir69.testnet", nonce: "Nonce: 100,000,001 -> EIP-1186 Oracle", color: "#00EC97" },
+                      { idx: 1, y: 64, lane: "LANE 01: executor.jubayir69.testnet", nonce: "Nonce: 200,000,001 -> 1Click + RHEA V2", color: "#38BDF8" },
+                      { idx: 2, y: 114, lane: "LANE 02: payroll.jubayir69.testnet", nonce: "Nonce: 300,000,001 -> 12-Row FT Batcher", color: "#00EC97" },
+                      { idx: 3, y: 164, lane: "LANE 03: yield.jubayir69.testnet", nonce: "Nonce: 400,000,001 -> RHEA Farm + MPC", color: "#38BDF8" },
+                    ].map((l) => (
+                      <g key={l.lane}>
+                        <path
+                          d={`M 204 108 C 255 108, 265 ${l.y + 19}, 315 ${l.y + 19}`}
+                          fill="none"
+                          stroke={l.color}
+                          strokeWidth="1.75"
+                          strokeDasharray="4 4"
+                        />
+                        <circle r="3.5" fill={l.color}>
+                          <animateMotion
+                            dur={`${1.2 + l.idx * 0.15}s`}
+                            repeatCount="indefinite"
+                            path={`M 204 108 C 255 108, 265 ${l.y + 19}, 315 ${l.y + 19}`}
+                          />
+                        </circle>
+                        <rect
+                          x={315}
+                          y={l.y}
+                          width={330}
+                          height={38}
+                          rx={8}
+                          fill="rgba(0, 236, 151, 0.07)"
+                          stroke={l.color}
+                          strokeWidth="1.5"
+                        />
+                        <text x={328} y={l.y + 16} fill={l.color} className="font-mono text-[10px] font-extrabold">
+                          {l.lane}
+                        </text>
+                        <text x={328} y={l.y + 30} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
+                          {l.nonce}
+                        </text>
+                        <path
+                          d={`M 645 ${l.y + 19} L 705 ${l.y + 19}`}
+                          fill="none"
+                          stroke={l.color}
+                          strokeWidth="1.75"
+                          strokeDasharray="4 4"
+                        />
+                        <circle r="3.5" fill={l.color}>
+                          <animateMotion
+                            dur="1.1s"
+                            repeatCount="indefinite"
+                            path={`M 645 ${l.y + 19} L 705 ${l.y + 19}`}
+                          />
+                        </circle>
+                        <rect
+                          x={705}
+                          y={l.y}
+                          width={160}
+                          height={38}
+                          rx={8}
+                          fill="rgba(56, 189, 248, 0.1)"
+                          stroke={l.color}
+                          strokeWidth="1.4"
+                        />
+                        <text x={785} y={l.y + 23} textAnchor="middle" fill={l.color} className="font-mono text-[9.5px] font-extrabold">
+                          PARALLEL FINALITY ✓
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -1765,6 +2013,102 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </p>
               </div>
 
+              {/* Animated SVG Diagram for Chapter 4: Dual-TEE Enclave Attestation & Ethereum EIP-1186 Merkle-Patricia Trie */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--accent-emerald)]">
+                    Live Motion-Graphics: Dual-TEE 8-Step Hardware Attestation &amp; EIP-1186 Merkle-Patricia Prover
+                  </span>
+                  <Badge variant="emerald" className="font-mono text-[10px]">
+                    NVIDIA H100 NRAS + Intel TDX 5x48B + 0x00 Wipe
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                  <svg
+                    viewBox="0 0 880 185"
+                    className="w-full min-w-[660px] h-auto select-none"
+                    role="img"
+                    aria-label="Dual-TEE 8-Step Verification and Ethereum Mainnet EIP-1186 Storage Proof Animation"
+                  >
+                    {/* Top Pipeline: NEAR AI Cloud GLM-5.1-FP8 */}
+                    <rect x={14} y={18} width={220} height={64} rx={10} fill="rgba(0, 236, 151, 0.1)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={124} y={40} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                      ENCLAVE A: NEAR AI CLOUD TEE
+                    </text>
+                    <text x={124} y={56} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      zai-org/GLM-5.1-FP8 (H100 + TDX)
+                    </text>
+                    <text x={124} y={71} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                      report_data == SHA256(addr:nonce)
+                    </text>
+
+                    {/* Bottom Pipeline: OutLayer WASI P2 EIP-1186 */}
+                    <rect x={14} y={102} width={220} height={64} rx={10} fill="rgba(56, 189, 248, 0.1)" stroke="#38BDF8" strokeWidth="1.8" />
+                    <text x={124} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                      ENCLAVE B: OUTLAYER WASI P2
+                    </text>
+                    <text x={124} y={140} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      Ethereum eth_getProof (EIP-1186)
+                    </text>
+                    <text x={124} y={155} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
+                      keccak256(proof[0]) == stateRoot
+                    </text>
+
+                    {/* Conduits to Zero-Retention & Anti-Hallucination Gate */}
+                    <path d="M 234 50 L 320 50" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#00EC97">
+                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 234 50 L 320 50" />
+                    </circle>
+                    <path d="M 234 134 L 320 134" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#38BDF8">
+                      <animateMotion dur="1.5s" repeatCount="indefinite" path="M 234 134 L 320 134" />
+                    </circle>
+
+                    <rect x={320} y={18} width={235} height={64} rx={10} fill="rgba(0, 236, 151, 0.08)" stroke="#00EC97" strokeWidth="1.6" />
+                    <text x={437} y={40} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                      ZERO-RETENTION MEMORY WIPE
+                    </text>
+                    <text x={437} y={56} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px]">
+                      2,173B Overwritten In-Place (0x00)
+                    </text>
+                    <text x={437} y={71} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                      0 Non-Zero Bytes Remaining
+                    </text>
+
+                    <rect x={320} y={102} width={235} height={64} rx={10} fill="rgba(56, 189, 248, 0.08)" stroke="#38BDF8" strokeWidth="1.6" />
+                    <text x={437} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                      ANTI-HALLUCINATION ORACLE
+                    </text>
+                    <text x={437} y={140} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px]">
+                      Coinbase + 1Click + Kraken Median
+                    </text>
+                    <text x={437} y={155} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
+                      Unlisted -&gt; TOKEN NOT FOUND (No $1)
+                    </text>
+
+                    <path d="M 555 50 C 600 50, 605 92, 645 92" fill="none" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#00EC97">
+                      <animateMotion dur="1.4s" repeatCount="indefinite" path="M 555 50 C 600 50, 605 92, 645 92" />
+                    </circle>
+                    <path d="M 555 134 C 600 134, 605 92, 645 92" fill="none" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#38BDF8">
+                      <animateMotion dur="1.4s" repeatCount="indefinite" path="M 555 134 C 600 134, 605 92, 645 92" />
+                    </circle>
+
+                    <rect x={645} y={52} width={220} height={80} rx={12} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="2.2" />
+                    <text x={755} y={80} textAnchor="middle" fill="#00EC97" className="font-mono text-[10.5px] font-extrabold">
+                      SIGNED ENCLAVE VERDICT
+                    </text>
+                    <text x={755} y={98} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      ECDSA secp256k1 + Ed25519
+                    </text>
+                    <text x={755} y={116} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                      8 / 8 Hardware Steps Verified ✓
+                    </text>
+                  </svg>
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5">
                   <h3 className="font-display text-sm font-bold text-[var(--text-primary)]">
@@ -1802,6 +2146,97 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   Implemented in <code className="font-mono text-[var(--accent-emerald)]">src/core/intents-rhea-router.ts</code> and <code className="font-mono text-[var(--accent-emerald)]">src/core/rhea-yield-and-mpc.ts</code>.
                 </p>
+              </div>
+
+              {/* Animated SVG Diagram for Chapter 5: Tri-Venue Smart Router, VRF Anti-MEV Slicer & 5-Chain MPC KDF */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--accent-emerald)]">
+                    Live Motion-Graphics: Tri-Venue Router, Ed25519 VRF Slicer &amp; 5-Chain MPC Derivation Tree
+                  </span>
+                  <Badge variant="sky" className="font-mono text-[10px]">
+                    1Click (41 bps) · RHEA V2 DCL (45 bps) · v1.signer-prod.testnet
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                  <svg
+                    viewBox="0 0 880 205"
+                    className="w-full min-w-[660px] h-auto select-none"
+                    role="img"
+                    aria-label="Tri-Venue Liquidity Router and 5-Chain Threshold MPC Derivation Tree Animation"
+                  >
+                    {/* Left: Tri-Venue Benchmark */}
+                    <rect x={14} y={20} width={235} height={165} rx={12} fill="rgba(0, 236, 151, 0.08)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={131} y={42} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                      TRI-VENUE SMART ROUTER
+                    </text>
+                    <rect x={28} y={54} width={207} height={34} rx={6} fill="rgba(0, 236, 151, 0.16)" stroke="#00EC97" strokeWidth="1.4" />
+                    <text x={38} y={75} fill="#00EC97" className="font-mono text-[9.5px] font-bold">
+                      1. 1Click Private Shard (41 bps)
+                    </text>
+                    <rect x={28} y={96} width={207} height={34} rx={6} fill="rgba(56, 189, 248, 0.14)" stroke="#38BDF8" strokeWidth="1.4" />
+                    <text x={38} y={117} fill="#38BDF8" className="font-mono text-[9.5px] font-bold">
+                      2. RHEA V2 DCL (45 bps · 196 Pools)
+                    </text>
+                    <rect x={28} y={138} width={207} height={34} rx={6} fill="rgba(245, 158, 11, 0.12)" stroke="#F59E0B" strokeWidth="1.2" />
+                    <text x={38} y={159} fill="#F59E0B" className="font-mono text-[9.5px] font-bold">
+                      3. RHEA V1 AMM + 14.85% LP Farm
+                    </text>
+
+                    {/* Center: Ed25519 VRF Slicer + v1.signer-prod.testnet */}
+                    <path d="M 249 102 L 325 102" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#00EC97">
+                      <animateMotion dur="1.2s" repeatCount="indefinite" path="M 249 102 L 325 102" />
+                    </circle>
+
+                    <rect x={325} y={48} width={225} height={110} rx={12} fill="rgba(56, 189, 248, 0.12)" stroke="#38BDF8" strokeWidth="2" />
+                    <text x={437} y={74} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                      VRF JITTER + MPC SIGNER
+                    </text>
+                    <text x={437} y={94} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      v1.signer-prod.testnet
+                    </text>
+                    <text x={437} y={114} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
+                      SHA3-256 Epsilon KDF (0 Local Keys)
+                    </text>
+                    <text x={437} y={134} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                      4-Slice Ed25519 Anti-MEV Execution
+                    </text>
+
+                    {/* Right: 5 Derived Foreign Chains */}
+                    {[
+                      { y: 12, label: "EVM (Ethereum / Base / Arb)", tag: "0x secp256k1", color: "#00EC97" },
+                      { y: 50, label: "Bitcoin Native SegWit", tag: "bc1q BIP-173", color: "#38BDF8" },
+                      { y: 88, label: "Solana Mainnet", tag: "Ed25519 Base58", color: "#00EC97" },
+                      { y: 126, label: "Zcash Transparent Pool", tag: "t1 Base58Check", color: "#38BDF8" },
+                      { y: 164, label: "TON Wallet v5r1", tag: "EQ Workchain 0", color: "#00EC97" },
+                    ].map((ch, idx) => (
+                      <g key={ch.label}>
+                        <path
+                          d={`M 550 102 C 600 102, 610 ${ch.y + 15}, 655 ${ch.y + 15}`}
+                          fill="none"
+                          stroke={ch.color}
+                          strokeWidth="1.6"
+                          strokeDasharray="4 4"
+                        />
+                        <circle r="3" fill={ch.color}>
+                          <animateMotion
+                            dur={`${1.3 + idx * 0.15}s`}
+                            repeatCount="indefinite"
+                            path={`M 550 102 C 600 102, 610 ${ch.y + 15}, 655 ${ch.y + 15}`}
+                          />
+                        </circle>
+                        <rect x={655} y={ch.y} width={210} height={30} rx={6} fill="rgba(0, 236, 151, 0.08)" stroke={ch.color} strokeWidth="1.4" />
+                        <text x={665} y={ch.y + 19} fill="currentColor" className="font-mono text-[9px] font-bold">
+                          {ch.label}
+                        </text>
+                        <text x={855} y={ch.y + 19} textAnchor="end" fill={ch.color} className="font-mono text-[8.5px] font-extrabold">
+                          {ch.tag}
+                        </text>
+                      </g>
+                    ))}
+                  </svg>
+                </div>
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
@@ -1855,6 +2290,92 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   Implemented in <code className="font-mono text-[var(--accent-emerald)]">src/core/payroll-and-invoicing.ts</code>, <code className="font-mono text-[var(--accent-emerald)]">src/core/agent-market.ts</code>, and <code className="font-mono text-[var(--accent-emerald)]">src/core/swarm-coordinator.ts</code>.
                 </p>
+              </div>
+
+              {/* Animated SVG Diagram for Chapter 6: EXACT_OUTPUT Ceiling Math, 12-Row Fault-Isolated Payroll & 70/20/10 x402 Split */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--accent-emerald)]">
+                    Live Motion-Graphics: Ceiling Gross-Up, 11/12 Fault-Isolated Payroll &amp; 70/20/10 Revenue Split
+                  </span>
+                  <Badge variant="emerald" className="font-mono text-[10px]">
+                    100.00% Net Payout · Row #12 Quarantined · 20x5 Swarm
+                  </Badge>
+                </div>
+                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                  <svg
+                    viewBox="0 0 880 190"
+                    className="w-full min-w-[660px] h-auto select-none"
+                    role="img"
+                    aria-label="EXACT_OUTPUT Ceiling Invoicing, 12-Row Fault-Isolated Batch Payroll, and 70/20/10 Revenue Splitter Animation"
+                  >
+                    {/* Box 1: EXACT_OUTPUT Ceiling Gross-Up */}
+                    <rect x={14} y={24} width={240} height={142} rx={12} fill="rgba(0, 236, 151, 0.09)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={134} y={48} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                      1. EXACT_OUTPUT CEILING MATH
+                    </text>
+                    <text x={134} y={70} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      Requested Net: 250.000000 USDC
+                    </text>
+                    <text x={134} y={92} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
+                      Gross Input: 251.029220 USDC
+                    </text>
+                    <text x={134} y={114} textAnchor="middle" fill="#F59E0B" className="font-mono text-[9px]">
+                      41 bps Fee Covered by Payer
+                    </text>
+                    <text x={134} y={140} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                      Freelancer Net: 100.00% ✓
+                    </text>
+
+                    <path d="M 254 95 L 318 95" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#00EC97">
+                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 254 95 L 318 95" />
+                    </circle>
+
+                    {/* Box 2: 12-Row Fault-Isolated NEP-141 Batch Payroll */}
+                    <rect x={318} y={24} width={250} height={142} rx={12} fill="rgba(56, 189, 248, 0.09)" stroke="#38BDF8" strokeWidth="1.8" />
+                    <text x={443} y={48} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                      2. FAULT-ISOLATED BATCH PAYROLL
+                    </text>
+                    <rect x={334} y={60} width={218} height={42} rx={7} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="1.4" />
+                    <text x={443} y={78} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-extrabold">
+                      Rows #1..#11: SETTLED ($264.00)
+                    </text>
+                    <text x={443} y={93} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
+                      +0.00125 NEAR storage_deposit auto-injected
+                    </text>
+                    <rect x={334} y={110} width={218} height={42} rx={7} fill="rgba(244, 63, 94, 0.16)" stroke="#F43F5E" strokeWidth="1.5" />
+                    <text x={443} y={128} textAnchor="middle" fill="#F43F5E" className="font-mono text-[9.5px] font-extrabold">
+                      Row #12: QUARANTINED (SCAM)
+                    </text>
+                    <text x={443} y={143} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
+                      scam-drainer-vault.testnet isolated
+                    </text>
+
+                    <path d="M 568 95 L 632 95" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
+                    <circle r="4" fill="#38BDF8">
+                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 568 95 L 632 95" />
+                    </circle>
+
+                    {/* Box 3: x402 v2 & 70/20/10 Revenue Splitter + 20x5 Swarm */}
+                    <rect x={632} y={24} width={234} height={142} rx={12} fill="rgba(0, 236, 151, 0.09)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={749} y={48} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                      3. x402 v2 &amp; 20x5 SWARM
+                    </text>
+                    <text x={749} y={70} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                      70% Reserve · 20% Bounty · 10% Compute
+                    </text>
+                    <text x={749} y={92} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
+                      NEP-366 Gasless SignedDelegate
+                    </text>
+                    <text x={749} y={114} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-bold">
+                      20x5 Swarm Saved $357.00 (24.56%)
+                    </text>
+                    <text x={749} y={140} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px] font-extrabold">
+                      0 LLM Calls (Pure Commit-Reveal)
+                    </text>
+                  </svg>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">

@@ -10,15 +10,15 @@ interface ThemeProviderState {
 }
 
 const ThemeProviderContext = React.createContext<ThemeProviderState>({
-  mode: "dark",
+  mode: "system",
   resolvedTheme: "dark",
   setMode: () => null,
 });
 
 export function ThemeProvider({
   children,
-  defaultMode = "dark",
-  storageKey = "kratonos-ui-theme",
+  defaultMode = "system",
+  storageKey = "kratonos-ui-theme-session",
 }: {
   children: React.ReactNode;
   defaultMode?: ThemeMode;
@@ -26,11 +26,20 @@ export function ThemeProvider({
 }) {
   const [mode, setModeState] = React.useState<ThemeMode>(() => {
     if (typeof window === "undefined") return defaultMode;
-    const saved = window.localStorage.getItem(storageKey) as ThemeMode | null;
-    return saved === "light" || saved === "dark" || saved === "system" ? saved : defaultMode;
+    try {
+      const saved = window.sessionStorage.getItem(storageKey) as ThemeMode | null;
+      return saved === "light" || saved === "dark" || saved === "system" ? saved : defaultMode;
+    } catch {
+      return defaultMode;
+    }
   });
 
-  const [resolvedTheme, setResolvedTheme] = React.useState<ResolvedTheme>("dark");
+  const [resolvedTheme, setResolvedTheme] = React.useState<ResolvedTheme>(() => {
+    if (typeof window === "undefined") return "dark";
+    const systemDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? true;
+    if (mode === "system") return systemDark ? "dark" : "light";
+    return mode;
+  });
 
   React.useEffect(() => {
     const root = window.document.documentElement;
@@ -55,7 +64,11 @@ export function ThemeProvider({
   const setMode = React.useCallback(
     (nextMode: ThemeMode) => {
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(storageKey, nextMode);
+        try {
+          window.sessionStorage.setItem(storageKey, nextMode);
+        } catch {
+          // Ignore storage write errors in restricted browsing modes
+        }
       }
       setModeState(nextMode);
     },

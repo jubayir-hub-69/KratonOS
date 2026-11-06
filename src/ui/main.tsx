@@ -9,7 +9,7 @@ if (container) {
   const root = createRoot(container);
   root.render(
     <React.StrictMode>
-      <ThemeProvider defaultMode="dark" storageKey="kratonos-ui-theme-v2">
+      <ThemeProvider defaultMode="system" storageKey="kratonos-ui-theme-session">
         <App />
       </ThemeProvider>
     </React.StrictMode>

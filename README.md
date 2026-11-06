@@ -4,27 +4,14 @@
 
 KratonOS is a self-custodial, hardware-attested autonomous treasury, cross-chain execution engine, and multi-agent coordination operating system built on NEAR Protocol v88.
 
-## Live Production URLs & Official Protocol Reference Links
+**Primary Live Deployment & Machine-Readable Specification Links:**
+- **Live Production App (Vercel)**: https://kraton-os-taupe.vercel.app
+- **Live Standalone Documentation Portal (`/docs`)**: https://kraton-os-taupe.vercel.app/docs
+- **Live AI Judge Index (`/llms.txt`)**: https://kraton-os-taupe.vercel.app/llms.txt
+- **Live OpenAPI 3.1 Specification (`/openapi.json`)**: https://kraton-os-taupe.vercel.app/openapi.json
+- **Official GitHub Repository**: https://github.com/jubayir-hub-69/KratonOS
 
-| Resource / Protocol | Official URL / Explorer Link |
-| :--- | :--- |
-| **Live Production Deployment (Vercel)** | https://kraton-os-taupe.vercel.app |
-| **Live Standalone Documentation Portal (`/docs`)** | https://kraton-os-taupe.vercel.app/docs |
-| **Live AI Judge Index (`/llms.txt`)** | https://kraton-os-taupe.vercel.app/llms.txt |
-| **Live OpenAPI 3.1 Specification (`/openapi.json`)** | https://kraton-os-taupe.vercel.app/openapi.json |
-| **Official GitHub Repository** | https://github.com/jubayir-hub-69/KratonOS |
-| **Official NEAR Hackathon Rules** | https://nearhackathon.com/HACKATHON.md · https://nearhackathon.com |
-| **Official Prompt & Track Specifications** | https://github.com/nearai/near-hackathon-prompt-examples (`HACKATHON.md`, `RULES.md`, `AGENTS.md`, `tracks/01-defi.md` .. `tracks/08-realworld.md`) |
-| **NEAR Protocol Documentation** | https://docs.near.org/ |
-| **NEAR Intents / 1Click Mainnet API & Explorer** | https://1click.chaindefuser.com (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/orders`) · https://explorer.near-intents.org/api/v0/transactions · https://docs.near-intents.org/ |
-| **NEAR AI Cloud (Confidential H100 + Intel TDX TEE)** | https://cloud-api.near.ai/v1 (`model: "zai-org/GLM-5.1-FP8"`, `/v1/chat/completions`, `/v1/attestation/report`, `/v1/signature/{chat_id}`) · https://cloud.near.ai · https://docs.near.ai/ |
-| **NEAR Agent Market (`A2A + x402` v2)** | https://market.near.ai (`/v1/agents`, `/v1/jobs`, `/v1/wallet/balance`) · https://docs.market.near.ai/ |
-| **OutLayer Verifiable WASI P1/P2 Enclave** | https://outlayer.ai/ · https://app.outlayer.ai/docs/getting-started · https://testnet.nearblocks.io/address/outlayer.testnet · https://testnet.nearblocks.io/address/worker.outlayer.testnet |
-| **RHEA Finance (V1 AMM + V2 DCL + Farming)** | https://rhea.finance/ · https://guide.rhea.finance/ · https://testnet.nearblocks.io/address/ref-finance.testnet · https://testnet.nearblocks.io/address/ref-farming.testnet |
-| **Wallet Connection (`@hot-labs/near-connect`)** | https://docs.hotdao.ai/ |
-| **Sputnik DAO V2 & Trezu Multisig** | https://github.com/near-daos/sputnik-dao-contract · https://trezu.org/ |
-| **NEAR Chain Signatures MPC & Vault Accounts** | https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet (Treasury Vault) · https://nearblocks.io/address/jubayir33.near (Protocol Fee Recipient) |
-| **Ethereum Mainnet Chainlink ETH/USD Aggregator** | https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 |
+*(See Section 8 at the bottom of this document for the complete 26-link Official Protocol, Explorer & Contract Reference Directory.)*
 
 ---
 
@@ -189,5 +176,30 @@ See [`STRESS.md`](./STRESS.md) (and `/docs#stress`) for the full **6-Suite, 38-A
 | **1Click Cross-Chain Swaps (`Q-007`)** | Live authenticated `GET /v0/tokens` (`210` assets) and `POST https://1click.chaindefuser.com/v0/quote` with inspectable pre-sign NEP-413 `token_diff` payloads. | **`dry: true` by Design (`Q-007`)**: Live `1Click` Mainnet quote calls pass `dry: true` so judges and automated CI suites can benchmark real routes without locking Mainnet capital in ephemeral deposit addresses. |
 | **NIST FIPS 204 `ML-DSA-65` Post-Quantum** | Generates and verifies standard `1,952`-byte lattice public keys, `3,309`-byte signatures, and domain-separated `ml-dsa-65-hash:<base58>` (`SHA3-256`) commitments. | **Host Precompile Boundary**: Until nearcore lands native gas-metered WASM lattice precompiles, full `ML-DSA-65` lattice verification executes in the off-chain/enclave gate while the Rust Policy Vault verifies the `SHA3-256` commitment digest on-chain. |
 | **Recursive Sub-Agent Delegation** | Static 4-lane NEP-611 topology (`scout`, `executor`, `payroll`, `yield`) under `jubayir69.testnet` with isolated nonces. | **Intentionally Blocked (Non-Goal)**: Sub-agents cannot call `AddKey` or spawn child agents, preventing unbounded recursive spend fan-out and preserving human `config.yaml` budget isolation. |
+
+---
+
+## 8. Official Protocol, Explorer & Contract Reference Directory (26 Verified Links)
+
+| Resource / Protocol | Official URL / Explorer Link |
+| :--- | :--- |
+| **Live Production Deployment (Vercel)** | https://kraton-os-taupe.vercel.app |
+| **Live Standalone Documentation Portal (`/docs`)** | https://kraton-os-taupe.vercel.app/docs |
+| **Live AI Judge Index (`/llms.txt`)** | https://kraton-os-taupe.vercel.app/llms.txt |
+| **Live OpenAPI 3.1 Specification (`/openapi.json`)** | https://kraton-os-taupe.vercel.app/openapi.json |
+| **Official GitHub Repository** | https://github.com/jubayir-hub-69/KratonOS |
+| **Official NEAR Hackathon Rules** | https://nearhackathon.com/HACKATHON.md · https://nearhackathon.com |
+| **Official Prompt & Track Specifications** | https://github.com/nearai/near-hackathon-prompt-examples (`HACKATHON.md`, `RULES.md`, `AGENTS.md`, `tracks/01-defi.md` .. `tracks/08-realworld.md`) |
+| **NEAR Protocol Documentation** | https://docs.near.org/ |
+| **NEAR Intents / 1Click Mainnet API & Explorer** | https://1click.chaindefuser.com (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/orders`) · https://explorer.near-intents.org/api/v0/transactions · https://docs.near-intents.org/ |
+| **NEAR AI Cloud (Confidential H100 + Intel TDX TEE)** | https://cloud-api.near.ai/v1 (`model: "zai-org/GLM-5.1-FP8"`, `/v1/chat/completions`, `/v1/attestation/report`, `/v1/signature/{chat_id}`) · https://cloud.near.ai · https://docs.near.ai/ |
+| **NEAR Agent Market (`A2A + x402` v2)** | https://market.near.ai (`/v1/agents`, `/v1/jobs`, `/v1/wallet/balance`) · https://docs.market.near.ai/ |
+| **OutLayer Verifiable WASI P1/P2 Enclave** | https://outlayer.ai/ · https://app.outlayer.ai/docs/getting-started · https://testnet.nearblocks.io/address/outlayer.testnet · https://testnet.nearblocks.io/address/worker.outlayer.testnet |
+| **RHEA Finance (V1 AMM + V2 DCL + Farming)** | https://rhea.finance/ · https://guide.rhea.finance/ · https://testnet.nearblocks.io/address/ref-finance.testnet · https://testnet.nearblocks.io/address/ref-farming.testnet |
+| **Wallet Connection (`@hot-labs/near-connect`)** | https://docs.hotdao.ai/ |
+| **Sputnik DAO V2 & Trezu Multisig** | https://github.com/near-daos/sputnik-dao-contract · https://trezu.org/ |
+| **NEAR Chain Signatures MPC & Vault Accounts** | https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet (Treasury Vault) · https://nearblocks.io/address/jubayir33.near (Protocol Fee Recipient) |
+| **Ethereum Mainnet Chainlink ETH/USD Aggregator** | https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419 |
+
 
 

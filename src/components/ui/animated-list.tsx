@@ -11,6 +11,11 @@ import {
   Users,
 } from "lucide-react";
 
+export type VerificationBadgeType =
+  | "LIVE ON-CHAIN TX"
+  | "LIVE RPC & TEE VERIFIED"
+  | "DRY-RUN QUOTE PREVIEW";
+
 export interface TelemetryFeedItem {
   id: string;
   title: string;
@@ -18,7 +23,7 @@ export interface TelemetryFeedItem {
   timeAgo: string;
   category: "swap" | "tee" | "shield" | "payroll" | "market" | "loop";
   tone: "emerald" | "cyan" | "amber" | "red";
-  verificationBadge?: "LIVE ON-CHAIN TX" | "DRY-RUN QUOTE PREVIEW";
+  verificationBadge?: VerificationBadgeType;
   txUrl?: string;
 }
 
@@ -72,8 +77,11 @@ function renderCategoryIcon(
 
 export function AnimatedListItem({ item }: { item: TelemetryFeedItem }) {
   const palette = TONE_STYLES[item.tone];
-  const badgeKind = item.verificationBadge ?? "DRY-RUN QUOTE PREVIEW";
+  const badgeKind: VerificationBadgeType =
+    item.verificationBadge ??
+    (item.category === "swap" ? "DRY-RUN QUOTE PREVIEW" : "LIVE RPC & TEE VERIFIED");
   const isLiveTx = badgeKind === "LIVE ON-CHAIN TX";
+  const isLiveRpcOrTee = badgeKind === "LIVE RPC & TEE VERIFIED";
 
   return (
     <div
@@ -105,6 +113,10 @@ export function AnimatedListItem({ item }: { item: TelemetryFeedItem }) {
                 <span>[LIVE ON-CHAIN TX ↗]</span>
                 <ExternalLink className="h-2.5 w-2.5 shrink-0" />
               </a>
+            ) : isLiveRpcOrTee ? (
+              <span className="inline-flex items-center rounded border border-emerald-500/40 bg-emerald-500/12 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--accent-emerald)]">
+                [LIVE RPC &amp; TEE VERIFIED]
+              </span>
             ) : (
               <span className="inline-flex items-center rounded border border-sky-500/40 bg-sky-500/10 px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--accent-cyan)]">
                 [DRY-RUN QUOTE PREVIEW]

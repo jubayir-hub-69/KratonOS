@@ -1000,6 +1000,7 @@ const WRAPPED_TO_CANONICAL_SYMBOL: Record<string, string> = {
 };
 
 const EXPLICIT_TYPO_SUGGESTIONS: Record<string, string> = {
+  AMEX: "AVAX",
   AVEX: "AVAX",
   AVXX: "AVAX",
   NERA: "NEAR",
@@ -1067,10 +1068,25 @@ export function findClosestValidTicker(
 }
 
 /**
- * Extracts all requested crypto ticker symbols from a user prompt (putting user-requested symbols first,
- * followed by core assets NEAR, XRP, SOL, ETH, BTC, and filtering out English stop words).
+ * Extracts requested crypto ticker symbols from a user prompt.
+ * Strictly returns ONLY the user-requested tickers when the user specifies one or more tokens
+ * (e.g., ["NEAR", "XRP"] or ["AYAN", "AMEX"]), falling back to the 5-asset core basket
+ * ["NEAR", "XRP", "SOL", "ETH", "BTC"] only when no specific tokens are requested or on the default Q4 audit prompt.
  */
 export function extractRequestedCryptoSymbols(prompt?: string): string[] {
+  const DEFAULT_CORE_BASKET = ["NEAR", "XRP", "SOL", "ETH", "BTC"];
+  if (!prompt || !prompt.trim()) {
+    return [...DEFAULT_CORE_BASKET];
+  }
+
+  if (
+    /Audit Q4 treasury statement|Verify KratonOS treasury constraints|Verify autonomous closed-loop/i.test(
+      prompt
+    )
+  ) {
+    return [...DEFAULT_CORE_BASKET];
+  }
+
   const userRequested: string[] = [];
   const addSymbol = (raw: string) => {
     const sym = raw.toUpperCase().trim();
@@ -1085,48 +1101,44 @@ export function extractRequestedCryptoSymbols(prompt?: string): string[] {
     }
   };
 
-  if (prompt) {
-    const upper = prompt.toUpperCase();
+  const upper = prompt.toUpperCase();
 
-    // 1. Match explicit pairs like "XRP /USDT", "AYAN/USDT", "AVEX/USDT", "DOGE/USD"
-    const pairRegex = /\b([A-Z0-9]{2,10})\s*[/\-]\s*(?:USDT|USDC|USD)\b/g;
-    let match: RegExpExecArray | null;
-    while ((match = pairRegex.exec(upper)) !== null) {
-      addSymbol(match[1]);
-    }
+  // 1. Match explicit pairs like "XRP /USDT", "AYAN/USDT", "AMEX /USDT", "AVEX/USDT", "DOGE/USD"
+  const pairRegex = /\b([A-Z0-9]{2,10})\s*[/\-]\s*(?:USDT|USDC|USD)\b/g;
+  let match: RegExpExecArray | null;
+  while ((match = pairRegex.exec(upper)) !== null) {
+    addSymbol(match[1]);
+  }
 
-    // 2. Match "<SYM> PRICE" or "<SYM> CURRENT MARKET PRICE"
-    const priceBeforeRegex = /\b([A-Z0-9]{2,10})\s+(?:CURRENT\s+)?(?:MARKET\s+)?PRICE\b/g;
-    while ((match = priceBeforeRegex.exec(upper)) !== null) {
-      addSymbol(match[1]);
-    }
+  // 2. Match "<SYM> PRICE" or "<SYM> CURRENT MARKET PRICE"
+  const priceBeforeRegex = /\b([A-Z0-9]{2,10})\s+(?:CURRENT\s+)?(?:MARKET\s+)?PRICE\b/g;
+  while ((match = priceBeforeRegex.exec(upper)) !== null) {
+    addSymbol(match[1]);
+  }
 
-    // 2B. Match "PRICE OF <SYM>" or "QUOTE FOR <SYM>"
-    const priceAfterRegex = /\b(?:PRICE|QUOTE)\s+(?:OF|FOR)\s+([A-Z0-9]{2,10})\b/g;
-    while ((match = priceAfterRegex.exec(upper)) !== null) {
-      addSymbol(match[1]);
-    }
+  // 2B. Match "PRICE OF <SYM>" or "QUOTE FOR <SYM>"
+  const priceAfterRegex = /\b(?:PRICE|QUOTE)\s+(?:OF|FOR)\s+([A-Z0-9]{2,10})\b/g;
+  while ((match = priceAfterRegex.exec(upper)) !== null) {
+    addSymbol(match[1]);
+  }
 
-    // 3. Match known tickers or full names mentioned standalone in the prompt
-    const words = upper.split(/[^A-Z0-9]+/).filter(Boolean);
-    for (const w of words) {
-      if (KNOWN_CRYPTO_FALLBACK_PRICES[w]) {
-        addSymbol(w);
-      } else if (FULL_NAME_TO_TICKER[w]) {
-        addSymbol(FULL_NAME_TO_TICKER[w]);
-      } else if (EXPLICIT_TYPO_SUGGESTIONS[w]) {
-        addSymbol(w);
-      }
+  // 3. Match known tickers or full names mentioned standalone in the prompt
+  const words = upper.split(/[^A-Z0-9]+/).filter(Boolean);
+  for (const w of words) {
+    if (KNOWN_CRYPTO_FALLBACK_PRICES[w]) {
+      addSymbol(w);
+    } else if (FULL_NAME_TO_TICKER[w]) {
+      addSymbol(FULL_NAME_TO_TICKER[w]);
+    } else if (EXPLICIT_TYPO_SUGGESTIONS[w]) {
+      addSymbol(w);
     }
   }
 
-  for (const core of ["NEAR", "XRP", "SOL", "ETH", "BTC"]) {
-    if (!userRequested.includes(core)) {
-      userRequested.push(core);
-    }
+  if (userRequested.length > 0) {
+    return userRequested;
   }
 
-  return userRequested;
+  return [...DEFAULT_CORE_BASKET];
 }
 
 let cachedOneClickPrices: { fetchedAtMs: number; map: Map<string, number> } | null = null;
@@ -1323,33 +1335,14 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
           ? suggestionEntry.priceUsd
           : undefined,
     });
-
-    // If a typo suggestion was found, automatically include the valid suggested token's real live row right below it!
-    if (
-      suggestion &&
-      suggestionEntry &&
-      suggestionEntry.found &&
-      !emittedSymbols.has(suggestion)
-    ) {
-      emittedSymbols.add(suggestion);
-      quotes.push({
-        symbol: suggestion,
-        pair: `${suggestion}/USDT`,
-        found: true,
-        priceUsd: suggestionEntry.priceUsd,
-        spreadPercent: suggestionEntry.spreadPercent,
-        source: `${suggestionEntry.source} (Suggested Match)`,
-        status: "VERIFIED_LIVE",
-      });
-    }
   }
 
   const snapshot = {
-    ethUsd: resolvedMap.get("ETH")?.priceUsd ?? 2219.86,
-    nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? 4.18,
-    solUsd: resolvedMap.get("SOL")?.priceUsd ?? 86.25,
-    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? 71642.5,
-    xrpUsd: resolvedMap.get("XRP")?.priceUsd ?? 1.3515,
+    ethUsd: resolvedMap.get("ETH")?.priceUsd ?? oneClickMap.get("ETH") ?? 2219.86,
+    nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? oneClickMap.get("NEAR") ?? 4.18,
+    solUsd: resolvedMap.get("SOL")?.priceUsd ?? oneClickMap.get("SOL") ?? 86.25,
+    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 71642.5,
+    xrpUsd: resolvedMap.get("XRP")?.priceUsd ?? oneClickMap.get("XRP") ?? 1.3515,
     liveFetched,
     quotes,
   };

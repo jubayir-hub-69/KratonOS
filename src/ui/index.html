@@ -14,6 +14,19 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function () {
+        try {
+          var saved = window.sessionStorage.getItem("kratonos-ui-theme-session");
+          var sysDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+          var effective =
+            saved === "light" || saved === "dark" ? saved : sysDark ? "dark" : "light";
+          document.documentElement.classList.remove("light", "dark");
+          document.documentElement.classList.add(effective);
+          document.documentElement.setAttribute("data-theme", effective);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="min-h-screen antialiased selection:bg-[#22c55e]/25 selection:text-[#4ade80]">
     <div id="root"></div>

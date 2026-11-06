@@ -615,6 +615,10 @@ export function exportBookkeeperCsv(params: {
   const lines = [header];
 
   for (const o of params.outcomes) {
+    const storageFormatted =
+      o.storageDepositPrependedYocto && o.storageDepositPrependedYocto !== "0"
+        ? `0.00125 NEAR (${o.storageDepositPrependedYocto} yocto)`
+        : "0 NEAR (Registered)";
     lines.push(
       [
         nowIso,
@@ -626,7 +630,7 @@ export function exportBookkeeperCsv(params: {
         o.amountAtomicUsdc,
         "41",
         o.status === "SETTLED" ? o.amountUsdc.toFixed(2) : "0.00",
-        o.storageDepositPrependedYocto,
+        storageFormatted,
         o.status,
         o.confidentialShardShieldUnshieldHashes,
         params.poc4HMaster,
@@ -707,14 +711,24 @@ export function generateVisualAuditStatementHtml(params: {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>KratonOS — Executive Bookkeeper Audit & Reconciliation Statement</title>
   <style>
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
     @media print {
       .no-print { display: none !important; }
-      body { background: #ffffff !important; padding: 0 !important; }
-      .sheet { box-shadow: none !important; border: none !important; max-width: 100% !important; }
+      body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .sheet { box-shadow: none !important; border: none !important; max-width: 100% !important; width: 100% !important; padding: 10px 12px !important; }
+      .kpi-grid { gap: 8px !important; margin: 10px 0 !important; }
+      .kpi-box { padding: 8px 10px !important; }
+      .kpi-val { font-size: 16px !important; margin-top: 2px !important; }
+      table { table-layout: fixed !important; width: 100% !important; font-size: 10px !important; }
+      th, td { padding: 5px 6px !important; font-size: 10px !important; word-break: break-word !important; overflow-wrap: anywhere !important; }
+      tr { page-break-inside: avoid !important; break-inside: avoid !important; }
     }
     body {
       margin: 0;
-      padding: 32px 20px;
+      padding: 28px 18px;
       background: #f3f4f6;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: #111827;

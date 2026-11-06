@@ -211,7 +211,15 @@ async function runServerSmokeTest(): Promise<void> {
   };
   assert.equal(secJson.riskVerdict.decision, "block");
   assert.ok(csvRes.bodyText.includes("scam-drainer-vault.testnet"));
+  assert.ok(
+    csvRes.bodyText.includes("0.00125 NEAR (1250000000000000000000 yocto)"),
+    "CSV export must format storage deposit as 0.00125 NEAR (1250000000000000000000 yocto)"
+  );
   assert.ok(stmtRes.bodyText.includes("Executive Bookkeeper Reconciliation Statement"));
+  assert.ok(
+    stmtRes.bodyText.includes("size: A4 landscape;"),
+    "Printable statement must include A4 landscape single-page CSS"
+  );
   assert.ok(llmsRes.bodyText.includes("# KratonOS"));
   assert.ok(llmsRes.bodyText.includes("https://nearhackathon.com/HACKATHON.md"));
   assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
@@ -301,6 +309,11 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(avexQuote.priceUsd, null, "AVEX must have priceUsd === null");
   assert.equal(avexQuote.suggestion, "AVAX", "AVEX must suggest AVAX via Levenshtein/typo detection");
   assert.ok((avexQuote.suggestionPriceUsd ?? 0) > 0, "AVEX suggestionPriceUsd for AVAX must be > 0");
+  assert.equal(
+    teeTypoJson.oracleSnap.dynamicAssetQuotes.length,
+    1,
+    "Strict Requested-Token Filtering: AVEX/USDT prompt must return strictly 1 requested asset"
+  );
 
   // 3G. Test POST /api/onchain/commit-proof (Live NEAR Testnet Proof Signer)
   const proofRes = await invokeServerEndpoint("POST", "/api/onchain/commit-proof", {});
