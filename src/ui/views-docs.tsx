@@ -353,7 +353,7 @@ interface ArchStageNode {
 const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
   {
     stage: 1,
-    x: 10,
+    x: 12,
     title: "1. Human Constraints",
     subtitle: "config.yaml + ML-DSA-65",
     sourceFile: "src/core/poc4.ts & src/core/security-shield.ts",
@@ -365,7 +365,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
   },
   {
     stage: 2,
-    x: 194,
+    x: 218,
     title: "2. OutLayer WASI P2",
     subtitle: "EIP-1186 + Multi-Oracle",
     sourceFile: "src/core/outlayer-enclave.ts",
@@ -377,7 +377,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
   },
   {
     stage: 3,
-    x: 378,
+    x: 424,
     title: "3. NEAR AI Cloud TEE",
     subtitle: "GLM-5.1 + 0x00 Wipe",
     sourceFile: "src/core/near-ai-tee.ts",
@@ -389,7 +389,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
   },
   {
     stage: 4,
-    x: 562,
+    x: 630,
     title: "4. PoC-4 Master Gate",
     subtitle: "H_master + 4 NEP-611 Lanes",
     sourceFile: "contracts/kratonos-policy-vault/src/lib.rs & src/core/gas-keys.ts",
@@ -401,7 +401,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
   },
   {
     stage: 5,
-    x: 746,
+    x: 836,
     title: "5. Confidential Execution",
     subtitle: "1Click + RHEA + x402 Swarm",
     sourceFile: "src/core/intents-rhea-router.ts & src/core/payroll-and-invoicing.ts",
@@ -425,11 +425,11 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   tee:
     "# Pillar 2: Dual-TEE Hardware Attestation (GLM-5.1-FP8) & OutLayer EIP-1186 Prover\n\n- Source: `src/core/near-ai-tee.ts`, `src/core/outlayer-enclave.ts`\n- 8-Step NRAS H100 + Intel TDX 5x48B verification + Zero-Retention `0x00` wipe.\n- Strict Anti-Hallucination Price Oracle: Resolves live prices via Coinbase, 1Click (210 tokens), and Kraken; returns `UNLISTED_TOKEN` (`priceUsd: null`) with Levenshtein typo suggestions (`AVEX -> AVAX`) for unlisted tickers.\n",
   router:
-    "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (1 bp fee + 40 bps app fee to `jubayir33.near`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin, Solana, Zcash, and TON addresses.\n",
+    "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (1 bp fee + 40 bps app fee to `jubayir33.near`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON addresses.\n",
   payroll:
     "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit`.\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
   "api-overview":
-    "# KratonOS REST API Overview (10 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
+    "# KratonOS REST API Overview (11 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
   "api-explorer":
     "# Interactive REST API Endpoint Explorer\n\nSelect any endpoint to inspect request parameters, copy cURL/TypeScript snippets, and execute live HTTP requests.\n",
   "live-status":
@@ -499,6 +499,15 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 <strong><code className="font-mono">dry: true</code> by Design (Q-007)</strong>: Mainnet quote calls pass <code className="font-mono">dry: true</code> so judges and CI suites benchmark real routes without locking Mainnet capital in ephemeral deposit addresses.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Chain Signatures MPC (Q-010)</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Live on-chain verification of <code className="font-mono text-[var(--accent-emerald)]">v1.signer-prod.testnet</code> codeHash and deterministic SHA3-256 epsilon KDF deriving EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON custody addresses.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Testnet-First Signer (<code className="font-mono">Q-010</code>)</strong>: Anchored to <code className="font-mono">v1.signer-prod.testnet</code> so judges can rotate paths and inspect valid EIP-1559 payloads safely without risking Mainnet custody funds.
               </td>
             </tr>
             <tr>
@@ -1090,8 +1099,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
                 <div className="overflow-x-auto pb-1">
                   <svg
-                    viewBox="0 0 920 140"
-                    className="min-w-[700px] w-full h-auto select-none"
+                    viewBox="0 0 1040 148"
+                    className="w-full min-w-[740px] h-auto block select-none"
                     role="img"
                     aria-label="KratonOS Interactive 5-Stage Animated Architecture Pipeline"
                   >
@@ -1116,13 +1125,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <g>
                             <path
                               id={pathId}
-                              d={`M ${node.x + 164} 68 L ${node.x + 192} 68`}
+                              d={`M ${node.x + 186} 70 L ${node.x + 218} 70`}
                               stroke="#38BDF8"
                               strokeWidth="2.5"
                               strokeDasharray="4 4"
                             />
                             <circle r="4" fill="#00EC97">
-                              <animateMotion dur="1.4s" repeatCount="indefinite" path={`M ${node.x + 164} 68 L ${node.x + 192} 68`} />
+                              <animateMotion dur="1.4s" repeatCount="indefinite" path={`M ${node.x + 186} 70 L ${node.x + 218} 70`} />
                             </circle>
                           </g>
                         )}
@@ -1135,8 +1144,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <rect
                             x={node.x}
                             y={20}
-                            width={162}
-                            height={96}
+                            width={186}
+                            height={100}
                             rx={12}
                             fill={isSelected ? "url(#archGradActive)" : "url(#archGradIdle)"}
                             stroke={isSelected ? "#00EC97" : "#38BDF8"}
@@ -1144,7 +1153,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                             strokeWidth={isSelected ? "2.5" : "1.5"}
                           />
                           <text
-                            x={node.x + 81}
+                            x={node.x + 93}
                             y={48}
                             textAnchor="middle"
                             fill="#00EC97"
@@ -1153,17 +1162,17 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                             STAGE 0{node.stage}
                           </text>
                           <text
-                            x={node.x + 81}
-                            y={69}
+                            x={node.x + 93}
+                            y={70}
                             textAnchor="middle"
                             fill="currentColor"
-                            className="font-mono text-[11.5px] font-bold"
+                            className="font-mono text-[11px] font-bold"
                           >
                             {node.title.replace(/^\d+\.\s*/, "")}
                           </text>
                           <text
-                            x={node.x + 81}
-                            y={91}
+                            x={node.x + 93}
+                            y={93}
                             textAnchor="middle"
                             fill="#38BDF8"
                             className="font-mono text-[9.5px]"
@@ -1692,37 +1701,37 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 {/* Animated SVG Diagram for Chapter 2 (PoC-4 Master Hash & 3-Tier Governance Escalator) */}
                 <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <svg
-                    viewBox="0 0 880 210"
-                    className="w-full min-w-[660px] h-auto select-none"
+                    viewBox="0 0 960 214"
+                    className="w-full min-w-[720px] h-auto block select-none"
                     role="img"
                     aria-label="PoC-4 4-Leaf SHA-256 Master Hash & 3-Tier Governance Escalator Animation"
                   >
                     {/* 4 Cryptographic Leaf Nodes */}
                     {[
                       { y: 14, title: "1. H_policy", sub: "config.yaml SHA-256", color: "#00EC97" },
-                      { y: 62, title: "2. H_tee", sub: "GLM-5.1 ECDSA Sig", color: "#38BDF8" },
-                      { y: 110, title: "3. H_eip1186", sub: "OutLayer RTMR3 + Trie", color: "#00EC97" },
-                      { y: 158, title: "4. H_quote", sub: "1Click Private Shard", color: "#38BDF8" },
+                      { y: 63, title: "2. H_tee", sub: "GLM-5.1 ECDSA Sig", color: "#38BDF8" },
+                      { y: 112, title: "3. H_eip1186", sub: "OutLayer RTMR3 + Trie", color: "#00EC97" },
+                      { y: 161, title: "4. H_quote", sub: "1Click Private Shard", color: "#38BDF8" },
                     ].map((leaf, idx) => (
                       <g key={leaf.title}>
                         <rect
                           x={16}
                           y={leaf.y}
-                          width={185}
-                          height={38}
+                          width={210}
+                          height={39}
                           rx={8}
                           fill="rgba(0, 236, 151, 0.08)"
                           stroke={leaf.color}
                           strokeWidth="1.5"
                         />
-                        <text x={28} y={leaf.y + 16} fill={leaf.color} className="font-mono text-[10px] font-extrabold">
+                        <text x={30} y={leaf.y + 16} fill={leaf.color} className="font-mono text-[10px] font-extrabold">
                           {leaf.title}
                         </text>
-                        <text x={28} y={leaf.y + 30} fill="currentColor" className="font-mono text-[9.5px] opacity-80">
+                        <text x={30} y={leaf.y + 31} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
                           {leaf.sub}
                         </text>
                         <path
-                          d={`M 201 ${leaf.y + 19} C 260 ${leaf.y + 19}, 270 105, 325 105`}
+                          d={`M 226 ${leaf.y + 19.5} C 280 ${leaf.y + 19.5}, 290 107, 345 107`}
                           fill="none"
                           stroke={leaf.color}
                           strokeWidth="1.75"
@@ -1732,7 +1741,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <animateMotion
                             dur={`${1.5 + idx * 0.2}s`}
                             repeatCount="indefinite"
-                            path={`M 201 ${leaf.y + 19} C 260 ${leaf.y + 19}, 270 105, 325 105`}
+                            path={`M 226 ${leaf.y + 19.5} C 280 ${leaf.y + 19.5}, 290 107, 345 107`}
                           />
                         </circle>
                       </g>
@@ -1740,34 +1749,34 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
                     {/* Central PoC-4 Master Hash Enclave Gate */}
                     <rect
-                      x={325}
-                      y={62}
-                      width={210}
-                      height={86}
+                      x={345}
+                      y={63}
+                      width={240}
+                      height={88}
                       rx={12}
                       fill="rgba(0, 236, 151, 0.14)"
                       stroke="#00EC97"
                       strokeWidth="2.2"
                     />
-                    <text x={430} y={88} textAnchor="middle" fill="#00EC97" className="font-mono text-[11px] font-extrabold">
+                    <text x={465} y={89} textAnchor="middle" fill="#00EC97" className="font-mono text-[11px] font-extrabold">
                       PoC-4 ENCLAVE GATE
                     </text>
-                    <text x={430} y={108} textAnchor="middle" fill="currentColor" className="font-mono text-[10px] font-bold">
+                    <text x={465} y={109} textAnchor="middle" fill="currentColor" className="font-mono text-[10px] font-bold">
                       H_master (32-Byte Digest)
                     </text>
-                    <text x={430} y={128} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
+                    <text x={465} y={129} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
                       Dev &lt;= 5.0% · Fee &lt;= 500 bps
                     </text>
 
                     {/* 3-Tier Earned-Trust Governance Escalator Outputs */}
                     {[
                       { y: 20, title: "TIER 1: AUTO-EXECUTE", sub: "<= $50 ($150 Verified)", stroke: "#00EC97" },
-                      { y: 84, title: "TIER 2: 1-COUNCIL FAST-TRACK", sub: "$50.01 - $150.00 / Warn", stroke: "#38BDF8" },
-                      { y: 148, title: "TIER 3: SPUTNIK DAO V2", sub: "> $150 Tx · 1 NEAR Bond", stroke: "#F59E0B" },
+                      { y: 85, title: "TIER 2: 1-COUNCIL FAST-TRACK", sub: "$50.01 - $150.00 / Warn", stroke: "#38BDF8" },
+                      { y: 150, title: "TIER 3: SPUTNIK DAO V2", sub: "> $150 Tx · 1 NEAR Bond", stroke: "#F59E0B" },
                     ].map((tier, idx) => (
                       <g key={tier.title}>
                         <path
-                          d={`M 535 105 C 585 105, 595 ${tier.y + 22}, 640 ${tier.y + 22}`}
+                          d={`M 585 107 C 625 107, 635 ${tier.y + 22}, 665 ${tier.y + 22}`}
                           fill="none"
                           stroke={tier.stroke}
                           strokeWidth="1.75"
@@ -1777,23 +1786,23 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <animateMotion
                             dur={`${1.6 + idx * 0.25}s`}
                             repeatCount="indefinite"
-                            path={`M 535 105 C 585 105, 595 ${tier.y + 22}, 640 ${tier.y + 22}`}
+                            path={`M 585 107 C 625 107, 635 ${tier.y + 22}, 665 ${tier.y + 22}`}
                           />
                         </circle>
                         <rect
-                          x={640}
+                          x={665}
                           y={tier.y}
-                          width={224}
+                          width={278}
                           height={44}
                           rx={8}
                           fill="rgba(56, 189, 248, 0.08)"
                           stroke={tier.stroke}
                           strokeWidth="1.6"
                         />
-                        <text x={654} y={tier.y + 18} fill={tier.stroke} className="font-mono text-[10px] font-extrabold">
+                        <text x={681} y={tier.y + 18} fill={tier.stroke} className="font-mono text-[10px] font-extrabold">
                           {tier.title}
                         </text>
-                        <text x={654} y={tier.y + 33} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
+                        <text x={681} y={tier.y + 34} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
                           {tier.sub}
                         </text>
                       </g>
@@ -1864,22 +1873,22 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <svg
-                    viewBox="0 0 880 215"
-                    className="w-full min-w-[660px] h-auto select-none"
+                    viewBox="0 0 940 218"
+                    className="w-full min-w-[720px] h-auto block select-none"
                     role="img"
                     aria-label="NEP-611 4-Lane Parallel Nonce Multiplexer & ML-DSA-65 Post-Quantum Shield Animation"
                   >
-                    <rect x={14} y={55} width={190} height={105} rx={12} fill="rgba(0, 236, 151, 0.12)" stroke="#00EC97" strokeWidth="2" />
-                    <text x={109} y={84} textAnchor="middle" fill="#00EC97" className="font-mono text-[10.5px] font-extrabold">
+                    <rect x={14} y={55} width={214} height={106} rx={12} fill="rgba(0, 236, 151, 0.12)" stroke="#00EC97" strokeWidth="2" />
+                    <text x={121} y={84} textAnchor="middle" fill="#00EC97" className="font-mono text-[10.5px] font-extrabold">
                       FIPS 204 ML-DSA-65
                     </text>
-                    <text x={109} y={104} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={121} y={104} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       1,952B PubKey · 3,309B Sig
                     </text>
-                    <text x={109} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                    <text x={121} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
                       SHA3-256 Vault Anchor
                     </text>
-                    <text x={109} y={144} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px] font-bold">
+                    <text x={121} y={144} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px] font-bold">
                       4-Signal Scam Shield Gate
                     </text>
 
@@ -1891,7 +1900,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     ].map((l) => (
                       <g key={l.lane}>
                         <path
-                          d={`M 204 108 C 255 108, 265 ${l.y + 19}, 315 ${l.y + 19}`}
+                          d={`M 228 108 C 272 108, 280 ${l.y + 19.5}, 318 ${l.y + 19.5}`}
                           fill="none"
                           stroke={l.color}
                           strokeWidth="1.75"
@@ -1901,27 +1910,27 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <animateMotion
                             dur={`${1.2 + l.idx * 0.15}s`}
                             repeatCount="indefinite"
-                            path={`M 204 108 C 255 108, 265 ${l.y + 19}, 315 ${l.y + 19}`}
+                            path={`M 228 108 C 272 108, 280 ${l.y + 19.5}, 318 ${l.y + 19.5}`}
                           />
                         </circle>
                         <rect
-                          x={315}
+                          x={318}
                           y={l.y}
-                          width={330}
-                          height={38}
+                          width={360}
+                          height={39}
                           rx={8}
                           fill="rgba(0, 236, 151, 0.07)"
                           stroke={l.color}
                           strokeWidth="1.5"
                         />
-                        <text x={328} y={l.y + 16} fill={l.color} className="font-mono text-[10px] font-extrabold">
+                        <text x={334} y={l.y + 16} fill={l.color} className="font-mono text-[10px] font-extrabold">
                           {l.lane}
                         </text>
-                        <text x={328} y={l.y + 30} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
+                        <text x={334} y={l.y + 31} fill="currentColor" className="font-mono text-[9.5px] opacity-85">
                           {l.nonce}
                         </text>
                         <path
-                          d={`M 645 ${l.y + 19} L 705 ${l.y + 19}`}
+                          d={`M 678 ${l.y + 19.5} L 738 ${l.y + 19.5}`}
                           fill="none"
                           stroke={l.color}
                           strokeWidth="1.75"
@@ -1931,20 +1940,20 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <animateMotion
                             dur="1.1s"
                             repeatCount="indefinite"
-                            path={`M 645 ${l.y + 19} L 705 ${l.y + 19}`}
+                            path={`M 678 ${l.y + 19.5} L 738 ${l.y + 19.5}`}
                           />
                         </circle>
                         <rect
-                          x={705}
+                          x={738}
                           y={l.y}
-                          width={160}
-                          height={38}
+                          width={188}
+                          height={39}
                           rx={8}
                           fill="rgba(56, 189, 248, 0.1)"
                           stroke={l.color}
                           strokeWidth="1.4"
                         />
-                        <text x={785} y={l.y + 23} textAnchor="middle" fill={l.color} className="font-mono text-[9.5px] font-extrabold">
+                        <text x={832} y={l.y + 23.5} textAnchor="middle" fill={l.color} className="font-mono text-[9.5px] font-extrabold">
                           PARALLEL FINALITY ✓
                         </text>
                       </g>
@@ -2025,84 +2034,84 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <svg
-                    viewBox="0 0 880 185"
-                    className="w-full min-w-[660px] h-auto select-none"
+                    viewBox="0 0 940 190"
+                    className="w-full min-w-[720px] h-auto block select-none"
                     role="img"
                     aria-label="Dual-TEE 8-Step Verification and Ethereum Mainnet EIP-1186 Storage Proof Animation"
                   >
                     {/* Top Pipeline: NEAR AI Cloud GLM-5.1-FP8 */}
-                    <rect x={14} y={18} width={220} height={64} rx={10} fill="rgba(0, 236, 151, 0.1)" stroke="#00EC97" strokeWidth="1.8" />
-                    <text x={124} y={40} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                    <rect x={14} y={18} width={246} height={66} rx={10} fill="rgba(0, 236, 151, 0.1)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={137} y={40} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
                       ENCLAVE A: NEAR AI CLOUD TEE
                     </text>
-                    <text x={124} y={56} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={137} y={56} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       zai-org/GLM-5.1-FP8 (H100 + TDX)
                     </text>
-                    <text x={124} y={71} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                    <text x={137} y={72} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
                       report_data == SHA256(addr:nonce)
                     </text>
 
                     {/* Bottom Pipeline: OutLayer WASI P2 EIP-1186 */}
-                    <rect x={14} y={102} width={220} height={64} rx={10} fill="rgba(56, 189, 248, 0.1)" stroke="#38BDF8" strokeWidth="1.8" />
-                    <text x={124} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                    <rect x={14} y={104} width={246} height={66} rx={10} fill="rgba(56, 189, 248, 0.1)" stroke="#38BDF8" strokeWidth="1.8" />
+                    <text x={137} y={126} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
                       ENCLAVE B: OUTLAYER WASI P2
                     </text>
-                    <text x={124} y={140} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={137} y={142} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       Ethereum eth_getProof (EIP-1186)
                     </text>
-                    <text x={124} y={155} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
+                    <text x={137} y={158} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
                       keccak256(proof[0]) == stateRoot
                     </text>
 
                     {/* Conduits to Zero-Retention & Anti-Hallucination Gate */}
-                    <path d="M 234 50 L 320 50" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 260 51 L 340 51" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#00EC97">
-                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 234 50 L 320 50" />
+                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 260 51 L 340 51" />
                     </circle>
-                    <path d="M 234 134 L 320 134" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 260 137 L 340 137" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#38BDF8">
-                      <animateMotion dur="1.5s" repeatCount="indefinite" path="M 234 134 L 320 134" />
+                      <animateMotion dur="1.5s" repeatCount="indefinite" path="M 260 137 L 340 137" />
                     </circle>
 
-                    <rect x={320} y={18} width={235} height={64} rx={10} fill="rgba(0, 236, 151, 0.08)" stroke="#00EC97" strokeWidth="1.6" />
-                    <text x={437} y={40} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                    <rect x={340} y={18} width={272} height={66} rx={10} fill="rgba(0, 236, 151, 0.08)" stroke="#00EC97" strokeWidth="1.6" />
+                    <text x={476} y={40} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
                       ZERO-RETENTION MEMORY WIPE
                     </text>
-                    <text x={437} y={56} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px]">
+                    <text x={476} y={56} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px]">
                       2,173B Overwritten In-Place (0x00)
                     </text>
-                    <text x={437} y={71} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                    <text x={476} y={72} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
                       0 Non-Zero Bytes Remaining
                     </text>
 
-                    <rect x={320} y={102} width={235} height={64} rx={10} fill="rgba(56, 189, 248, 0.08)" stroke="#38BDF8" strokeWidth="1.6" />
-                    <text x={437} y={124} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                    <rect x={340} y={104} width={272} height={66} rx={10} fill="rgba(56, 189, 248, 0.08)" stroke="#38BDF8" strokeWidth="1.6" />
+                    <text x={476} y={126} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
                       ANTI-HALLUCINATION ORACLE
                     </text>
-                    <text x={437} y={140} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px]">
+                    <text x={476} y={142} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px]">
                       Coinbase + 1Click + Kraken Median
                     </text>
-                    <text x={437} y={155} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
+                    <text x={476} y={158} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
                       Unlisted -&gt; TOKEN NOT FOUND (No $1)
                     </text>
 
-                    <path d="M 555 50 C 600 50, 605 92, 645 92" fill="none" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 612 51 C 648 51, 654 94, 688 94" fill="none" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#00EC97">
-                      <animateMotion dur="1.4s" repeatCount="indefinite" path="M 555 50 C 600 50, 605 92, 645 92" />
+                      <animateMotion dur="1.4s" repeatCount="indefinite" path="M 612 51 C 648 51, 654 94, 688 94" />
                     </circle>
-                    <path d="M 555 134 C 600 134, 605 92, 645 92" fill="none" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 612 137 C 648 137, 654 94, 688 94" fill="none" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#38BDF8">
-                      <animateMotion dur="1.4s" repeatCount="indefinite" path="M 555 134 C 600 134, 605 92, 645 92" />
+                      <animateMotion dur="1.4s" repeatCount="indefinite" path="M 612 137 C 648 137, 654 94, 688 94" />
                     </circle>
 
-                    <rect x={645} y={52} width={220} height={80} rx={12} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="2.2" />
-                    <text x={755} y={80} textAnchor="middle" fill="#00EC97" className="font-mono text-[10.5px] font-extrabold">
+                    <rect x={688} y={54} width={238} height={80} rx={12} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="2.2" />
+                    <text x={807} y={82} textAnchor="middle" fill="#00EC97" className="font-mono text-[10.5px] font-extrabold">
                       SIGNED ENCLAVE VERDICT
                     </text>
-                    <text x={755} y={98} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={807} y={100} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       ECDSA secp256k1 + Ed25519
                     </text>
-                    <text x={755} y={116} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                    <text x={807} y={118} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
                       8 / 8 Hardware Steps Verified ✓
                     </text>
                   </svg>
@@ -2160,60 +2169,60 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <svg
-                    viewBox="0 0 880 205"
-                    className="w-full min-w-[660px] h-auto select-none"
+                    viewBox="0 0 1020 212"
+                    className="w-full min-w-[760px] h-auto block select-none"
                     role="img"
                     aria-label="Tri-Venue Liquidity Router and 5-Chain Threshold MPC Derivation Tree Animation"
                   >
                     {/* Left: Tri-Venue Benchmark */}
-                    <rect x={14} y={20} width={235} height={165} rx={12} fill="rgba(0, 236, 151, 0.08)" stroke="#00EC97" strokeWidth="1.8" />
-                    <text x={131} y={42} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                    <rect x={14} y={20} width={250} height={172} rx={12} fill="rgba(0, 236, 151, 0.08)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={139} y={42} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
                       TRI-VENUE SMART ROUTER
                     </text>
-                    <rect x={28} y={54} width={207} height={34} rx={6} fill="rgba(0, 236, 151, 0.16)" stroke="#00EC97" strokeWidth="1.4" />
-                    <text x={38} y={75} fill="#00EC97" className="font-mono text-[9.5px] font-bold">
+                    <rect x={28} y={54} width={222} height={35} rx={6} fill="rgba(0, 236, 151, 0.16)" stroke="#00EC97" strokeWidth="1.4" />
+                    <text x={40} y={76} fill="#00EC97" className="font-mono text-[9.5px] font-bold">
                       1. 1Click Private Shard (41 bps)
                     </text>
-                    <rect x={28} y={96} width={207} height={34} rx={6} fill="rgba(56, 189, 248, 0.14)" stroke="#38BDF8" strokeWidth="1.4" />
-                    <text x={38} y={117} fill="#38BDF8" className="font-mono text-[9.5px] font-bold">
+                    <rect x={28} y={98} width={222} height={35} rx={6} fill="rgba(56, 189, 248, 0.14)" stroke="#38BDF8" strokeWidth="1.4" />
+                    <text x={40} y={120} fill="#38BDF8" className="font-mono text-[9.5px] font-bold">
                       2. RHEA V2 DCL (45 bps · 196 Pools)
                     </text>
-                    <rect x={28} y={138} width={207} height={34} rx={6} fill="rgba(245, 158, 11, 0.12)" stroke="#F59E0B" strokeWidth="1.2" />
-                    <text x={38} y={159} fill="#F59E0B" className="font-mono text-[9.5px] font-bold">
+                    <rect x={28} y={142} width={222} height={35} rx={6} fill="rgba(245, 158, 11, 0.12)" stroke="#F59E0B" strokeWidth="1.2" />
+                    <text x={40} y={164} fill="#F59E0B" className="font-mono text-[9.5px] font-bold">
                       3. RHEA V1 AMM + 14.85% LP Farm
                     </text>
 
                     {/* Center: Ed25519 VRF Slicer + v1.signer-prod.testnet */}
-                    <path d="M 249 102 L 325 102" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 264 106 L 340 106" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#00EC97">
-                      <animateMotion dur="1.2s" repeatCount="indefinite" path="M 249 102 L 325 102" />
+                      <animateMotion dur="1.2s" repeatCount="indefinite" path="M 264 106 L 340 106" />
                     </circle>
 
-                    <rect x={325} y={48} width={225} height={110} rx={12} fill="rgba(56, 189, 248, 0.12)" stroke="#38BDF8" strokeWidth="2" />
-                    <text x={437} y={74} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                    <rect x={340} y={48} width={240} height={116} rx={12} fill="rgba(56, 189, 248, 0.12)" stroke="#38BDF8" strokeWidth="2" />
+                    <text x={460} y={74} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
                       VRF JITTER + MPC SIGNER
                     </text>
-                    <text x={437} y={94} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={460} y={95} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       v1.signer-prod.testnet
                     </text>
-                    <text x={437} y={114} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
+                    <text x={460} y={116} textAnchor="middle" fill="#00EC97" className="font-mono text-[9px]">
                       SHA3-256 Epsilon KDF (0 Local Keys)
                     </text>
-                    <text x={437} y={134} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
+                    <text x={460} y={137} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
                       4-Slice Ed25519 Anti-MEV Execution
                     </text>
 
-                    {/* Right: 5 Derived Foreign Chains */}
+                    {/* Right: 5 Derived Foreign Chains (Wide 330px boxes + separated right badge pill) */}
                     {[
-                      { y: 12, label: "EVM (Ethereum / Base / Arb)", tag: "0x secp256k1", color: "#00EC97" },
-                      { y: 50, label: "Bitcoin Native SegWit", tag: "bc1q BIP-173", color: "#38BDF8" },
-                      { y: 88, label: "Solana Mainnet", tag: "Ed25519 Base58", color: "#00EC97" },
-                      { y: 126, label: "Zcash Transparent Pool", tag: "t1 Base58Check", color: "#38BDF8" },
-                      { y: 164, label: "TON Wallet v5r1", tag: "EQ Workchain 0", color: "#00EC97" },
+                      { y: 12, label: "EVM (Ethereum / Base / Arb)", tag: "0x · secp256k1", color: "#00EC97" },
+                      { y: 52, label: "Bitcoin (Testnet / SegWit)", tag: "bc1q · BIP-173", color: "#38BDF8" },
+                      { y: 92, label: "Solana (Devnet / Mainnet)", tag: "Ed25519 · Base58", color: "#00EC97" },
+                      { y: 132, label: "Zcash Transparent Pool", tag: "t1 · Base58Check", color: "#38BDF8" },
+                      { y: 172, label: "TON Wallet v5r1", tag: "EQ · Workchain 0", color: "#00EC97" },
                     ].map((ch, idx) => (
                       <g key={ch.label}>
                         <path
-                          d={`M 550 102 C 600 102, 610 ${ch.y + 15}, 655 ${ch.y + 15}`}
+                          d={`M 580 106 C 625 106, 635 ${ch.y + 15}, 676 ${ch.y + 15}`}
                           fill="none"
                           stroke={ch.color}
                           strokeWidth="1.6"
@@ -2223,14 +2232,15 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <animateMotion
                             dur={`${1.3 + idx * 0.15}s`}
                             repeatCount="indefinite"
-                            path={`M 550 102 C 600 102, 610 ${ch.y + 15}, 655 ${ch.y + 15}`}
+                            path={`M 580 106 C 625 106, 635 ${ch.y + 15}, 676 ${ch.y + 15}`}
                           />
                         </circle>
-                        <rect x={655} y={ch.y} width={210} height={30} rx={6} fill="rgba(0, 236, 151, 0.08)" stroke={ch.color} strokeWidth="1.4" />
-                        <text x={665} y={ch.y + 19} fill="currentColor" className="font-mono text-[9px] font-bold">
+                        <rect x={676} y={ch.y} width={330} height={30} rx={6} fill="rgba(0, 236, 151, 0.08)" stroke={ch.color} strokeWidth="1.4" />
+                        <text x={690} y={ch.y + 19} fill="currentColor" className="font-mono text-[9px] font-bold">
                           {ch.label}
                         </text>
-                        <text x={855} y={ch.y + 19} textAnchor="end" fill={ch.color} className="font-mono text-[8.5px] font-extrabold">
+                        <rect x={886} y={ch.y + 5} width={110} height={20} rx={4} fill="rgba(10, 18, 30, 0.55)" stroke={ch.color} strokeOpacity="0.45" strokeWidth="1" />
+                        <text x={941} y={ch.y + 18.5} textAnchor="middle" fill={ch.color} className="font-mono text-[8px] font-extrabold">
                           {ch.tag}
                         </text>
                       </g>
@@ -2267,7 +2277,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--accent-cyan)]">Chain Signatures MPC</td>
                       <td className="px-4 py-3 font-mono">v1.signer-prod.testnet</td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)]">Keyless SHA3-256 KDF deriving EVM (0x), Bitcoin (bc1q), Solana, Zcash (t1) &amp; TON (EQ)</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)]">Keyless SHA3-256 KDF deriving EVM (0x), Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash (t1) &amp; TON (EQ)</td>
                     </tr>
                   </tbody>
                 </table>
@@ -2304,74 +2314,74 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <svg
-                    viewBox="0 0 880 190"
-                    className="w-full min-w-[660px] h-auto select-none"
+                    viewBox="0 0 960 195"
+                    className="w-full min-w-[720px] h-auto block select-none"
                     role="img"
                     aria-label="EXACT_OUTPUT Ceiling Invoicing, 12-Row Fault-Isolated Batch Payroll, and 70/20/10 Revenue Splitter Animation"
                   >
                     {/* Box 1: EXACT_OUTPUT Ceiling Gross-Up */}
-                    <rect x={14} y={24} width={240} height={142} rx={12} fill="rgba(0, 236, 151, 0.09)" stroke="#00EC97" strokeWidth="1.8" />
-                    <text x={134} y={48} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                    <rect x={14} y={24} width={266} height={146} rx={12} fill="rgba(0, 236, 151, 0.09)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={147} y={48} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
                       1. EXACT_OUTPUT CEILING MATH
                     </text>
-                    <text x={134} y={70} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={147} y={71} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       Requested Net: 250.000000 USDC
                     </text>
-                    <text x={134} y={92} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
+                    <text x={147} y={93} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
                       Gross Input: 251.029220 USDC
                     </text>
-                    <text x={134} y={114} textAnchor="middle" fill="#F59E0B" className="font-mono text-[9px]">
+                    <text x={147} y={115} textAnchor="middle" fill="#F59E0B" className="font-mono text-[9px]">
                       41 bps Fee Covered by Payer
                     </text>
-                    <text x={134} y={140} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                    <text x={147} y={142} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
                       Freelancer Net: 100.00% ✓
                     </text>
 
-                    <path d="M 254 95 L 318 95" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 280 97 L 338 97" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#00EC97">
-                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 254 95 L 318 95" />
+                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 280 97 L 338 97" />
                     </circle>
 
                     {/* Box 2: 12-Row Fault-Isolated NEP-141 Batch Payroll */}
-                    <rect x={318} y={24} width={250} height={142} rx={12} fill="rgba(56, 189, 248, 0.09)" stroke="#38BDF8" strokeWidth="1.8" />
-                    <text x={443} y={48} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
+                    <rect x={338} y={24} width={284} height={146} rx={12} fill="rgba(56, 189, 248, 0.09)" stroke="#38BDF8" strokeWidth="1.8" />
+                    <text x={480} y={48} textAnchor="middle" fill="#38BDF8" className="font-mono text-[10px] font-extrabold">
                       2. FAULT-ISOLATED BATCH PAYROLL
                     </text>
-                    <rect x={334} y={60} width={218} height={42} rx={7} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="1.4" />
-                    <text x={443} y={78} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-extrabold">
+                    <rect x={354} y={60} width={252} height={43} rx={7} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="1.4" />
+                    <text x={480} y={78} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-extrabold">
                       Rows #1..#11: SETTLED ($264.00)
                     </text>
-                    <text x={443} y={93} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
+                    <text x={480} y={94} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
                       +0.00125 NEAR storage_deposit auto-injected
                     </text>
-                    <rect x={334} y={110} width={218} height={42} rx={7} fill="rgba(244, 63, 94, 0.16)" stroke="#F43F5E" strokeWidth="1.5" />
-                    <text x={443} y={128} textAnchor="middle" fill="#F43F5E" className="font-mono text-[9.5px] font-extrabold">
+                    <rect x={354} y={111} width={252} height={43} rx={7} fill="rgba(244, 63, 94, 0.16)" stroke="#F43F5E" strokeWidth="1.5" />
+                    <text x={480} y={129} textAnchor="middle" fill="#F43F5E" className="font-mono text-[9.5px] font-extrabold">
                       Row #12: QUARANTINED (SCAM)
                     </text>
-                    <text x={443} y={143} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
+                    <text x={480} y={145} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
                       scam-drainer-vault.testnet isolated
                     </text>
 
-                    <path d="M 568 95 L 632 95" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
+                    <path d="M 622 97 L 680 97" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
                     <circle r="4" fill="#38BDF8">
-                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 568 95 L 632 95" />
+                      <animateMotion dur="1.3s" repeatCount="indefinite" path="M 622 97 L 680 97" />
                     </circle>
 
                     {/* Box 3: x402 v2 & 70/20/10 Revenue Splitter + 20x5 Swarm */}
-                    <rect x={632} y={24} width={234} height={142} rx={12} fill="rgba(0, 236, 151, 0.09)" stroke="#00EC97" strokeWidth="1.8" />
-                    <text x={749} y={48} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
+                    <rect x={680} y={24} width={266} height={146} rx={12} fill="rgba(0, 236, 151, 0.09)" stroke="#00EC97" strokeWidth="1.8" />
+                    <text x={813} y={48} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
                       3. x402 v2 &amp; 20x5 SWARM
                     </text>
-                    <text x={749} y={70} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
+                    <text x={813} y={71} textAnchor="middle" fill="currentColor" className="font-mono text-[9.5px] font-bold">
                       70% Reserve · 20% Bounty · 10% Compute
                     </text>
-                    <text x={749} y={92} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
+                    <text x={813} y={93} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9.5px]">
                       NEP-366 Gasless SignedDelegate
                     </text>
-                    <text x={749} y={114} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-bold">
+                    <text x={813} y={115} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-bold">
                       20x5 Swarm Saved $357.00 (24.56%)
                     </text>
-                    <text x={749} y={140} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px] font-extrabold">
+                    <text x={813} y={142} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px] font-extrabold">
                       0 LLM Calls (Pure Commit-Reveal)
                     </text>
                   </svg>
@@ -2552,12 +2562,12 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     {/* Left Spec Details */}
                     <div className="space-y-4 lg:col-span-6">
                       <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-5">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2.5">
+                          <div className="flex min-w-0 items-center gap-2">
                             <Badge variant={ep.method === "POST" ? "emerald" : "sky"}>
                               {ep.method}
                             </Badge>
-                            <span className="font-mono text-sm font-extrabold text-[var(--text-primary)]">
+                            <span className="break-all font-mono text-sm font-extrabold text-[var(--text-primary)]">
                               {ep.path}
                             </span>
                           </div>
@@ -2565,7 +2575,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                             type="button"
                             onClick={() => executeLiveApiSpec(ep)}
                             disabled={runningEndpoint === ep.path}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--accent-emerald)] px-3.5 py-1.5 font-mono text-xs font-extrabold text-[#04130D] hover:opacity-90 cursor-pointer"
+                            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-[var(--accent-emerald)] px-3.5 py-1.5 font-mono text-xs font-extrabold text-[#04130D] hover:opacity-90 cursor-pointer"
                           >
                             {runningEndpoint === ep.path ? (
                               <RefreshCw className="h-3.5 w-3.5 animate-spin" />
@@ -3024,8 +3034,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
       {specModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fade-in">
           <div className="flex max-h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] px-6 py-4">
-              <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-color)] bg-[var(--bg-sidebar)] px-4 py-4 sm:px-6">
+              <div className="flex min-w-0 flex-wrap items-center gap-2.5">
                 <Badge variant="emerald" className="font-mono">
                   {specModalOpen === "llms" ? "GET /llms.txt" : "GET /openapi.json"}
                 </Badge>
@@ -3035,7 +3045,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     : "OpenAPI 3.1.0 Specification Schema"}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={() =>

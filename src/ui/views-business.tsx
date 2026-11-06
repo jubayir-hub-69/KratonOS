@@ -1317,11 +1317,11 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                     key={ag.agentId}
                     className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-mono text-xs font-extrabold text-[var(--text-primary)]">
                         @{ag.handle}
                       </span>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <Badge variant="outline">${displayAgentPrice.toFixed(2)} USDC</Badge>
                         <Badge variant="emerald">{ag.successRatePercent}% SLA</Badge>
                       </div>
@@ -1341,7 +1341,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base">1-Round Counter-Offer Engine</CardTitle>
                   {neg && <Badge variant="emerald">Rounds Used: {neg.roundsUsed} / 1</Badge>}
                 </div>
@@ -1349,19 +1349,19 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               <CardContent className="space-y-3 text-xs">
                 {neg && (
                   <>
-                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-color)] pb-2">
                       <span className="text-[var(--text-secondary)]">Initial Worker Quote</span>
                       <span className="font-mono font-bold text-[var(--text-primary)]">
                         ${neg.initialQuoteUsd.toFixed(2)} USDC
                       </span>
                     </div>
-                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-color)] pb-2">
                       <span className="text-[var(--text-secondary)]">Final Agreed Price</span>
                       <span className="font-mono font-extrabold text-[var(--accent-emerald)]">
                         ${(neg.finalAgreedPriceUsd ?? 2.5).toFixed(2)} USDC
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="text-[var(--text-secondary)]">Treasury Savings</span>
                       <Badge variant="emerald">Saved ${neg.savingsUsd.toFixed(2)} USDC</Badge>
                     </div>
@@ -1372,7 +1372,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
 
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base">A2A + x402 v2 Gasless Receipt</CardTitle>
                   <Badge variant="sky">NEP-366 SignedDelegate</Badge>
                 </div>
@@ -1380,18 +1380,18 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               <CardContent className="space-y-3 text-xs">
                 {hire && (
                   <>
-                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
+                    <div className="flex min-w-0 flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-color)] pb-2">
                       <span className="text-[var(--text-secondary)]">Receipt ID</span>
                       <CopyHashButton
                         value={hire.taskReceipt.receiptId}
                         onCopyNotify={(m) => onNotify?.(m, "market")}
                       />
                     </div>
-                    <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-color)] pb-2">
                       <span className="text-[var(--text-secondary)]">Protocol v87 Rule</span>
                       <Badge variant="emerald">signerKeyIsGasKey: false</Badge>
                     </div>
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="text-[var(--text-secondary)]">Settled Atomic USDC</span>
                       <span className="font-mono font-extrabold text-[var(--text-primary)]">
                         {neg.settledAtomicUsdc} ({(neg.finalAgreedPriceUsd ?? 2.5).toFixed(2)} USDC)
@@ -1772,13 +1772,13 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
           badge: "0x Hex",
         },
         {
-          chain: "Bitcoin Mainnet / Testnet",
+          chain: "Bitcoin (Testnet / SegWit)",
           standard: "Native SegWit BIP-173 P2WPKH Bech32",
           address: mpc.addresses.bitcoinSegwitAddress,
           badge: "bc1q SegWit",
         },
         {
-          chain: "Solana Mainnet",
+          chain: "Solana (Devnet / Mainnet)",
           standard: "Ed25519 32-Byte Base58 Public Key",
           address: mpc.addresses.solanaAddress,
           badge: "SPL Base58",
@@ -1928,7 +1928,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 }`}
               >
                 <div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-display text-sm font-bold text-[var(--text-primary)]">
                       {item.chain}
                     </span>
@@ -1938,7 +1938,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                     {item.standard}
                   </p>
                 </div>
-                <div className="mt-4 flex items-center justify-between border-t border-[var(--border-color)] pt-3">
+                <div className="mt-4 flex min-w-0 items-center justify-between border-t border-[var(--border-color)] pt-3">
                   <CopyHashButton
                     value={item.address}
                     label={item.address}
@@ -1949,9 +1949,9 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
             ))}
 
             {mpc && (
-              <div className="flex flex-col justify-between rounded-xl border border-emerald-500/40 bg-emerald-500/12 p-4">
+              <div className="flex min-w-0 flex-col justify-between rounded-xl border border-emerald-500/40 bg-emerald-500/12 p-4">
                 <div>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="font-display text-sm font-bold text-[var(--accent-emerald)]">
                       Signed EIP-1559 MPC Payload
                     </span>
@@ -1961,7 +1961,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                     Constructs valid 32-byte Keccak-256 digest for v1.signer-prod.testnet.sign().
                   </p>
                 </div>
-                <div className="mt-4 flex items-center justify-between border-t border-emerald-500/25 pt-3">
+                <div className="mt-4 flex min-w-0 items-center justify-between border-t border-emerald-500/25 pt-3">
                   <CopyHashButton
                     value={mpc.evmEip1559SignedTxHex}
                     onCopyNotify={(m) => onNotify?.(m, "swap")}
@@ -1997,7 +1997,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   <span className="text-xs font-bold text-[var(--text-secondary)]">
                     1. MFT Storage Registration
                   </span>
-                  <p className="mt-1 font-mono text-xs font-semibold text-[var(--text-primary)]">
+                  <p className="mt-1 break-all font-mono text-xs font-semibold text-[var(--text-primary)]">
                     {rhea.actions.step1_mftRegister.contractId}.{rhea.actions.step1_mftRegister.methodName}()
                   </p>
                 </div>
@@ -2005,7 +2005,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   <span className="text-xs font-bold text-[var(--text-secondary)]">
                     2. Stake LP Shares (:0 Seed)
                   </span>
-                  <p className="mt-1 font-mono text-xs font-semibold text-[var(--text-primary)]">
+                  <p className="mt-1 break-all font-mono text-xs font-semibold text-[var(--text-primary)]">
                     {rhea.actions.step2_mftTransferCallStake.methodName} (1 yoctoNEAR)
                   </p>
                 </div>
@@ -2013,7 +2013,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   <span className="text-xs font-bold text-[var(--text-secondary)]">
                     3. Claim Seed Rewards
                   </span>
-                  <p className="mt-1 font-mono text-xs font-semibold text-[var(--text-primary)]">
+                  <p className="mt-1 break-all font-mono text-xs font-semibold text-[var(--text-primary)]">
                     {rhea.actions.step3_claimRewardBySeed.methodName}({rhea.selectedSeedId})
                   </p>
                 </div>
@@ -2021,7 +2021,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   <span className="text-xs font-bold text-[var(--accent-emerald)]">
                     4. Single-Tx <code className="font-mono">"amount": "0"</code> Sweep
                   </span>
-                  <p className="mt-1 font-mono text-xs font-bold text-[var(--accent-emerald)]">
+                  <p className="mt-1 break-all font-mono text-xs font-bold text-[var(--accent-emerald)]">
                     withdraw_reward(&#123; amount: "0" &#125;)
                   </p>
                 </div>
@@ -2053,7 +2053,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
 
           <Card className="lg:col-span-5">
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <CardTitle>Multi-Chain Account (MCA) Health</CardTitle>
                 <Badge variant={liveMcaHealth.statusTone}>
                   {liveMcaHealth.statusLabel} ({liveMcaHealth.healthFactor.toFixed(2)})

@@ -1356,7 +1356,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
               {confidentialStatus && (
                 <Card>
                   <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="text-sm">
                         NEAR Private Shard Boundary Settlement Telemetry
                       </CardTitle>
@@ -1364,7 +1364,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     </div>
                   </CardHeader>
                   <CardContent className="grid grid-cols-1 gap-3 font-mono text-xs md:grid-cols-2">
-                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                    <div className="min-w-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
                       <div className="text-[var(--text-secondary)]">
                         Public Boundary Shield Hash:
                       </div>
@@ -1372,7 +1372,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                         {confidentialStatus.shieldTxHash}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                    <div className="min-w-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
                       <div className="text-[var(--text-secondary)]">
                         Public Boundary Unshield Hash:
                       </div>
@@ -1439,7 +1439,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
 
             <Card className="lg:col-span-7">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle>OutLayer VRF Anti-MEV Execution Slices</CardTitle>
                   <Badge variant="emerald" className="font-mono">
                     Confidentiality:{" "}
@@ -1465,9 +1465,9 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   return (
                     <div
                       key={slice.sliceIndex}
-                      className="space-y-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5"
+                      className="min-w-0 space-y-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5"
                     >
-                      <div className="flex items-center justify-between font-mono text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 font-mono text-xs">
                         <span className="font-bold text-[var(--text-primary)]">
                           Slice #{slice.sliceIndex + 1} ({pct}% Order Weight)
                         </span>
@@ -2745,7 +2745,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                     <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-[var(--accent-cyan)]" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
                       <span className="text-xs font-bold text-[var(--text-primary)]">
                         {item.step}
                       </span>
