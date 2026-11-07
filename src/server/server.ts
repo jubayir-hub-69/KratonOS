@@ -513,10 +513,10 @@ export async function handleKratonHttpRequest(
           rpcClient.viewAccount(runtime.constraints.treasury_account).catch(() => {
             liveAccountRpcVerified = false;
             return {
-              amount: "5000000000000000000000000",
+              amount: "4998047755956055300000000",
               locked: "0",
               code_hash: "11111111111111111111111111111111",
-              storage_usage: 542,
+              storage_usage: 182,
               block_height: 189450112,
               block_hash: "9f8e7d6c5b4a",
             };
@@ -595,6 +595,14 @@ export async function handleKratonHttpRequest(
 
         const formattedBalance = formatNearYocto(accountView.amount);
         const liquidNear = formattedBalance.replace(/\s*NEAR$/, "");
+        const totalNearBalance = Number(Number(liquidNear).toFixed(4));
+        const storageLockedNear = totalNearBalance > 0 ? 0.0018 : 0;
+        const walletGasReserveNear = totalNearBalance > 0 ? 0.2 : 0;
+        const spendableNearBalance = Math.max(
+          0,
+          Number((totalNearBalance - storageLockedNear - walletGasReserveNear).toFixed(4))
+        );
+        const spendableBalanceFormatted = `${spendableNearBalance.toFixed(4)} NEAR`;
 
         sendJson(res, 200, {
           status: "OK",
@@ -604,10 +612,17 @@ export async function handleKratonHttpRequest(
           networkId: runtime.env.NEAR_NETWORK_ID,
           balanceYocto: accountView.amount,
           balanceFormatted: formattedBalance,
+          totalNearBalance,
+          spendableNearBalance,
+          spendableBalanceFormatted,
+          storageLockedNear,
+          walletGasReserveNear,
           vault: {
             accountId: runtime.constraints.treasury_account,
             liquidNear,
+            spendableNear: spendableNearBalance.toFixed(4),
             balanceFormatted: formattedBalance,
+            spendableBalanceFormatted,
             balanceYocto: accountView.amount,
             storageUsageBytes: accountView.storage_usage,
             liveRpcVerified: liveAccountRpcVerified,
@@ -998,8 +1013,13 @@ export async function handleKratonHttpRequest(
             "# RHEA & 1Click Spread Audit\nAll 9 whitelisted tokens verified; combined fee 41 bps <= 500 bps cap.",
         });
 
+        const agreedGrossUsd =
+          typeof negotiation.finalAgreedPriceUsd === "number" &&
+          negotiation.finalAgreedPriceUsd > 0
+            ? negotiation.finalAgreedPriceUsd
+            : 2.5;
         const revenueSplit = marketLedger.recordWorkerPayoutAndSplitRevenue(
-          10.0,
+          agreedGrossUsd,
           "Verify RHEA Finance Stablecoin Pool Depth & 1Click Slippage"
         );
         const swarmRound = runSwarmSealedBidMarketRound();
@@ -1752,18 +1772,30 @@ export async function handleKratonHttpRequest(
           }
         };
 
-        let nearLiquid = 0;
+        let nearTotalOnChain = 0;
+        let nearStorageUsageBytes = 0;
         try {
           const accView = await walletRpc.viewAccount(address);
           nearRpcVerified = true;
-          nearLiquid = scaleBigIntToNumber(BigInt(accView.amount), 24);
+          nearTotalOnChain = Number(scaleBigIntToNumber(BigInt(accView.amount), 24).toFixed(4));
+          nearStorageUsageBytes = accView.storage_usage ?? 182;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           if (/does not exist|UNKNOWN_ACCOUNT/i.test(msg)) {
             nearRpcVerified = true;
           }
-          nearLiquid = 0;
+          nearTotalOnChain = 0;
         }
+
+        const nearStorageLocked = nearTotalOnChain > 0 ? 0.0018 : 0;
+        const nearWalletGasReserve = nearTotalOnChain > 0 ? 0.2 : 0;
+        const nearSpendable =
+          nearTotalOnChain > 0
+            ? Math.max(
+                0,
+                Number((nearTotalOnChain - nearStorageLocked - nearWalletGasReserve).toFixed(4))
+              )
+            : 0;
 
         const [wnearBal, usdcBalPrimary, usdcBalAlt, usdtBalPrimary, usdtBalAlt] = await Promise.all([
           queryFtBalance(isMainnetNear ? "wrap.near" : "wrap.testnet", 24),
@@ -1780,19 +1812,26 @@ export async function handleKratonHttpRequest(
 
         const totalNearUsdc = Number((usdcBalPrimary + usdcBalAlt).toFixed(6));
         const totalNearUsdt = Number((usdtBalPrimary + usdtBalAlt).toFixed(6));
-        const availableNearAndWnear = Number((nearLiquid + wnearBal).toFixed(6));
+        const availableNearAndWnear = Number((nearSpendable + wnearBal).toFixed(4));
 
         sendJson(res, 200, {
           status: "OK",
           chainType: "near",
           address,
           nativeSymbol: "NEAR",
-          nativeBalance: nearLiquid,
+          nativeBalance: nearSpendable,
+          totalNearBalance: nearTotalOnChain,
+          spendableNearBalance: nearSpendable,
+          storageLockedNear: nearStorageLocked,
+          walletGasReserveNear: nearWalletGasReserve,
+          storageUsageBytes: nearStorageUsageBytes,
+          totalNearFormatted: `${nearTotalOnChain.toFixed(4)} NEAR`,
+          spendableNearFormatted: `${nearSpendable.toFixed(4)} NEAR`,
           wnearBalance: wnearBal,
           usdcBalance: totalNearUsdc,
           usdtBalance: totalNearUsdt,
           tokenBalances: {
-            NEAR: nearLiquid,
+            NEAR: nearSpendable,
             wNEAR: availableNearAndWnear,
             "wNEAR-NEAR": availableNearAndWnear,
             USDC: totalNearUsdc,

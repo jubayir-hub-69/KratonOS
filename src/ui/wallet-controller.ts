@@ -6,6 +6,12 @@ export interface LiveWalletBalanceSnapshot {
   nativeSymbol: "NEAR" | "ETH" | "SOL";
   nativeBalance: number;
   nativeFormatted: string;
+  totalNearBalance?: number;
+  spendableNearBalance?: number;
+  storageLockedNear?: number;
+  walletGasReserveNear?: number;
+  totalNearFormatted?: string;
+  spendableNearFormatted?: string;
   wnearBalance: number;
   usdcBalance: number;
   usdtBalance: number;
@@ -245,6 +251,12 @@ export async function fetchLiveConnectedWalletBalances(params: {
       const json = (await res.json()) as {
         nativeSymbol?: "NEAR" | "ETH" | "SOL";
         nativeBalance?: number;
+        totalNearBalance?: number;
+        spendableNearBalance?: number;
+        storageLockedNear?: number;
+        walletGasReserveNear?: number;
+        totalNearFormatted?: string;
+        spendableNearFormatted?: string;
         wnearBalance?: number;
         usdcBalance?: number;
         usdtBalance?: number;
@@ -254,7 +266,15 @@ export async function fetchLiveConnectedWalletBalances(params: {
       const resolvedNative =
         inPageEthNative !== null
           ? Math.max(inPageEthNative, Number(json.nativeBalance ?? 0))
-          : Number(json.nativeBalance ?? 0);
+          : Number(json.spendableNearBalance ?? json.nativeBalance ?? 0);
+      const resolvedTotalNear =
+        chainType === "near"
+          ? Number(json.totalNearBalance ?? resolvedNative)
+          : undefined;
+      const resolvedSpendableNear =
+        chainType === "near"
+          ? Number(json.spendableNearBalance ?? resolvedNative)
+          : undefined;
       const resolvedWnear = Number(json.wnearBalance ?? 0);
       const resolvedUsdc =
         inPageUsdc !== null
@@ -278,8 +298,9 @@ export async function fetchLiveConnectedWalletBalances(params: {
       if (chainType === "evm") {
         mergedMap["ETH-ETHEREUM"] = resolvedNative;
       } else if (chainType === "near") {
-        mergedMap.wNEAR = Number((resolvedNative + resolvedWnear).toFixed(6));
-        mergedMap["wNEAR-NEAR"] = Number((resolvedNative + resolvedWnear).toFixed(6));
+        mergedMap.NEAR = resolvedSpendableNear ?? resolvedNative;
+        mergedMap.wNEAR = Number(((resolvedSpendableNear ?? resolvedNative) + resolvedWnear).toFixed(4));
+        mergedMap["wNEAR-NEAR"] = Number(((resolvedSpendableNear ?? resolvedNative) + resolvedWnear).toFixed(4));
       } else if (chainType === "solana") {
         mergedMap["SOL-SOLANA"] = resolvedNative;
       }
@@ -288,6 +309,18 @@ export async function fetchLiveConnectedWalletBalances(params: {
         nativeSymbol,
         nativeBalance: resolvedNative,
         nativeFormatted: `${formatTokenAmountDisplay(resolvedNative, nativeSymbol)} ${nativeSymbol}`,
+        totalNearBalance: resolvedTotalNear,
+        spendableNearBalance: resolvedSpendableNear,
+        storageLockedNear: json.storageLockedNear,
+        walletGasReserveNear: json.walletGasReserveNear,
+        totalNearFormatted:
+          resolvedTotalNear !== undefined
+            ? `${resolvedTotalNear.toFixed(4)} NEAR`
+            : json.totalNearFormatted,
+        spendableNearFormatted:
+          resolvedSpendableNear !== undefined
+            ? `${resolvedSpendableNear.toFixed(4)} NEAR`
+            : json.spendableNearFormatted,
         wnearBalance: resolvedWnear,
         usdcBalance: resolvedUsdc,
         usdtBalance: resolvedUsdt,

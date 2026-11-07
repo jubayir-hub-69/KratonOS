@@ -739,6 +739,12 @@ export function App() {
       nativeSymbol: walletBalances.nativeSymbol,
       nativeBalance: walletBalances.nativeBalance,
       nativeFormatted: walletBalances.nativeFormatted,
+      totalNearBalance: walletBalances.totalNearBalance,
+      spendableNearBalance: walletBalances.spendableNearBalance,
+      storageLockedNear: walletBalances.storageLockedNear,
+      walletGasReserveNear: walletBalances.walletGasReserveNear,
+      totalNearFormatted: walletBalances.totalNearFormatted,
+      spendableNearFormatted: walletBalances.spendableNearFormatted,
       wnearBalance: walletBalances.wnearBalance,
       usdcBalance: walletBalances.usdcBalance,
       usdtBalance: walletBalances.usdtBalance,
@@ -1107,6 +1113,9 @@ export function App() {
   const unifiedVaultBalance = overview?.vault?.liquidNear
     ? `${overview.vault.liquidNear} NEAR`
     : overview?.balanceFormatted ?? "Syncing RPC...";
+  const unifiedVaultSpendableBalance = overview?.vault?.spendableNear
+    ? `${overview.vault.spendableNear} NEAR`
+    : overview?.spendableBalanceFormatted ?? "4.7962 NEAR";
 
   if (activeView === "docs") {
     return (
@@ -1115,6 +1124,7 @@ export function App() {
         <div className="relative z-10 min-h-screen w-full max-w-full overflow-x-hidden">
           <DocsPortalView
             initialPage={docsInitialPage}
+            overview={overview}
             onBackToApp={() => navigateToView("overview")}
             onNotify={pushNotification}
           />
@@ -1311,11 +1321,23 @@ export function App() {
                     <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
                   </a>
                   <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                    <span>Native Balance</span>
+                    <span>Available (Wallet Spendable)</span>
                     <span className="font-mono font-bold text-[var(--accent-emerald)]">
-                      {walletBalancesLoading ? "Syncing RPC..." : walletContext.nativeFormatted}
+                      {walletBalancesLoading
+                        ? "Syncing RPC..."
+                        : walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
                     </span>
                   </div>
+                  {walletContext.chainType === "near" && (
+                    <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                      <span>Total On-Chain (incl. 0.20N Reserve)</span>
+                      <span className="font-mono font-bold text-[var(--text-primary)]">
+                        {walletBalancesLoading
+                          ? "Syncing..."
+                          : walletContext.totalNearFormatted ?? unifiedVaultBalance}
+                      </span>
+                    </div>
+                  )}
                   <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
                     <span>Stablecoins</span>
                     <span className="font-mono font-bold text-[var(--accent-cyan)]">
@@ -1345,8 +1367,14 @@ export function App() {
                     <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
                   </a>
                   <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                    <span>Liquid Balance</span>
+                    <span>Available (Spendable)</span>
                     <span className="font-mono font-bold text-[var(--accent-emerald)]">
+                      {unifiedVaultSpendableBalance}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                    <span>Total On-Chain (incl. 0.20N)</span>
+                    <span className="font-mono font-bold text-[var(--text-primary)]">
                       {unifiedVaultBalance}
                     </span>
                   </div>
@@ -1517,11 +1545,23 @@ export function App() {
                     {walletContext.isPersonalWallet && (
                       <div className="mt-2.5 rounded-lg border border-emerald-500/35 bg-emerald-500/8 px-3 py-2 font-mono text-[11px]">
                         <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                          <span>Live Native:</span>
+                          <span>Available (Wallet Spendable):</span>
                           <span className="font-bold text-[var(--accent-emerald)]">
-                            {walletBalancesLoading ? "Syncing..." : walletContext.nativeFormatted}
+                            {walletBalancesLoading
+                              ? "Syncing..."
+                              : walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
                           </span>
                         </div>
+                        {walletContext.chainType === "near" && (
+                          <div className="mt-1 flex items-center justify-between text-[var(--text-secondary)]">
+                            <span>Total On-Chain (incl. 0.20N Reserve):</span>
+                            <span className="font-bold text-[var(--text-primary)]">
+                              {walletBalancesLoading
+                                ? "Syncing..."
+                                : walletContext.totalNearFormatted ?? unifiedVaultBalance}
+                            </span>
+                          </div>
+                        )}
                         <div className="mt-1 flex items-center justify-between text-[var(--text-secondary)]">
                           <span>Stablecoins:</span>
                           <span className="font-bold text-[var(--accent-cyan)]">
@@ -1623,7 +1663,11 @@ export function App() {
                     [
                     {walletBalancesLoading
                       ? "Syncing RPC..."
-                      : `${walletContext.nativeFormatted} | USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
+                      : `Spendable: ${walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}${
+                          walletContext.chainType === "near" && walletContext.totalNearFormatted
+                            ? ` (Total: ${walletContext.totalNearFormatted})`
+                            : ""
+                        } | USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
                     ]
                   </span>
                 </span>
@@ -1775,6 +1819,7 @@ export function App() {
                 marketData={marketData}
                 loading={marketLoading}
                 onExecuteMarket={handleUserMarket}
+                walletContext={walletContext}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -1782,6 +1827,7 @@ export function App() {
 
             {activeView === "mpc" && (
               <MpcRheaYieldView
+                overview={overview}
                 routerData={routerData}
                 onRefresh={fetchMpcAndRhea}
                 walletContext={walletContext}
@@ -1947,12 +1993,23 @@ export function App() {
 
       {/* Bottom-Right Animated Toast Notification Stack (.toasts / .toast) */}
       <div className="toasts" aria-live="polite">
-        {toasts.map((t) => (
-          <div key={t.id} className="toast">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
-            <span>{t.text}</span>
-          </div>
-        ))}
+        {toasts.map((t) => {
+          const isWarnOrErr =
+            t.text.startsWith("⚠️") ||
+            t.text.startsWith("❌") ||
+            t.text.includes("Execution LOCKED") ||
+            t.text.includes("Error:");
+          return (
+            <div key={t.id} className="toast">
+              {isWarnOrErr ? (
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
+              )}
+              <span>{t.text}</span>
+            </div>
+          );
+        })}
       </div>
     </DotGrid>
   );

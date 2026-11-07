@@ -416,17 +416,23 @@ function stripEmojis(text: string): string {
     .trim();
 }
 
-function formatUsdPrice(val: number): string {
+export function formatUsdPrice(val: number): string {
   if (val >= 1000) {
     return `$${val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  if (val >= 10) {
+    return `$${val.toFixed(2)}`;
   }
   if (val >= 1) {
     return `$${val.toFixed(4)}`;
   }
-  if (val >= 0.01) {
-    return `$${val.toFixed(4)}`;
+  if (val >= 0.001) {
+    return `$${val.toFixed(6)}`;
   }
-  return `$${val.toFixed(6)}`;
+  if (val > 0) {
+    return `$${val.toFixed(8)}`;
+  }
+  return "$0.0000";
 }
 
 function buildDynamicTeeVerdictForPrompt(
@@ -534,7 +540,7 @@ function buildDynamicTeeVerdictForPrompt(
         verifiedQuotes.length > 0
           ? verifiedQuotes.map((q) => q.symbol).join(", ")
           : "NEAR, XRP, SOL, ETH, and BTC"
-      } routes through \`intents.near\` Private Shard (\`1 bp\` stablecoin spread) and 196 live RHEA V2 DCL pools with zero public mempool MEV leakage.`
+      } routes through \`intents.near\` Private Shard (20 bps volatile cross-chain spread and 1 bp for stablecoin pairs) and 196 live RHEA V2 DCL pools with zero public mempool MEV leakage.`
     );
     sections.push(`## Live Enclave Market Intelligence & News\n` + newsBullets.join("\n"));
   }

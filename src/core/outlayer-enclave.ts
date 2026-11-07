@@ -520,8 +520,9 @@ export function computeMedianAndMaxDeviation(values: number[]): {
     }
   }
 
+  const precisionDigits = median < 0.001 ? 8 : median < 1 ? 6 : 4;
   return {
-    median: Number(median.toFixed(4)),
+    median: Number(median.toFixed(precisionDigits)),
     maxDeviationPercent: Number(maxDeviationPercent.toFixed(4)),
   };
 }
@@ -846,7 +847,8 @@ const KNOWN_CRYPTO_FALLBACK_PRICES: Record<string, number> = {
   POL: 0.342,
   MATIC: 0.342,
   SHIB: 0.0000148,
-  PEPE: 0.0000089,
+  PEPE: 0.00000845,
+  FLOKI: 0.0000642,
   LTC: 98.4,
   UNI: 7.85,
   APT: 6.45,

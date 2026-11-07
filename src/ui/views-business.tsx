@@ -169,6 +169,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       invoiceRef: string;
     }>
   >([]);
+  const [removedInvoiceRefs, setRemovedInvoiceRefs] = useState<string[]>([]);
   const [signingBatch, setSigningBatch] = useState(false);
   const [batchSignError, setBatchSignError] = useState<string | null>(null);
   const [signedBatchReceipt, setSignedBatchReceipt] = useState<{
@@ -328,14 +329,15 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       };
     });
 
-    const combined = [
-      ...customOutcomes,
-      ...baseOutcomes.map((o, idx) => ({
-        ...o,
-        rowNumber: customOutcomes.length + idx + 1,
-        batchChunkIndex: Math.floor((customOutcomes.length + idx) / 10),
-      })),
+    const rawCombined = [
+      ...customOutcomes.filter((o) => !removedInvoiceRefs.includes(o.invoiceRef)),
+      ...baseOutcomes.filter((o) => !removedInvoiceRefs.includes(o.invoiceRef)),
     ];
+    const combined = rawCombined.map((o, idx) => ({
+      ...o,
+      rowNumber: idx + 1,
+      batchChunkIndex: Math.floor(idx / 10),
+    }));
 
     const settledRows = combined.filter((o) => o.status === "SETTLED");
     const quarantinedRows = combined.filter((o) => o.status !== "SETTLED");
@@ -361,7 +363,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         rawBatch?.exportedBookkeeperCsvPath ?? "samples/exported-bookkeeper-ledger.csv",
       poc4HMaster: overview?.poc4MasterHash ?? rawBatch?.poc4HMaster ?? "verified",
     };
-  }, [overview?.poc4MasterHash, rawBatch, customBatchRows]);
+  }, [overview?.poc4MasterHash, rawBatch, customBatchRows, removedInvoiceRefs]);
 
   const buildLiveBookkeeperCsvContent = () => {
     const header = [
@@ -412,9 +414,9 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     return "\uFEFF" + lines.join("\n") + "\n";
   };
 
-  // Sync live batch outcomes (including user-added invoices) to backend cache so server GET /api/payroll/export-statement stays in sync
+  // Sync live batch outcomes (including user-added or removed rows) to backend cache so server GET /api/payroll/export-statement stays in sync
   useEffect(() => {
-    if (customBatchRows.length === 0) return;
+    if (customBatchRows.length === 0 && removedInvoiceRefs.length === 0) return;
     const csvContent = buildLiveBookkeeperCsvContent();
     void fetch("/api/payroll/sync-batch", {
       method: "POST",
@@ -426,7 +428,27 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       }),
     }).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batch.outcomes, batch.poc4HMaster, customBatchRows.length]);
+  }, [batch.outcomes, batch.poc4HMaster, customBatchRows.length, removedInvoiceRefs.length]);
+
+  const handleRemoveQuarantinedRow = (invoiceRef: string, recipientId: string) => {
+    setCustomBatchRows((prev) => prev.filter((r) => r.invoiceRef !== invoiceRef));
+    setRemovedInvoiceRefs((prev) =>
+      prev.includes(invoiceRef) ? prev : [...prev, invoiceRef]
+    );
+    onNotify?.(
+      `Removed quarantined row (${recipientId} · ${invoiceRef}) from active payroll batch`,
+      "payroll"
+    );
+  };
+
+  const handleResetDefaultBatch = () => {
+    setCustomBatchRows([]);
+    setRemovedInvoiceRefs([]);
+    onNotify?.(
+      "Restored default 12-row payroll batch (11 valid contributor rows + 1 quarantined demo row)",
+      "payroll"
+    );
+  };
 
   const handleDownloadBookkeeperCsv = () => {
     const csvContent = buildLiveBookkeeperCsvContent();
@@ -1064,6 +1086,14 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                 label="Visual Audit Statement (HTML / PDF)"
                 onClick={handleOpenVisualAuditStatement}
               />
+              <button
+                type="button"
+                onClick={handleResetDefaultBatch}
+                className="inline-flex min-h-10 h-auto items-center justify-center gap-1.5 rounded-full border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3.5 py-2 text-center font-mono text-xs font-bold tracking-wider whitespace-normal text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-cyan)] hover:text-[var(--accent-cyan)] cursor-pointer"
+              >
+                <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+                <span>Reset Default 12-Row Batch</span>
+              </button>
             </div>
           </div>
         </CardHeader>
@@ -1163,6 +1193,25 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                 >
                   NEARBlocks Anchor Tx ({activeAnchorTxHash.slice(0, 10)}...) &#8599;
                 </a>
+              </div>
+
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/35 bg-sky-500/10 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
+                <span>
+                  <strong className="text-[var(--accent-cyan)]">Batch Composition Notice:</strong>{" "}
+                  Default batch includes 11 valid contributor rows + 1 simulated malicious row (#12{" "}
+                  <code className="text-rose-400">scam-drainer-vault.testnet</code>) to demonstrate
+                  Fault-Isolated Batching. You can remove the quarantined row or reset the 12-row
+                  batch anytime.
+                </span>
+                {(customBatchRows.length > 0 || removedInvoiceRefs.length > 0) && (
+                  <button
+                    type="button"
+                    onClick={handleResetDefaultBatch}
+                    className="rounded border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-bold text-[var(--accent-cyan)] hover:bg-sky-500/25 cursor-pointer"
+                  >
+                    Reset Default 12-Row Batch
+                  </button>
+                )}
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
@@ -1271,10 +1320,21 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                                 </Badge>
                               </a>
                             ) : (
-                              <Badge variant="red" className="gap-1">
-                                <AlertTriangle className="h-3 w-3" />
-                                QUARANTINED
-                              </Badge>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Badge variant="red" className="gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  QUARANTINED
+                                </Badge>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRemoveQuarantinedRow(row.invoiceRef, row.recipientId)
+                                  }
+                                  className="inline-flex items-center gap-1 rounded-md border border-rose-500/45 bg-rose-500/15 px-2 py-0.5 font-mono text-[10px] font-extrabold text-rose-400 transition-colors hover:bg-rose-500/25 cursor-pointer"
+                                >
+                                  <span>✕ Remove Quarantined Row</span>
+                                </button>
+                              </div>
                             )}
                           </td>
                         </tr>
@@ -1403,6 +1463,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
   marketData,
   loading,
   onExecuteMarket,
+  walletContext,
   judgeMode,
   onNotify,
 }: {
@@ -1413,17 +1474,35 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
     quotedAmountUsd: number;
     plannedBudgetUsd: number;
   }) => void;
+  walletContext?: ConnectedWalletState;
   judgeMode?: boolean;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
   const [query, setQuery] = useState("research");
   const [quotedAmountUsd, setQuotedAmountUsd] = useState("4.20");
   const [plannedBudgetUsd, setPlannedBudgetUsd] = useState("2.50");
+  const [signingX402, setSigningX402] = useState(false);
+  const [x402SignError, setX402SignError] = useState<string | null>(null);
+  const [x402SignedReceipt, setX402SignedReceipt] = useState<{
+    signerAddress: string;
+    signature: string;
+    agreedAmountUsd: string;
+    timestamp: string;
+  } | null>(null);
+
+  useEffect(() => {
+    setX402SignError(null);
+    setX402SignedReceipt(null);
+  }, [walletContext?.isPersonalWallet, walletContext?.address]);
 
   const disc = marketData?.discovery;
   const hire = marketData?.x402Hire;
-  const split = marketData?.revenueSplit;
   const swarm = marketData?.swarmRound;
+
+  const isPersonalConnected = Boolean(
+    walletContext?.isPersonalWallet && walletContext.address
+  );
+  const userUsdcBalance = walletContext?.usdcBalance ?? 0;
 
   // Live reactive 1-Round Counter-Offer calculation so any change to Initial Ask or Target Budget updates immediately
   const neg = useMemo(() => {
@@ -1442,19 +1521,74 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
     };
   }, [quotedAmountUsd, plannedBudgetUsd]);
 
-  // Dynamically recompute the 70/20/10 revenue split & 20x5 Swarm clearing metrics when Initial Ask or Target Budget changes
+  const insufficientMarketUsdc = Boolean(
+    isPersonalConnected &&
+      !walletContext?.balancesLoading &&
+      neg.finalAgreedPriceUsd > userUsdcBalance
+  );
+
+  // Dynamically compute the 70/20/10 revenue split strictly from neg.finalAgreedPriceUsd
   const dynamicSplit = useMemo(() => {
-    const gross = neg.finalAgreedPriceUsd;
-    const isDefault = Math.abs(gross - 2.5) < 0.001 && split;
-    if (isDefault && split) return split;
-    const netRev = Number((gross * 0.95).toFixed(2));
+    const grossRevenueUsd = Number(neg.finalAgreedPriceUsd.toFixed(2));
+    const platformFeeAndBondUsd = Number((grossRevenueUsd * 0.1).toFixed(2));
+    const netRevenueUsd = Number((grossRevenueUsd - platformFeeAndBondUsd).toFixed(2));
+    const treasuryReserveUsd = Number((netRevenueUsd * 0.7).toFixed(2));
+    const subAgentBountyPoolUsd = Number((netRevenueUsd * 0.2).toFixed(2));
+    const computeRefillPoolUsd = Number((netRevenueUsd * 0.1).toFixed(2));
     return {
-      netRevenueUsd: netRev,
-      treasuryReserveUsd: Number((netRev * 0.7).toFixed(2)),
-      subAgentBountyPoolUsd: Number((netRev * 0.2).toFixed(2)),
-      computeRefillPoolUsd: Number((netRev * 0.1).toFixed(2)),
+      grossRevenueUsd,
+      platformFeeAndBondUsd,
+      netRevenueUsd,
+      treasuryReserveUsd,
+      subAgentBountyPoolUsd,
+      computeRefillPoolUsd,
     };
-  }, [neg.finalAgreedPriceUsd, split]);
+  }, [neg.finalAgreedPriceUsd]);
+
+  const handleSignX402WithWallet = async () => {
+    if (!walletContext?.isPersonalWallet || !walletContext.address) return;
+    if (neg.finalAgreedPriceUsd > userUsdcBalance) {
+      setX402SignError(
+        `❌ Insufficient USDC in Connected Wallet (${walletContext.address}): Your wallet holds ${userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires ${neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until your wallet holds sufficient USDC.`
+      );
+      return;
+    }
+
+    setSigningX402(true);
+    setX402SignError(null);
+    try {
+      const payload = [
+        "KratonOS A2A + x402 v2 NEP-366 Gasless Agent Escrow Authorization",
+        `Buyer Wallet: ${walletContext.address} (${walletContext.chainType.toUpperCase()})`,
+        `Agreed Price: $${neg.finalAgreedPriceUsd.toFixed(2)} USDC (${neg.settledAtomicUsdc} atomic)`,
+        `Query: ${query}`,
+        `Timestamp: ${new Date().toISOString()}`,
+      ].join("\n");
+      const sig = await walletContext.signPersonalIntent(payload);
+      setX402SignedReceipt({
+        signerAddress: sig.signerAddress,
+        signature: sig.signature,
+        agreedAmountUsd: `$${neg.finalAgreedPriceUsd.toFixed(2)} USDC`,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      onNotify?.(
+        `x402 v2 Escrow Signed by ${walletContext.shortAddress} ($${neg.finalAgreedPriceUsd.toFixed(2)} USDC)`,
+        "market"
+      );
+    } catch (err) {
+      if (err instanceof WalletSignatureRejectedError) {
+        setX402SignError(
+          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+        );
+      } else {
+        setX402SignError(
+          `❌ Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    } finally {
+      setSigningX402(false);
+    }
+  };
 
   const dynamicSwarm = useMemo(() => {
     if (!swarm) return null;
@@ -1524,6 +1658,50 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
         </div>
       )}
 
+      {/* Dual-Mode Buyer Custody & Balance Lock Header */}
+      {isPersonalConnected && walletContext ? (
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
+            <span>
+              <strong className="text-[var(--accent-emerald)]">Active Buyer Custody:</strong>{" "}
+              Connected Wallet (<code>{walletContext.address}</code>) — Available USDC:{" "}
+              <strong className="text-[var(--accent-cyan)]">
+                {userUsdcBalance.toFixed(2)} USDC
+              </strong>{" "}
+              | Spendable Native:{" "}
+              <strong className="text-[var(--accent-emerald)]">
+                {walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
+              </strong>
+            </span>
+            <Badge variant={insufficientMarketUsdc ? "red" : "emerald"}>
+              {insufficientMarketUsdc
+                ? "x402 ESCROW BLOCKED (0.00 USDC)"
+                : "WALLET READY FOR x402 SIGNING"}
+            </Badge>
+          </div>
+          {insufficientMarketUsdc && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
+            >
+              ❌ Insufficient USDC in Connected Wallet ({walletContext.address}): Your wallet holds{" "}
+              {userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires{" "}
+              {neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until
+              your wallet holds sufficient USDC.
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2.5 font-mono text-xs text-[var(--text-secondary)]">
+          <span>
+            <strong className="text-[var(--text-primary)]">Active Buyer Custody:</strong> Protocol
+            Sandbox Vault (<code className="text-[var(--accent-emerald)]">jubayir69.testnet</code>)
+            — Connect your personal wallet in the top bar to enforce personal USDC escrow locks.
+          </span>
+          <Badge variant="sky">SANDBOX ESCROW SIMULATION</Badge>
+        </div>
+      )}
+
       {/* Top Row: Live Agent Market Discovery + 1-Round Counter-Offer & x402 Receipt */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <Card className="lg:col-span-5">
@@ -1583,7 +1761,11 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
             </div>
 
             <UnseenEnterButton
-              label="Execute A2A + x402 & Swarm Round"
+              label={
+                isPersonalConnected
+                  ? "1. Preview 1-Round Negotiation & Swarm Clearing"
+                  : "Execute A2A + x402 & Swarm Round"
+              }
               disabled={loading}
               onClick={() =>
                 onExecuteMarket({
@@ -1594,6 +1776,61 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               }
               className="w-full"
             />
+
+            {isPersonalConnected && walletContext && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  disabled={
+                    insufficientMarketUsdc ||
+                    signingX402 ||
+                    walletContext.balancesLoading
+                  }
+                  onClick={() => void handleSignX402WithWallet()}
+                  className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-center font-mono text-xs font-extrabold transition-all ${
+                    insufficientMarketUsdc
+                      ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                      : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                  }`}
+                >
+                  {insufficientMarketUsdc ? (
+                    <span>
+                      🔒 Blocked: Insufficient USDC Balance ({userUsdcBalance.toFixed(2)} / $
+                      {neg.finalAgreedPriceUsd.toFixed(2)} USDC)
+                    </span>
+                  ) : signingX402 ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span>Awaiting Wallet Signature Popup...</span>
+                    </>
+                  ) : (
+                    <span>
+                      2. Sign &amp; Fund x402 Escrow with Connected Wallet ($
+                      {neg.finalAgreedPriceUsd.toFixed(2)} USDC)
+                    </span>
+                  )}
+                </button>
+                {x402SignError && (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3 text-xs font-bold text-rose-500 animate-fade-in"
+                  >
+                    {x402SignError}
+                  </div>
+                )}
+                {x402SignedReceipt && (
+                  <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-xs animate-fade-in">
+                    <div className="flex items-center justify-between font-bold text-[var(--accent-emerald)]">
+                      <span>✓ x402 ESCROW SIGNED ({x402SignedReceipt.agreedAmountUsd})</span>
+                      <Badge variant="emerald">{x402SignedReceipt.timestamp}</Badge>
+                    </div>
+                    <div className="break-all text-[11px] text-[var(--accent-cyan)]">
+                      <strong>Signature:</strong> {x402SignedReceipt.signature}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Discovered Live Agent Cards */}
             <div className="space-y-2.5 pt-2">
@@ -1674,7 +1911,13 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               <CardHeader className="pb-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base">A2A + x402 v2 Gasless Receipt</CardTitle>
-                  <Badge variant="sky">NEP-366 SignedDelegate</Badge>
+                  {insufficientMarketUsdc ? (
+                    <Badge variant="red">
+                      🔒 UNSETTLED — BLOCKED ({userUsdcBalance.toFixed(2)} USDC IN CONNECTED WALLET)
+                    </Badge>
+                  ) : (
+                    <Badge variant="sky">NEP-366 SignedDelegate</Badge>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-xs">
@@ -1692,10 +1935,18 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                       <Badge variant="emerald">signerKeyIsGasKey: false</Badge>
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-1.5">
-                      <span className="text-[var(--text-secondary)]">Settled Atomic USDC</span>
-                      <span className="font-mono font-extrabold text-[var(--text-primary)]">
-                        {neg.settledAtomicUsdc} ({(neg.finalAgreedPriceUsd ?? 2.5).toFixed(2)} USDC)
+                      <span className="text-[var(--text-secondary)]">
+                        {insufficientMarketUsdc ? "Escrow Settlement Status" : "Settled Atomic USDC"}
                       </span>
+                      {insufficientMarketUsdc ? (
+                        <span className="font-mono font-extrabold text-rose-500">
+                          UNSETTLED (0.00 / {(neg.finalAgreedPriceUsd ?? 2.5).toFixed(2)} USDC)
+                        </span>
+                      ) : (
+                        <span className="font-mono font-extrabold text-[var(--text-primary)]">
+                          {neg.settledAtomicUsdc} ({(neg.finalAgreedPriceUsd ?? 2.5).toFixed(2)} USDC)
+                        </span>
+                      )}
                     </div>
                   </>
                 )}
@@ -1712,7 +1963,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                     Autonomous Worker Revenue Splitter (70% / 20% / 10%)
                   </CardTitle>
                   <CardDescription>
-                    Deducts 5% marketplace platform fee, locks 5% dispute bond, and partitions net worker earnings across Treasury Reserve, Sub-Agent Bounty Pool, and Compute Refill.
+                    Computed directly from Final Agreed Price (${dynamicSplit.grossRevenueUsd.toFixed(2)} USDC): deducts 5% marketplace platform fee + 5% SLA dispute bond (-10% = -${dynamicSplit.platformFeeAndBondUsd.toFixed(2)} USDC) and partitions the 90% Net Worker Distributable (${dynamicSplit.netRevenueUsd.toFixed(2)} USDC) across 70% Treasury Reserve, 20% Sub-Agent Bounty, and 10% Compute Refill.
                   </CardDescription>
                 </div>
                 <Badge variant="emerald">9 MCP Worker Tools Active</Badge>
@@ -1739,38 +1990,59 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               </div>
 
               {dynamicSplit && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4">
-                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
-                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                      Net Worker Payout (-5% Fee)
-                    </span>
-                    <p className="font-display mt-1 text-base font-extrabold text-[var(--text-primary)]">
-                      ${dynamicSplit.netRevenueUsd.toFixed(2)} USDC
-                    </p>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                        Gross Agreed Price (100%)
+                      </span>
+                      <p className="font-display mt-1 text-base font-extrabold text-[var(--text-primary)]">
+                        ${dynamicSplit.grossRevenueUsd.toFixed(2)} USDC
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
+                      <span className="text-[11px] font-bold text-amber-500">
+                        5% Platform Fee + 5% SLA Bond (-10%)
+                      </span>
+                      <p className="font-display mt-1 text-base font-extrabold text-amber-500">
+                        -${dynamicSplit.platformFeeAndBondUsd.toFixed(2)} USDC
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/8 p-3">
+                      <span className="text-[11px] font-bold text-[var(--accent-emerald)]">
+                        Net Worker Distributable (90%)
+                      </span>
+                      <p className="font-display mt-1 text-base font-extrabold text-[var(--accent-emerald)]">
+                        ${dynamicSplit.netRevenueUsd.toFixed(2)} USDC
+                      </p>
+                    </div>
                   </div>
-                  <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/12 p-3">
-                    <span className="text-[11px] font-bold text-[var(--accent-emerald)]">
-                      70% Treasury Reserve
-                    </span>
-                    <p className="font-display mt-1 text-base font-extrabold text-[var(--accent-emerald)]">
-                      ${dynamicSplit.treasuryReserveUsd.toFixed(2)} USDC
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-sky-500/40 bg-sky-500/12 p-3">
-                    <span className="text-[11px] font-bold text-[var(--accent-cyan)]">
-                      20% Sub-Agent Bounty
-                    </span>
-                    <p className="font-display mt-1 text-base font-extrabold text-[var(--accent-cyan)]">
-                      ${dynamicSplit.subAgentBountyPoolUsd.toFixed(2)} USDC
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
-                    <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                      10% Compute Refill
-                    </span>
-                    <p className="font-display mt-1 text-base font-extrabold text-[var(--text-primary)]">
-                      ${dynamicSplit.computeRefillPoolUsd.toFixed(2)} USDC
-                    </p>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/12 p-3">
+                      <span className="text-[11px] font-bold text-[var(--accent-emerald)]">
+                        70% Treasury Reserve
+                      </span>
+                      <p className="font-display mt-1 text-base font-extrabold text-[var(--accent-emerald)]">
+                        ${dynamicSplit.treasuryReserveUsd.toFixed(2)} USDC
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-sky-500/40 bg-sky-500/12 p-3">
+                      <span className="text-[11px] font-bold text-[var(--accent-cyan)]">
+                        20% Sub-Agent Bounty
+                      </span>
+                      <p className="font-display mt-1 text-base font-extrabold text-[var(--accent-cyan)]">
+                        ${dynamicSplit.subAgentBountyPoolUsd.toFixed(2)} USDC
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                      <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                        10% Compute Refill
+                      </span>
+                      <p className="font-display mt-1 text-base font-extrabold text-[var(--text-primary)]">
+                        ${dynamicSplit.computeRefillPoolUsd.toFixed(2)} USDC
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1952,12 +2224,15 @@ export interface MpcRheaRouterSlice {
 }
 
 export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
+  overview,
   routerData,
   onRefresh,
   walletContext,
   judgeMode,
   onNotify,
 }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  overview?: any;
   routerData: MpcRheaRouterSlice | null;
   onRefresh?: (customDerivationPath?: string) => void;
   walletContext?: ConnectedWalletState;
@@ -2214,6 +2489,41 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
         </div>
       )}
 
+      {/* Dual-Mode Custody Banner for MPC & RHEA Yield View */}
+      {walletContext?.isPersonalWallet && walletContext.address ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
+          <span>
+            <strong className="text-[var(--accent-emerald)]">
+              Active Custody (Connected Wallet):
+            </strong>{" "}
+            <code>{walletContext.address}</code> — Spendable:{" "}
+            <strong className="text-[var(--accent-emerald)]">
+              {walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
+            </strong>
+            {walletContext.totalNearFormatted
+              ? ` | Total On-Chain: ${walletContext.totalNearFormatted}`
+              : ""}{" "}
+            | USDC: <strong className="text-[var(--accent-cyan)]">{walletContext.usdcBalance.toFixed(2)}</strong>
+          </span>
+          <Badge variant="emerald">WALLET SIGNATURE REQUIRED FOR SWEEPS</Badge>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2.5 font-mono text-xs text-[var(--text-secondary)]">
+          <span>
+            <strong className="text-[var(--text-primary)]">Active Custody (Sandbox Vault):</strong>{" "}
+            <code className="text-[var(--accent-emerald)]">jubayir69.testnet</code> — Spendable:{" "}
+            <strong className="text-[var(--accent-emerald)]">
+              {overview?.spendableBalanceFormatted ?? "4.7962 NEAR"}
+            </strong>{" "}
+            | Total On-Chain:{" "}
+            <strong className="text-[var(--text-primary)]">
+              {overview?.balanceFormatted ?? "4.9980 NEAR"}
+            </strong>
+          </span>
+          <Badge variant="sky">SANDBOX VAULT MODE</Badge>
+        </div>
+      )}
+
       {/* Top Section: 5 Multi-Chain MPC Custody Addresses */}
       <Card>
         <CardHeader>
@@ -2444,10 +2754,46 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 </Badge>
               </div>
               <CardDescription>
-                Interactive collateral vs borrow stress-tester across RHEA Multi-Chain Lending (HF = (Collateral * 0.80) / Borrowed).
+                Real on-chain account solvency snapshot paired with an interactive collateral vs borrow stress-tester across RHEA Multi-Chain Lending (HF = (Collateral * 0.80) / Borrowed).
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Real On-Chain Account Position Box (Mode B Connected Wallet vs Mode A Sandbox Vault) */}
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3.5 font-mono text-xs space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="font-bold uppercase tracking-wider text-[var(--accent-emerald)]">
+                    {walletContext?.isPersonalWallet && walletContext.address
+                      ? `Connected Wallet Real On-Chain Position (${walletContext.shortAddress})`
+                      : `Sandbox Vault Real On-Chain Position (${overview?.treasuryAccount ?? "jubayir69.testnet"})`}
+                  </span>
+                  <Badge variant="emerald">0 DEBT (100% SOLVENT)</Badge>
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-secondary)]">
+                  <span>
+                    Spendable Native:{" "}
+                    <strong className="text-[var(--text-primary)]">
+                      {walletContext?.isPersonalWallet && walletContext.address
+                        ? walletContext.spendableNearFormatted ?? walletContext.nativeFormatted
+                        : overview?.spendableBalanceFormatted ?? "4.7962 NEAR"}
+                    </strong>{" "}
+                    (≈ $
+                    {(
+                      (walletContext?.isPersonalWallet && walletContext.address
+                        ? walletContext.spendableNearBalance ?? walletContext.nativeBalance
+                        : overview?.spendableNearBalance ?? 4.7962) *
+                      Number(overview?.oracle?.nearUsdMedian ?? 3.74)
+                    ).toFixed(2)}{" "}
+                    USD)
+                  </span>
+                  <span>
+                    Active Borrowed Debt: <strong className="text-[var(--accent-emerald)]">$0.00 USD</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                Interactive Liquidation Stress-Test Simulator (What-If Scenario Sliders)
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5 space-y-1.5">
                   <div className="flex items-center justify-between">

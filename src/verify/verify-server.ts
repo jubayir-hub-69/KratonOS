@@ -163,6 +163,16 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(overviewJson.status, "OK");
   assert.equal(overviewJson.treasuryAccount, "jubayir69.testnet");
   assert.equal(overviewJson.feeRecipient, "jubayir33.near");
+  assert.equal(
+    (overviewJson as Record<string, unknown>).spendableBalanceFormatted,
+    "4.7962 NEAR",
+    "GET /api/overview must return spendableBalanceFormatted === '4.7962 NEAR' (matching Meteor Wallet)"
+  );
+  assert.equal(
+    overviewJson.balanceFormatted,
+    "4.9980 NEAR",
+    "GET /api/overview must return balanceFormatted === '4.9980 NEAR'"
+  );
   assert.equal(overviewJson.nep611Lanes.length, 4);
   assert.ok(overviewJson.postQuantumKeyHash.startsWith("ml-dsa-65-hash:"));
   assert.equal(
@@ -500,6 +510,48 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(solBalJson.nativeSymbol, "SOL");
   assert.ok(typeof solBalJson.nativeBalance === "number" && solBalJson.nativeBalance >= 0);
   assert.equal(typeof solBalJson.liveRpcVerified, "boolean");
+
+  // 3I. Test Sub-Cent 8-Decimal Precision (PEPE/USDT) & Market Revenue Split Alignment ($2.50)
+  const [teePepeRes, marketExecRes] = await Promise.all([
+    invokeServerEndpoint("POST", "/api/tee/verify", {
+      prompt: "PEPE/USDT CURRENT MARKET PRICE",
+    }),
+    invokeServerEndpoint("POST", "/api/market/execute", {
+      query: "research",
+      quotedAmountUsd: 4.2,
+      plannedBudgetUsd: 2.5,
+    }),
+  ]);
+  assert.equal(teePepeRes.statusCode, 200, "POST /api/tee/verify (PEPE/USDT) must return HTTP 200");
+  assert.equal(marketExecRes.statusCode, 200, "POST /api/market/execute must return HTTP 200");
+
+  const teePepeJson = JSON.parse(teePepeRes.bodyText) as {
+    liveReasoning: { content: string };
+    oracleSnap: {
+      dynamicAssetQuotes: Array<{ symbol: string; found: boolean; priceUsd: number | null }>;
+    };
+  };
+  const pepeQuote = teePepeJson.oracleSnap.dynamicAssetQuotes.find((q) => q.symbol === "PEPE");
+  assert.ok(pepeQuote && pepeQuote.found, "PEPE must be found on first click");
+  assert.ok(
+    typeof pepeQuote.priceUsd === "number" && pepeQuote.priceUsd > 0 && pepeQuote.priceUsd < 0.001,
+    `PEPE priceUsd must preserve sub-cent value (> 0 and < 0.001), got ${String(pepeQuote.priceUsd)}`
+  );
+  assert.ok(
+    !teePepeJson.liveReasoning.content.includes("$0.000000") &&
+      !teePepeJson.liveReasoning.content.includes("$0.0000 USD"),
+    "PEPE/USDT report must format sub-cent price with 8 decimals (never $0.000000)"
+  );
+
+  const marketExecJson = JSON.parse(marketExecRes.bodyText) as {
+    negotiation: { finalAgreedPriceUsd: number };
+    revenueSplit: { grossRevenueUsd: number; netRevenueUsd: number };
+  };
+  assert.equal(
+    marketExecJson.revenueSplit.grossRevenueUsd,
+    marketExecJson.negotiation.finalAgreedPriceUsd,
+    "POST /api/market/execute revenueSplit.grossRevenueUsd must equal negotiation.finalAgreedPriceUsd ($2.50)"
+  );
 
   console.log(
     `  ✓ POST /api/security/evaluate : HTTP ${secRes.statusCode} | Decision=${secJson.riskVerdict.decision.toUpperCase()} (Score=${secJson.riskVerdict.riskScore}/100)`

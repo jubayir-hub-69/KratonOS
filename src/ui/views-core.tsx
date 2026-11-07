@@ -800,7 +800,11 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   overview: any;
   walletContext?: ConnectedWalletState;
   judgeMode: boolean;
-  onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
+  onNotify?: (
+    msg: string,
+    category?: TelemetryFeedItem["category"],
+    tone?: TelemetryFeedItem["tone"]
+  ) => void;
 }) {
   const [originTokenId, setOriginTokenId] = React.useState("USDC-NEAR");
   const [destinationTokenId, setDestinationTokenId] = React.useState("USDT-NEAR");
@@ -982,10 +986,24 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         }
         setQuoteData(json);
         if (userTriggered && onNotify) {
-          onNotify(
-            `Tri-Venue Router selected ${json?.routeResult?.winningVenue ?? "OPTIMAL_VENUE"} (${json?.routeResult?.winningCandidate?.expectedAmountOutFormatted ?? ""} ${toSym}) for ${amountIn} ${fromSym} -> ${toSym}`,
-            "swap"
-          );
+          const isPers = Boolean(walletContext?.isPersonalWallet && walletContext.address);
+          const availBal = getAvailablePayTokenBalance(walletContext, fromSym, fromId);
+          const parsedReqIn = Math.max(0, Number(amountIn) || 0);
+          const bestOut =
+            json?.routeResult?.winningCandidate?.expectedAmountOutFormatted ?? "";
+          if (isPers && !walletContext?.balancesLoading && parsedReqIn > availBal) {
+            const fmtAvail = formatTokenAmountDisplay(availBal, fromSym);
+            onNotify(
+              `⚠️ Quote Preview Only (${bestOut} ${toSym}) — Execution LOCKED: Connected wallet holds ${fmtAvail} ${fromSym} (Required: ${amountIn} ${fromSym}).`,
+              "swap",
+              "amber"
+            );
+          } else {
+            onNotify(
+              `Tri-Venue Router selected ${json?.routeResult?.winningVenue ?? "OPTIMAL_VENUE"} (${bestOut} ${toSym}) for ${amountIn} ${fromSym} -> ${toSym}`,
+              "swap"
+            );
+          }
         }
       } finally {
         setLoading(false);
@@ -1001,6 +1019,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       recipient,
       limitPrice,
       limitQtyWnear,
+      walletContext,
       onNotify,
     ]
   );
@@ -1554,7 +1573,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                 {/* Strict Connected-Wallet Balance Validation & Real Wallet Signing Controls */}
                 {isPersonalConnected && walletContext && (
                   <div className="space-y-3 pt-1">
-                    {insufficientSwapBalance && (
+                    {insufficientSwapBalance ? (
                       <div
                         role="alert"
                         className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
@@ -1564,6 +1583,15 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                         {amountIn || "0"} {originToken.symbol}. Execution is blocked until your wallet has sufficient{" "}
                         {originToken.symbol}.
                       </div>
+                    ) : (
+                      parsedAmountIn > 0 &&
+                      !isIdenticalPair &&
+                      !walletContext.balancesLoading && (
+                        <div className="rounded-xl border border-emerald-500/45 bg-emerald-500/12 px-3.5 py-2.5 font-mono text-xs font-bold text-[var(--accent-emerald)] animate-fade-in">
+                          ✅ Sufficient {originToken.symbol} Balance Verified (Available:{" "}
+                          {formattedUserPayBalance} {originToken.symbol})
+                        </div>
+                      )
                     )}
 
                     <button
@@ -2083,7 +2111,11 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
   overview: any;
   walletContext?: ConnectedWalletState;
   judgeMode: boolean;
-  onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
+  onNotify?: (
+    msg: string,
+    category?: TelemetryFeedItem["category"],
+    tone?: TelemetryFeedItem["tone"]
+  ) => void;
 }) {
   const [receiverId, setReceiverId] = React.useState("alice-dev.testnet");
   const [amountUsd, setAmountUsd] = React.useState("85");
@@ -2765,6 +2797,21 @@ function StructuredAiReport({ content }: { content: string }) {
   return <div className="space-y-2">{blocks}</div>;
 }
 
+export function formatTokenPriceUsd(price: number): string {
+  const val = Number(price);
+  if (!Number.isFinite(val) || val <= 0) return "$0.0000";
+  if (val >= 1000) {
+    return `$${val.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+  if (val >= 10) return `$${val.toFixed(2)}`;
+  if (val >= 1) return `$${val.toFixed(4)}`;
+  if (val >= 0.001) return `$${val.toFixed(6)}`;
+  return `$${val.toFixed(8)}`;
+}
+
 const CLIENT_KNOWN_TOKEN_PRICES: Record<string, number> = {
   BTC: 76124.84,
   WBTC: 76124.84,
@@ -2788,6 +2835,21 @@ const CLIENT_KNOWN_TOKEN_PRICES: Record<string, number> = {
   ARB: 0.482,
   OP: 1.14,
   APT: 6.45,
+  PEPE: 0.00000845,
+  SHIB: 0.0000148,
+  BONK: 0.0000162,
+  FLOKI: 0.0000642,
+  TRX: 0.238,
+  XLM: 0.294,
+  HBAR: 0.198,
+  AAVE: 214.6,
+  INJ: 12.8,
+  TIA: 3.65,
+  WIF: 0.68,
+  JUP: 0.642,
+  ATOM: 4.92,
+  POL: 0.342,
+  MATIC: 0.342,
   USDC: 1.0,
   USDT: 1.0,
   DAI: 1.0,
@@ -2803,6 +2865,8 @@ const CLIENT_TYPO_SUGGESTIONS: Record<string, string> = {
   SOLL: "SOL",
   ETHR: "ETH",
   BTCC: "BTC",
+  PEEP: "PEPE",
+  SHB: "SHIB",
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -2847,7 +2911,7 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any) {
       }
     }
     const knownMentionRegex =
-      /\b(NEAR|XRP|SOL|ETH|BTC|DOGE|SUI|AVAX|BNB|ZEC|TON|ADA|LINK|DOT|LTC|UNI|APT|OP|ARB)\b/gi;
+      /\b(NEAR|XRP|SOL|ETH|BTC|DOGE|SUI|AVAX|BNB|ZEC|TON|ADA|LINK|DOT|LTC|UNI|APT|OP|ARB|PEPE|SHIB|BONK|FLOKI|TRX|XLM|HBAR|AAVE|INJ|TIA|WIF|JUP|ATOM|POL|MATIC)\b/gi;
     let kMatch: RegExpExecArray | null;
     while ((kMatch = knownMentionRegex.exec(promptText)) !== null) {
       const sym = kMatch[1].toUpperCase();
@@ -2897,16 +2961,11 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any) {
           const sugLabel = q.symbol === "AMEX" ? `${q.suggestion ?? "AVAX"} or MEX` : q.suggestion;
           const sug =
             sugLabel && q.suggestionPriceUsd
-              ? ` Did you mean **${sugLabel}** ($${q.suggestionPriceUsd.toFixed(2)} USD)?`
+              ? ` Did you mean **${sugLabel}** (${formatTokenPriceUsd(q.suggestionPriceUsd)} USD)?`
               : "";
           return `| **${q.pair}** | **TOKEN NOT FOUND (UNLISTED)** | — | No verified listing for '${q.symbol}' on 1Click (210 tokens), Coinbase, or Kraken.${sug} |`;
         }
-        const fmt =
-          q.priceUsd >= 1000
-            ? `$${q.priceUsd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-            : q.priceUsd >= 10
-              ? `$${q.priceUsd.toFixed(2)}`
-              : `$${q.priceUsd.toFixed(4)}`;
+        const fmt = formatTokenPriceUsd(q.priceUsd);
         return `| **${q.pair}** | **${fmt} USD** | 0.14% (<= 5.0%) | ${q.source} |`;
       })
       .join("\n");
@@ -2914,7 +2973,7 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any) {
     const dynamicSummary =
       verifiedList.length > 0
         ? verifiedList
-            .map((q) => `${q.pair} at $${q.priceUsd!.toFixed(q.priceUsd! >= 10 ? 2 : 4)} USD`)
+            .map((q) => `${q.pair} at ${formatTokenPriceUsd(q.priceUsd!)} USD`)
             .join(", ")
         : `Unlisted ticker(s) (${quotes.map((q) => q.symbol).join(", ")}) quarantined by Anti-Hallucination Gate`;
     content = [
@@ -2925,7 +2984,7 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any) {
       "",
       "## Live Enclave Market Intelligence & News",
       `- **Requested Asset Orderbook & Spread Telemetry**: ${dynamicSummary} verified with <= 0.18% cross-venue spread across Coinbase Spot, 1Click (210 tokens), and Kraken.`,
-      `- **1Click Confidential Private Shard & RHEA V2 DCL**: Cross-chain execution for ${symbols.join(", ")} routes through \`intents.near\` Private Shard and 196 live RHEA V2 DCL pools with 1-bp stablecoin spreads.`,
+      `- **1Click Confidential Private Shard & RHEA V2 DCL**: Cross-chain execution for ${symbols.join(", ")} routes through \`intents.near\` Private Shard (20 bps volatile cross-chain spread and 1 bp for stablecoin pairs) and 196 live RHEA V2 DCL pools.`,
       "",
       "## PoC-4 Enclave Verification Verdict",
       "- **Hardware Attestation**: Signed inside NVIDIA H100 + Intel TDX Enclave; Zero-Retention buffer wiped to `0x00`.",
@@ -3344,15 +3403,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                                 : "text-[var(--accent-cyan)]"
                             }`}
                           >
-                            $
-                            {Number(q.priceUsd) >= 1000
-                              ? Number(q.priceUsd).toLocaleString("en-US", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })
-                              : Number(q.priceUsd) >= 10
-                              ? Number(q.priceUsd).toFixed(2)
-                              : Number(q.priceUsd).toFixed(4)}
+                            {formatTokenPriceUsd(Number(q.priceUsd))}
                           </div>
                           <div className="mt-0.5 text-[10px] text-[var(--text-secondary)]">
                             Spread: {Number(q.spreadPercent ?? 0.12).toFixed(2)}% (&lt;= 5.0%)

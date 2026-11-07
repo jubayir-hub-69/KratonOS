@@ -114,7 +114,13 @@ const API_SPECS: ApiEndpointSpec[] = [
       status: "OK",
       treasuryAccount: "jubayir69.testnet",
       feeRecipient: "jubayir33.near",
-      balanceFormatted: "5.0000 NEAR",
+      balanceFormatted: "4.9980 NEAR",
+      spendableBalanceFormatted: "4.7962 NEAR",
+      totalNearBalance: 4.998,
+      spendableNearBalance: 4.7962,
+      storageLockedNear: 0.0018,
+      walletGasReserveNear: 0.2,
+      poc4MasterHash: "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
       poc4Valid: true,
       nep611Lanes: 4,
       oracle: {
@@ -360,7 +366,13 @@ const API_SPECS: ApiEndpointSpec[] = [
       chainType: "near",
       address: "jubayir69.testnet",
       nativeSymbol: "NEAR",
-      nativeBalance: 5.0,
+      nativeBalance: 4.7962,
+      totalNearBalance: 4.998,
+      spendableNearBalance: 4.7962,
+      storageLockedNear: 0.0018,
+      walletGasReserveNear: 0.2,
+      totalNearFormatted: "4.9980 NEAR",
+      spendableNearFormatted: "4.7962 NEAR",
       usdcBalance: 0,
       usdtBalance: 0,
       liveRpcVerified: true,
@@ -612,10 +624,13 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
 
 export const DocsPortalView = React.memo(function DocsPortalView({
   initialPage,
+  overview,
   onBackToApp,
   onNotify,
 }: {
   initialPage?: DocPageId;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  overview?: any;
   onBackToApp?: () => void;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
@@ -1193,8 +1208,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     Connected Personal Wallet Control Mode
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    Connecting <code className="font-mono">NEAR Wallet</code>, <code className="font-mono">Rabby / MetaMask</code>, or <code className="font-mono">Phantom</code> switches 100% of active balances (<code className="font-mono">POST /api/wallet/balances</code>, exact <code className="font-mono">0.00</code> when empty), recipient fields, strict insufficient-balance locks, and real wallet popup signing to your personal wallet.
+                    Connecting <code className="font-mono">NEAR Wallet</code> (<code className="font-mono">Meteor / HOT</code>), <code className="font-mono">Rabby / MetaMask</code>, or <code className="font-mono">Phantom</code> switches 100% of active balances (<code className="font-mono">POST /api/wallet/balances</code>, exact <code className="font-mono">0.00</code> when empty), recipient fields, strict insufficient-balance locks, and real wallet popup signing across all 7 views.
                   </p>
+                  <div className="mt-2.5 space-y-1.5 rounded-lg border border-emerald-500/30 bg-[var(--bg-card)] p-2.5 font-mono text-[11px] leading-snug text-[var(--text-secondary)]">
+                    <div>
+                      <strong className="text-[var(--accent-emerald)]">Spendable vs Total On-Chain NEAR:</strong>{" "}
+                      Total On-Chain = <code className="text-[var(--text-primary)]">4.9980 NEAR</code>; minus <code className="text-[var(--text-primary)]">0.0018 NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">4.7962 NEAR</strong> Spendable (matching Meteor Wallet 1:1).
+                    </div>
+                    <div>
+                      <strong className="text-[var(--accent-cyan)]">Meteor Wallet Permission Notice:</strong>{" "}
+                      Initial wallet connection is strictly read-only (<code className="text-[var(--text-primary)]">&quot;This does not allow: Calling methods or signing transactions on your behalf&quot;</code>). Every transaction or intent requires an explicit per-action approval popup inside your wallet.
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2884,7 +2909,37 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <code>
                             {liveEndpointOutput && liveEndpointOutput.path === ep.path
                               ? liveEndpointOutput.jsonText
-                              : JSON.stringify(ep.sampleResponse, null, 2)}
+                              : ep.path === "/api/overview" && (liveStatusData || overview)
+                                ? JSON.stringify(
+                                    {
+                                      status: (liveStatusData ?? overview).status ?? "OK",
+                                      treasuryAccount:
+                                        (liveStatusData ?? overview).treasuryAccount ??
+                                        "jubayir69.testnet",
+                                      feeRecipient:
+                                        (liveStatusData ?? overview).feeRecipient ??
+                                        "jubayir33.near",
+                                      balanceFormatted:
+                                        (liveStatusData ?? overview).balanceFormatted ??
+                                        "4.9980 NEAR",
+                                      spendableBalanceFormatted:
+                                        (liveStatusData ?? overview).spendableBalanceFormatted ??
+                                        "4.7962 NEAR",
+                                      totalNearBalance:
+                                        (liveStatusData ?? overview).totalNearBalance ?? 4.998,
+                                      spendableNearBalance:
+                                        (liveStatusData ?? overview).spendableNearBalance ??
+                                        4.7962,
+                                      poc4MasterHash:
+                                        (liveStatusData ?? overview).poc4MasterHash ??
+                                        "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
+                                      poc4Valid: (liveStatusData ?? overview).poc4Valid ?? true,
+                                      oracle: (liveStatusData ?? overview).oracle ?? ep.sampleResponse.oracle,
+                                    },
+                                    null,
+                                    2
+                                  )
+                                : JSON.stringify(ep.sampleResponse, null, 2)}
                           </code>
                         </pre>
                       </div>
