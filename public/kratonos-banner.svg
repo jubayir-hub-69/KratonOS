@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" fill="none" role="img" aria-label="KratonOS — Sovereign Financial &amp; Verifiable Agent Operating System on NEAR Protocol">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 280" width="1200" height="280" fill="none" role="img" aria-label="KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR Protocol">
   <defs>
-    <!-- Deep Obsidian Glass Background -->
+    <!-- Dark Surface Background -->
     <linearGradient id="bgGlassGrad" x1="0" y1="0" x2="1200" y2="280" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#050B11" />
       <stop offset="50%" stop-color="#08131D" />
@@ -82,7 +82,7 @@
     </filter>
   </defs>
 
-  <!-- Outer Rounded Obsidian Glass Container -->
+  <!-- Outer Rounded Dark Container -->
   <rect x="2" y="2" width="1196" height="276" rx="22" fill="url(#bgGlassGrad)" stroke="url(#cardBorderGrad)" stroke-width="1.5" />
   <rect x="2" y="2" width="1196" height="276" rx="22" fill="url(#dotMatrix)" />
 
@@ -111,7 +111,7 @@
     <path d="M16 14C36 7 92 7 112 14" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="1.5" stroke-linecap="round" />
     <rect x="8" y="8" width="112" height="112" rx="23" stroke="#38BDF8" stroke-opacity="0.14" stroke-width="1" />
 
-    <!-- Scaled Geometric Sovereign "K" Monogram -->
+    <!-- Scaled Geometric "K" Monogram -->
     <g transform="translate(22, 22) scale(3.5)" filter="url(#kGlowFilter)">
       <path
         d="M5.5 4.25C5.5 3.56 6.06 3 6.75 3H8.5C9.19 3 9.75 3.56 9.75 4.25V19.75C9.75 20.44 9.19 21 8.5 21H6.75C6.06 21 5.5 20.44 5.5 19.75V4.25Z"
@@ -148,7 +148,7 @@
 
     <!-- Subtitle -->
     <text x="0" y="178" fill="#CBD5E1" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18.5" font-weight="500" letter-spacing="-0.15">
-      Sovereign Financial &amp; Verifiable Agent Operating System on NEAR Protocol
+      Autonomous Treasury, Policy Vault &amp; Verifiable Agent Router on NEAR Protocol
     </text>
 
     <!-- Bottom Cryptographic Pillar Capsules -->

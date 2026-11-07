@@ -279,7 +279,7 @@ export async function fetchLiveOneClickTokens(): Promise<{
         symbol: "wNEAR",
         decimals: 24,
         blockchain: "near",
-        price: 4.33,
+        price: 3.74,
         contractAddress: "wrap.near",
       },
       {
@@ -287,28 +287,70 @@ export async function fetchLiveOneClickTokens(): Promise<{
         symbol: "NEAR",
         decimals: 24,
         blockchain: "near",
-        price: 4.33,
+        price: 3.74,
       },
       {
         assetId: "nep141:eth.omft.near",
         symbol: "ETH",
         decimals: 18,
         blockchain: "eth",
-        price: 2219.86,
+        price: 2246.48,
       },
       {
         assetId: "nep141:2260fac5e5542a773aa44fbcfedf7c193bc2c599.factory.bridge.near",
         symbol: "WBTC",
         decimals: 8,
         blockchain: "btc",
-        price: 86450.0,
+        price: 76124.84,
       },
       {
         assetId: "nep141:sol.omft.near",
         symbol: "SOL",
         decimals: 9,
         blockchain: "sol",
-        price: 178.4,
+        price: 90.23,
+      },
+      {
+        assetId: "nep141:xrp.omft.near",
+        symbol: "XRP",
+        decimals: 6,
+        blockchain: "xrp",
+        price: 1.3515,
+      },
+      {
+        assetId: "nep141:sui.omft.near",
+        symbol: "SUI",
+        decimals: 9,
+        blockchain: "sui",
+        price: 2.74,
+      },
+      {
+        assetId: "nep141:doge.omft.near",
+        symbol: "DOGE",
+        decimals: 8,
+        blockchain: "doge",
+        price: 0.1642,
+      },
+      {
+        assetId: "nep141:avax.omft.near",
+        symbol: "AVAX",
+        decimals: 18,
+        blockchain: "avax",
+        price: 24.85,
+      },
+      {
+        assetId: "nep141:bnb.omft.near",
+        symbol: "BNB",
+        decimals: 18,
+        blockchain: "bsc",
+        price: 612.4,
+      },
+      {
+        assetId: "nep141:ton.omft.near",
+        symbol: "TON",
+        decimals: 9,
+        blockchain: "ton",
+        price: 3.82,
       },
       {
         assetId: "nep141:6b175474e89094c44da98b954eedeac495271d0f.factory.bridge.near",
@@ -322,7 +364,7 @@ export async function fetchLiveOneClickTokens(): Promise<{
         symbol: "ZEC",
         decimals: 8,
         blockchain: "zec",
-        price: 41.25,
+        price: 38.9,
       },
     ],
   };
@@ -354,6 +396,7 @@ export async function findOptimalTriVenueRoute(params: {
   amountInHuman?: number;
   slippageBps?: number;
   recipient?: string;
+  liveOraclePrices?: Record<string, number>;
   rpcClient?: NearRpcClient;
 }): Promise<TriVenueRouteResult> {
   const runtime = loadKratonConfig();
@@ -439,17 +482,34 @@ export async function findOptimalTriVenueRoute(params: {
 
   const amountInAtomic = parseDecimalToAtomicBigInt(amountInHuman, originToken.decimals);
 
-  const originPriceUsd =
-    originToken.price && originToken.price > 0
-      ? originToken.price
-      : STABLECOIN_SYMBOLS.has(originSym)
-        ? 1.0
+  const livePriceLookup = (sym: string): number | undefined => {
+    if (!params.liveOraclePrices) return undefined;
+    const upper = sym.toUpperCase();
+    const direct = params.liveOraclePrices[upper];
+    if (typeof direct === "number" && Number.isFinite(direct) && direct > 0) {
+      return direct;
+    }
+    if (upper === "WNEAR") return params.liveOraclePrices.NEAR;
+    if (upper === "WBTC") return params.liveOraclePrices.BTC;
+    return undefined;
+  };
+
+  const liveOriginOverride = livePriceLookup(originSym);
+  const liveDestOverride = livePriceLookup(destSym);
+
+  const originPriceUsd = STABLECOIN_SYMBOLS.has(originSym)
+    ? 1.0
+    : liveOriginOverride && liveOriginOverride > 0
+      ? liveOriginOverride
+      : originToken.price && originToken.price > 0
+        ? originToken.price
         : 0;
-  const destPriceUsd =
-    destToken.price && destToken.price > 0
-      ? destToken.price
-      : STABLECOIN_SYMBOLS.has(destSym)
-        ? 1.0
+  const destPriceUsd = STABLECOIN_SYMBOLS.has(destSym)
+    ? 1.0
+    : liveDestOverride && liveDestOverride > 0
+      ? liveDestOverride
+      : destToken.price && destToken.price > 0
+        ? destToken.price
         : 0;
   if (!isStableOrSameAsset && (originPriceUsd <= 0 || destPriceUsd <= 0)) {
     throw new Error(

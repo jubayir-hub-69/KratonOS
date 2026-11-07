@@ -775,15 +775,15 @@ export async function fetchMultiSourceMedianOracle(params: {
   const nearStats =
     nearUsdSamples.length > 0
       ? computeMedianAndMaxDeviation(nearUsdSamples.map((s) => s.priceUsd))
-      : { median: 4.25, maxDeviationPercent: 0.14 };
+      : { median: 3.74, maxDeviationPercent: 0.14 };
   const solStats =
     solUsdSamples.length > 0
       ? computeMedianAndMaxDeviation(solUsdSamples.map((s) => s.priceUsd))
-      : { median: 178.4, maxDeviationPercent: 0.14 };
+      : { median: 90.23, maxDeviationPercent: 0.14 };
   const btcStats =
     btcUsdSamples.length > 0
       ? computeMedianAndMaxDeviation(btcUsdSamples.map((s) => s.priceUsd))
-      : { median: 86450.0, maxDeviationPercent: 0.09 };
+      : { median: 76124.84, maxDeviationPercent: 0.09 };
 
   const bindingPreimage = `outlayer:wasip2:v1|block:${params.eip1186BlockNumber}|state_root:${params.eip1186StateRoot.toLowerCase()}|storage_hash:${params.eip1186StorageHash.toLowerCase()}|median:${ethStats.median.toFixed(4)}|dev:${ethStats.maxDeviationPercent.toFixed(4)}`;
 
@@ -825,10 +825,12 @@ export async function fetchMultiSourceMedianOracle(params: {
 }
 
 const KNOWN_CRYPTO_FALLBACK_PRICES: Record<string, number> = {
-  BTC: 71642.5,
-  ETH: 2219.86,
-  SOL: 86.25,
-  NEAR: 4.18,
+  BTC: 76124.84,
+  WBTC: 76124.84,
+  ETH: 2246.48,
+  SOL: 90.23,
+  NEAR: 3.74,
+  WNEAR: 3.74,
   XRP: 1.3515,
   BNB: 612.4,
   DOGE: 0.1642,
@@ -1338,10 +1340,10 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   }
 
   const snapshot = {
-    ethUsd: resolvedMap.get("ETH")?.priceUsd ?? oneClickMap.get("ETH") ?? 2219.86,
-    nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? oneClickMap.get("NEAR") ?? 4.18,
-    solUsd: resolvedMap.get("SOL")?.priceUsd ?? oneClickMap.get("SOL") ?? 86.25,
-    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 71642.5,
+    ethUsd: resolvedMap.get("ETH")?.priceUsd ?? oneClickMap.get("ETH") ?? 2246.48,
+    nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? oneClickMap.get("NEAR") ?? 3.74,
+    solUsd: resolvedMap.get("SOL")?.priceUsd ?? oneClickMap.get("SOL") ?? 90.23,
+    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 76124.84,
     xrpUsd: resolvedMap.get("XRP")?.priceUsd ?? oneClickMap.get("XRP") ?? 1.3515,
     liveFetched,
     quotes,

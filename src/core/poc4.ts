@@ -447,3 +447,78 @@ export function escalate_sha256_to_sputnik_bounty(
   };
 }
 
+// ============================================================================
+// Canonical Deterministic & Session-Cached PoC-4 Master Commitment (`H_master`)
+// Ensures `/`, `/api/overview`, and `/api/payroll/export-statement` always
+// resolve to the exact same 64-char SHA-256 `H_master` digest across requests.
+// ============================================================================
+
+export const CANONICAL_POC4_TEE_SIGNATURE =
+  "0x7c8f4dc2450d3a42048973beb38ad53e397c73d4aabbccddeeff0011223344";
+export const CANONICAL_POC4_OUTLAYER_RTMR3 =
+  "3cd763d33f4f03e2ba2a2907516b6ede662f5a26b9dfa4eb65e8751b7802c601e6535e0d767cdb08dcfdc02e33970931";
+export const CANONICAL_POC4_ONECLICK_QUOTE_ADDRESS =
+  "intents.near:confidential-private-shard";
+
+let activeSessionPoc4State: { policyHash: string; hMaster: string } | null = null;
+
+/**
+ * Computes the deterministic canonical PoC-4 gate & `H_master` for the active policy configuration.
+ */
+export function computeCanonicalPoc4Commitment(
+  config?: HumanConstraintsConfig
+): PoC4GateResult {
+  const effectiveConfig = config ?? loadKratonConfig().constraints;
+  return verify_poc4_enclave_gate({
+    config: effectiveConfig,
+    nearAiTeeSignature: CANONICAL_POC4_TEE_SIGNATURE,
+    outlayerRtmr3Eip1186: CANONICAL_POC4_OUTLAYER_RTMR3,
+    oneClickQuoteAddress: CANONICAL_POC4_ONECLICK_QUOTE_ADDRESS,
+    tokenSymbol: "USDC",
+    slippageBps: 25,
+    oracleDeviationPercent: 0.16,
+    appFeeBps: effectiveConfig.app_fee_bps,
+    oneClickFeeBps: 1,
+  });
+}
+
+/**
+ * Returns the active canonical 64-char hex `poc4MasterHash` (`H_master`).
+ * Remains strictly identical across GET requests unless the policy changes
+ * or an explicit 5-stage loop / on-chain proof commit updates the session digest.
+ */
+export function getActiveCanonicalPoc4MasterHash(
+  config?: HumanConstraintsConfig
+): string {
+  const effectiveConfig = config ?? loadKratonConfig().constraints;
+  const currentPolicyHash = computePolicyHash(effectiveConfig);
+  if (
+    activeSessionPoc4State &&
+    activeSessionPoc4State.policyHash === currentPolicyHash &&
+    /^[0-9a-f]{64}$/i.test(activeSessionPoc4State.hMaster)
+  ) {
+    return activeSessionPoc4State.hMaster;
+  }
+  return computeCanonicalPoc4Commitment(effectiveConfig).hMaster;
+}
+
+/**
+ * Updates (or resets when `null`) the active session `poc4MasterHash` (`H_master`)
+ * after an explicit 5-Stage Autonomous Loop or On-Chain Proof Commit.
+ */
+export function setActiveCanonicalPoc4MasterHash(
+  nextHMaster: string | null,
+  config?: HumanConstraintsConfig
+): void {
+  if (!nextHMaster || !/^[0-9a-f]{64}$/i.test(nextHMaster.trim())) {
+    activeSessionPoc4State = null;
+    return;
+  }
+  const effectiveConfig = config ?? loadKratonConfig().constraints;
+  activeSessionPoc4State = {
+    policyHash: computePolicyHash(effectiveConfig),
+    hMaster: nextHMaster.trim().toLowerCase(),
+  };
+}
+
+

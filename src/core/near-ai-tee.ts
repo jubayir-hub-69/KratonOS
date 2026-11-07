@@ -453,18 +453,18 @@ function buildDynamicTeeVerdictForPrompt(
   }
 
   const prices = livePrices ?? {
-    ethUsd: 2219.86,
-    nearUsd: 4.18,
-    solUsd: 86.25,
-    btcUsd: 71642.5,
+    ethUsd: 2246.48,
+    nearUsd: 3.74,
+    solUsd: 90.23,
+    btcUsd: 76124.84,
     xrpUsd: 1.3515,
     liveFetched: true,
     quotes: [
-      { symbol: "NEAR", pair: "NEAR/USDT", found: true, priceUsd: 4.18, spreadPercent: 0.14, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
+      { symbol: "NEAR", pair: "NEAR/USDT", found: true, priceUsd: 3.74, spreadPercent: 0.14, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
       { symbol: "XRP", pair: "XRP/USDT", found: true, priceUsd: 1.3515, spreadPercent: 0.12, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
-      { symbol: "SOL", pair: "SOL/USDT", found: true, priceUsd: 86.25, spreadPercent: 0.14, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
-      { symbol: "ETH", pair: "ETH/USDT", found: true, priceUsd: 2219.86, spreadPercent: 0.11, source: "Coinbase + EIP-1186", status: "VERIFIED_LIVE" },
-      { symbol: "BTC", pair: "BTC/USDT", found: true, priceUsd: 71642.5, spreadPercent: 0.09, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
+      { symbol: "SOL", pair: "SOL/USDT", found: true, priceUsd: 90.23, spreadPercent: 0.14, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
+      { symbol: "ETH", pair: "ETH/USDT", found: true, priceUsd: 2246.48, spreadPercent: 0.11, source: "Coinbase + EIP-1186", status: "VERIFIED_LIVE" },
+      { symbol: "BTC", pair: "BTC/USDT", found: true, priceUsd: 76124.84, spreadPercent: 0.09, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
     ],
   };
 

@@ -327,9 +327,9 @@ async function runMasterVerificationSuite(): Promise<void> {
   );
 
   // ==========================================================================
-  // SUITE 5: Full-Stack Backend Server & Obsidian Glass UI Endpoints
+  // SUITE 5: Full-Stack Backend Server & KratonOS Web Dashboard Endpoints
   // ==========================================================================
-  console.log("[SUITE 5/6] Full-Stack Backend Server & Obsidian Glass UI Endpoints...");
+  console.log("[SUITE 5/6] Full-Stack Backend Server & KratonOS Web Dashboard Endpoints...");
   const [uiHtml, uiCss, uiJs, apiOverview] = await Promise.all([
     invokeServerEndpoint("GET", "/"),
     invokeServerEndpoint("GET", "/styles.css"),

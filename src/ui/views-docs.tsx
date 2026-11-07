@@ -118,11 +118,11 @@ const API_SPECS: ApiEndpointSpec[] = [
       poc4Valid: true,
       nep611Lanes: 4,
       oracle: {
-        ethUsdMedian: 2219.86,
-        nearUsdMedian: 4.18,
+        ethUsdMedian: 2246.48,
+        nearUsdMedian: 3.74,
         xrpUsdMedian: 1.3515,
-        solUsdMedian: 86.25,
-        btcUsdMedian: 71642.5,
+        solUsdMedian: 90.23,
+        btcUsdMedian: 76124.84,
       },
     },
   },
@@ -445,7 +445,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
 
 const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   intro:
-    "# KratonOS Sovereign Financial Operating System\n\nQuad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Cross-Chain Confidential Liquidity Router (`1Click Private Shard` + `RHEA V1/V2 DCL`), and Multi-Agent Commerce OS on NEAR Protocol v88.\n\n## Core Equation\n`H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)`\n\n## Dual-Mode Wallet Custody\n- **Mode A — Disconnected / 1-Tap Judge Sandbox (`jubayir69.testnet`)**: Default mode for headless AI judges (`Claude Code` / `Codex`) and walletless reviewers.\n- **Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`)**: Queries real live RPC balances (`POST /api/wallet/balances`), blocks execution when `inputAmount > availableWalletBalance`, and requires real browser wallet popup signatures.\n\n## Cross-Repository Submission Disclosure (Rule Q-015)\n- **Builder**: Jubayir Haider (`https://github.com/jubayir-hub-69`)\n- **Submission #1**: KratonOS (`https://github.com/jubayir-hub-69/KratonOS`)\n- **Submission #2 (Independent Companion Project)**: Arrive (`https://github.com/jubayir-hub-69/arrive-near`) — separate repository with zero overlapping business logic or duplicate smart contracts.\n",
+    "# KratonOS — Autonomous Treasury & Policy Vault on NEAR\n\nQuad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Cross-Chain Confidential Liquidity Router (`1Click Private Shard` + `RHEA V1/V2 DCL`), and Multi-Agent Commerce OS on NEAR Protocol v88.\n\n## Core Equation\n`H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)`\n\n## Dual-Mode Wallet Custody\n- **Mode A — Disconnected / 1-Tap Judge Sandbox (`jubayir69.testnet`)**: Default mode for headless AI judges (`Claude Code` / `Codex`) and walletless reviewers.\n- **Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`)**: Queries real live RPC balances (`POST /api/wallet/balances`), blocks execution when `inputAmount > availableWalletBalance`, and requires real browser wallet popup signatures.\n\n## Cross-Repository Submission Disclosure (Rule Q-015)\n- **Builder**: Jubayir Haider (`https://github.com/jubayir-hub-69`)\n- **Submission #1**: KratonOS (`https://github.com/jubayir-hub-69/KratonOS`)\n- **Submission #2 (Independent Companion Project)**: Arrive (`https://github.com/jubayir-hub-69/arrive-near`) — separate repository with zero overlapping business logic or duplicate smart contracts.\n",
   quickstart:
     "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- **Mode A (Sandbox)**: Open the app without a browser wallet (or pick `1-Tap Judge Sandbox`) to test all workflows against `jubayir69.testnet`.\n- **Mode B (Personal Wallet)**: Connect `NEAR Wallet`, `Rabby / MetaMask (EVM)`, or `Phantom (Solana)` to switch 100% of balances, balance guards, and popup signing to your wallet.\n- **Rule Q-015 Cross-Repository Disclosure**: Companion independent submission by Jubayir Haider (`https://github.com/jubayir-hub-69`): **Arrive** (`https://github.com/jubayir-hub-69/arrive-near`).\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n- `npm run verify:server`: Verifies all 12 OpenAPI 3.1 REST endpoints (including `POST /api/wallet/balances`) + `/llms.txt` + `/openapi.json`.\n",
   poc4:
@@ -469,7 +469,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   shipped:
     "# Shipped Feature Matrix & Verification Coverage\n\nAll 8 core modules and 6 verification suites are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
-    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` Personal Wallet Control) & `POST /api/wallet/balances` live multi-RPC balance prober.\n- v2026.5: Standalone Mintlify `/docs` route, Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n",
+    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` Personal Wallet Control) & `POST /api/wallet/balances` live multi-RPC balance prober.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n",
 };
 
 function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
@@ -826,7 +826,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[var(--bg-card)]/95 animate-fade-in">
       {/* ================================================================== */}
-      {/* FULL-VIEWPORT STICKY MINTLIFY TOP HEADER BAR                       */}
+      {/* FULL-VIEWPORT STICKY DOCUMENTATION TOP HEADER BAR                  */}
       {/* ================================================================== */}
       <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-2.5 border-b border-[var(--border-color)] bg-[var(--bg-header)] px-4 py-3 backdrop-blur-md sm:px-6">
         {/* Left: Mobile Chapters Toggle + Glassy "K" Logo + KratonOS Documentation + Back to KratonOS */}
@@ -979,7 +979,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
       </header>
 
       {/* ================================================================== */}
-      {/* FULL-VIEWPORT MINTLIFY 2-COLUMN SPLIT (OFF-CANVAS MOBILE DRAWER)   */}
+      {/* FULL-VIEWPORT 2-COLUMN DOCUMENTATION SPLIT (MOBILE DRAWER)         */}
       {/* ================================================================== */}
       <div className="relative flex flex-1 flex-col lg:flex-row min-w-0">
         {mobileNavOpen && (
@@ -1104,7 +1104,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   GET STARTED // ARCHITECTURE OVERVIEW
                 </Badge>
                 <h1 className="font-display mt-2 text-3xl font-extrabold tracking-tight text-[var(--text-primary)]">
-                  KratonOS Sovereign Financial Operating System
+                  KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR
                 </h1>
                 <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[var(--text-secondary)]">
                   Quad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot, Cross-Chain Confidential Liquidity Router, and Multi-Agent Commerce Operating System on NEAR Protocol v88.
@@ -1655,7 +1655,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <details className="group rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3">
                   <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
                     <span>
-                      View Complete 35-Link Official Protocol, Track Prompt, Explorer &amp; Contract Reference Directory
+                      View Complete Official Protocol, All 13 Track Prompts, Explorer &amp; Contract Reference Directory
                     </span>
                     <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90 text-[var(--accent-emerald)]" />
                   </summary>
@@ -1704,6 +1704,26 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       {
                         label: "Track 08 (Real World): 08-realworld.md",
                         href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md",
+                      },
+                      {
+                        label: "Track 09 (Games): 09-games.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/09-games.md",
+                      },
+                      {
+                        label: "Track 10 (NFTs): 10-nfts.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/10-nfts.md",
+                      },
+                      {
+                        label: "Track 11 (Memecoins): 11-memecoins.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md",
+                      },
+                      {
+                        label: "Track 12 (Social): 12-social.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md",
+                      },
+                      {
+                        label: "Track 13 (Open): 13-open.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/13-open.md",
                       },
                       {
                         label: "NEAR Docs: docs.near.org",
@@ -2899,11 +2919,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
                 {[
-                  { pair: "ETH/USDT", val: `$${Number(liveStatusData?.oracle?.ethUsdMedian ?? 2219.86).toFixed(2)}` },
-                  { pair: "NEAR/USDT", val: `$${Number(liveStatusData?.oracle?.nearUsdMedian ?? 4.18).toFixed(4)}` },
+                  { pair: "ETH/USDT", val: `$${Number(liveStatusData?.oracle?.ethUsdMedian ?? 2246.48).toFixed(2)}` },
+                  { pair: "NEAR/USDT", val: `$${Number(liveStatusData?.oracle?.nearUsdMedian ?? 3.74).toFixed(4)}` },
                   { pair: "XRP/USDT", val: `$${Number(liveStatusData?.oracle?.xrpUsdMedian ?? 1.3515).toFixed(4)}` },
-                  { pair: "SOL/USDT", val: `$${Number(liveStatusData?.oracle?.solUsdMedian ?? 86.25).toFixed(2)}` },
-                  { pair: "BTC/USDT", val: `$${Number(liveStatusData?.oracle?.btcUsdMedian ?? 71642.5).toLocaleString("en-US", { maximumFractionDigits: 0 })}` },
+                  { pair: "SOL/USDT", val: `$${Number(liveStatusData?.oracle?.solUsdMedian ?? 90.23).toFixed(2)}` },
+                  { pair: "BTC/USDT", val: `$${Number(liveStatusData?.oracle?.btcUsdMedian ?? 76124.84).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
                 ].map((item) => (
                   <div key={item.pair} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                     <div className="font-mono text-[10px] font-bold text-[var(--text-secondary)]">{item.pair}</div>
@@ -3160,20 +3180,20 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     ],
                   },
                   {
-                    ver: "v2026.5 — Standalone Mintlify /docs Route, Anti-Hallucination Oracle & Interactive 5-Stage SVG Pipeline",
+                    ver: "v2026.5 — Standalone Documentation Portal (/docs), Anti-Hallucination Oracle & Interactive 5-Stage SVG Pipeline",
                     items: [
-                      "Upgraded /docs into a 100% standalone full-viewport Mintlify layout eliminating double sidebars and unclipping REST API Overview Test Live buttons.",
+                      "Upgraded /docs into a 100% standalone full-viewport documentation layout eliminating double sidebars and unclipping REST API Overview Test Live buttons.",
                       "Added Strict Anti-Hallucination Price Oracle: unlisted or misspelled tickers (e.g. AYAN/USDT, AVEX/USDT) return TOKEN NOT FOUND (UNLISTED) with Levenshtein typo suggestions (AVEX -> AVAX) instead of fake $1.00 fallbacks.",
                       "Added Interactive Animated 5-Stage SVG Data-Flow Architecture Pipeline with clickable node inspector and in-browser verification runner.",
                     ],
                   },
                   {
-                    ver: "v2026.4 — Mintlify Docs Portal, Any-Asset AI Co-Pilot & Printable PDF Statement",
+                    ver: "v2026.4 — Standalone Documentation Portal (/docs), Any-Asset AI Co-Pilot & Printable PDF Statement",
                     items: [
                       "Added dynamic any-asset live price resolver (XRP, NEAR, SOL, ETH, BTC, DOGE, SUI, BNB, etc.) across Coinbase Spot, 1Click /v0/tokens, and Kraken.",
                       "Built StructuredAiReport HTML table/heading renderer eliminating raw Markdown symbols and emojis.",
                       "Added Printable Executive Bookkeeper Reconciliation Statement (GET /api/payroll/export-statement) and UTF-8 BOM CSV export.",
-                      "Launched full Mintlify-grade in-app Documentation Portal with interactive /llms.txt and /openapi.json spec drawer.",
+                      "Launched Standalone Documentation Portal (/docs) with interactive /llms.txt and /openapi.json spec drawer.",
                     ],
                   },
                   {
@@ -3209,7 +3229,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
           {/* Footer Return Bar */}
           <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)] pt-6">
             <span className="font-mono text-xs text-[var(--text-muted)]">
-              KratonOS Sovereign Financial Operating System — Documentation v2026.5
+              KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR — Documentation v2026.5
             </span>
             <button
               type="button"

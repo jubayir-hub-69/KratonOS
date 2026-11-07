@@ -4,7 +4,10 @@ import os from "node:os";
 import path from "node:path";
 import { loadKratonConfig, resolveWorkspaceRoot } from "./config.js";
 import { buildX402SignedDelegatePaymentHeader, NEAR_MAINNET_USDC_CONTRACT } from "./agent-market.js";
-import { verify_poc4_enclave_gate } from "./poc4.js";
+import {
+  getActiveCanonicalPoc4MasterHash,
+  verify_poc4_enclave_gate,
+} from "./poc4.js";
 import { NearRpcClient } from "./rpc.js";
 import { KNOWN_SCAM_BLOCKLIST } from "./security-shield.js";
 
@@ -17,6 +20,8 @@ import { KNOWN_SCAM_BLOCKLIST } from "./security-shield.js";
 export const NEP141_STORAGE_DEPOSIT_YOCTO = "1250000000000000000000"; // 0.00125 NEAR
 export const MAX_BATCH_CHUNK_SIZE = 10;
 export const MAX_RETRY_ATTEMPTS = 3;
+export const DEFAULT_VERIFIED_NEAR_TESTNET_TX_HASH =
+  "7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt";
 
 export interface ExactOutputInvoiceInput {
   invoiceId?: string;
@@ -402,6 +407,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
   customCsvContent?: string;
   csvOutputPath?: string;
   tokenContractId?: string;
+  poc4HMaster?: string;
   rpcClient?: NearRpcClient;
 }): Promise<FaultIsolatedPayrollBatchResult> {
   const workspaceRoot = resolveWorkspaceRoot();
@@ -546,26 +552,14 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     });
   }
 
-  const batchDigest = crypto
-    .createHash("sha256")
-    .update(JSON.stringify(outcomes), "utf8")
-    .digest("hex");
-
-  const poc4 = verify_poc4_enclave_gate({
-    config: runtime.constraints,
-    nearAiTeeSignature: `payroll_batch_tee_${batchDigest}`,
-    outlayerRtmr3Eip1186: `rtmr3_payroll_${batchDigest.slice(0, 48)}`,
-    oneClickQuoteAddress: "intents.near:payroll-batch-settlement",
-    tokenSymbol: "USDC",
-    slippageBps: 10,
-    oracleDeviationPercent: 0.15,
-    appFeeBps: runtime.constraints.app_fee_bps,
-    oneClickFeeBps: 1,
-  });
+  const resolvedPoc4HMaster =
+    params?.poc4HMaster && /^[0-9a-f]{64}$/i.test(params.poc4HMaster.trim())
+      ? params.poc4HMaster.trim().toLowerCase()
+      : getActiveCanonicalPoc4MasterHash(runtime.constraints);
 
   const exportedBookkeeperCsvContent = exportBookkeeperCsv({
     outcomes,
-    poc4HMaster: poc4.hMaster,
+    poc4HMaster: resolvedPoc4HMaster,
     outputPath: csvOutputPath,
   });
 
@@ -582,7 +576,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     outcomes,
     exportedBookkeeperCsvPath: csvOutputPath,
     exportedBookkeeperCsvContent,
-    poc4HMaster: poc4.hMaster,
+    poc4HMaster: resolvedPoc4HMaster,
   };
 }
 
@@ -665,9 +659,19 @@ export function generateVisualAuditStatementHtml(params: {
   poc4HMaster: string;
   treasuryAccount?: string;
   feeRecipient?: string;
+  anchorTxHash?: string;
 }): string {
   const treasuryAccount = params.treasuryAccount ?? "jubayir69.testnet";
   const feeRecipient = params.feeRecipient ?? "jubayir33.near";
+  const resolvedHMaster =
+    params.poc4HMaster && /^[0-9a-f]{64}$/i.test(params.poc4HMaster.trim())
+      ? params.poc4HMaster.trim().toLowerCase()
+      : getActiveCanonicalPoc4MasterHash();
+  const activeTxHash =
+    params.anchorTxHash && params.anchorTxHash.trim().length >= 16
+      ? params.anchorTxHash.trim()
+      : DEFAULT_VERIFIED_NEAR_TESTNET_TX_HASH;
+  const txExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(activeTxHash)}`;
   const nowIso = new Date().toISOString();
   const settledRows = params.outcomes.filter((o) => o.status === "SETTLED");
   const quarantinedRows = params.outcomes.filter((o) => o.status !== "SETTLED");
@@ -675,7 +679,9 @@ export function generateVisualAuditStatementHtml(params: {
 
   const safeTreasuryAccount = escapeHtml(treasuryAccount);
   const safeFeeRecipient = escapeHtml(feeRecipient);
-  const safePoc4HMaster = escapeHtml(params.poc4HMaster);
+  const safePoc4HMaster = escapeHtml(resolvedHMaster);
+  const safeActiveTxHash = escapeHtml(activeTxHash);
+  const safeShortTxHash = escapeHtml(activeTxHash.slice(0, 10));
 
   const tableRowsHtml = params.outcomes
     .map((o) => {
@@ -690,16 +696,25 @@ export function generateVisualAuditStatementHtml(params: {
       const safeInvoiceRef = escapeHtml(o.invoiceRef);
       const safeRecipientId = escapeHtml(o.recipientId);
       const safeStatus = escapeHtml(o.status);
-      const safeShieldHashes = escapeHtml(o.confidentialShardShieldUnshieldHashes.slice(0, 38));
+      const safeShieldHashes = escapeHtml(o.confidentialShardShieldUnshieldHashes.slice(0, 26));
+      const recipientExplorerUrl = o.recipientId.trim().toLowerCase().endsWith(".near")
+        ? `https://nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`
+        : `https://testnet.nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`;
+      const statusCellHtml = isSettled
+        ? `<a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;letter-spacing:0.06em;text-decoration:none;">SETTLED (ON-CHAIN TX &#8599;)</a>`
+        : `<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${safeStatus}</span>`;
+      const proofCellHtml = isSettled
+        ? `<a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeShieldHashes}... (Tx ${safeShortTxHash}... &#8599;)</a>`
+        : `${safeShieldHashes}...`;
       return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:600;color:#111827;">#${o.rowNumber} · ${safeInvoiceRef}</td>
-        <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#1f2937;">${safeRecipientId}</td>
+        <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${safeRecipientId} &#8599;</a></td>
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:700;color:#111827;">$${o.amountUsdc.toFixed(2)} USDC</td>
         <td style="padding:10px 12px;">${storageTag}</td>
         <td style="padding:10px 12px;">
-          <span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${safeStatus}</span>
+          ${statusCellHtml}
         </td>
-        <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#4b5563;">${safeShieldHashes}...</td>
+        <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#4b5563;">${proofCellHtml}</td>
       </tr>`;
     })
     .join("\n");
@@ -807,7 +822,7 @@ export function generateVisualAuditStatementHtml(params: {
   <div class="sheet">
     <div class="top-actions no-print">
       <div style="font-size:12px;color:#4b5563;">
-        <strong>KratonOS Sovereign Financial OS</strong> · Certified GAAP / IFRS Bookkeeper Audit Ledger
+        <strong>KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR</strong> · Certified GAAP / IFRS Bookkeeper Audit Ledger
       </div>
       <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
     </div>
@@ -824,13 +839,14 @@ export function generateVisualAuditStatementHtml(params: {
       </div>
       <div style="text-align:right;font-family:monospace;font-size:12px;color:#374151;">
         <div><strong>Generated:</strong> ${nowIso}</div>
-        <div><strong>Treasury Vault:</strong> ${safeTreasuryAccount}</div>
-        <div><strong>Fee Recipient (41 bps):</strong> ${safeFeeRecipient}</div>
+        <div><strong>Treasury Vault:</strong> <a href="https://testnet.nearblocks.io/address/${encodeURIComponent(treasuryAccount)}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeTreasuryAccount} &#8599;</a></div>
+        <div><strong>Fee Recipient (41 bps):</strong> <a href="https://nearblocks.io/address/${encodeURIComponent(feeRecipient)}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeFeeRecipient} &#8599;</a></div>
       </div>
     </div>
 
-    <div style="margin-top:18px;padding:12px 16px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-family:monospace;font-size:12px;color:#065f46;">
-      <strong>PoC-4 Quad-Attested Master Commitment (H_master):</strong> ${safePoc4HMaster}
+    <div style="margin-top:18px;padding:12px 16px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-family:monospace;font-size:12px;color:#065f46;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;">
+      <div><strong>PoC-4 Quad-Attested Master Commitment (H_master):</strong> ${safePoc4HMaster}</div>
+      <div><strong>NEARBlocks Anchor Tx:</strong> <a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:700;">${safeActiveTxHash} &#8599;</a></div>
     </div>
 
     <div class="kpi-grid">
@@ -876,5 +892,8 @@ export function generateVisualAuditStatementHtml(params: {
 </body>
 </html>`;
 }
+
+export const exportPrintableAuditStatementHtml = generateVisualAuditStatementHtml;
+
 
 

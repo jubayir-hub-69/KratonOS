@@ -130,7 +130,9 @@ async function runServerSmokeTest(): Promise<void> {
   // 2. Test GET /api/overview & POST /api/policy/kill-switch
   console.log("[2/4] Probing GET /api/overview & POST /api/policy/kill-switch...");
   const overviewRes = await invokeServerEndpoint("GET", "/api/overview");
+  const overviewRes2 = await invokeServerEndpoint("GET", "/api/overview");
   assert.equal(overviewRes.statusCode, 200, "GET /api/overview must return HTTP 200");
+  assert.equal(overviewRes2.statusCode, 200, "Second GET /api/overview must return HTTP 200");
   const overviewJson = JSON.parse(overviewRes.bodyText) as {
     status: string;
     treasuryAccount: string;
@@ -140,15 +142,54 @@ async function runServerSmokeTest(): Promise<void> {
     postQuantumKeyHash: string;
     nep611Lanes: unknown[];
     mpcAddresses: Record<string, string>;
+    oracle: {
+      nearUsdMedian: number;
+      ethUsdMedian: number;
+      btcUsdMedian: number;
+      solUsdMedian: number;
+      xrpUsdMedian: number;
+    };
     nearAiTee?: { liveApiUsed: boolean; attestationId: string };
-    liveCredentialsConfigured: Record<string, boolean>;
+    publicRpcAccessKeySummary?: {
+      source: string;
+      totalKeys: number;
+      fullAccessCount: number;
+      functionCallCount: number;
+      redactedKeyPreviews: Array<{ publicKeyPreview: string }>;
+    };
   };
+  const overviewJson2 = JSON.parse(overviewRes2.bodyText) as { poc4MasterHash: string };
 
   assert.equal(overviewJson.status, "OK");
   assert.equal(overviewJson.treasuryAccount, "jubayir69.testnet");
   assert.equal(overviewJson.feeRecipient, "jubayir33.near");
   assert.equal(overviewJson.nep611Lanes.length, 4);
   assert.ok(overviewJson.postQuantumKeyHash.startsWith("ml-dsa-65-hash:"));
+  assert.equal(
+    overviewJson.poc4MasterHash.length,
+    64,
+    "poc4MasterHash must be a canonical 64-char SHA-256 hex digest"
+  );
+  assert.equal(
+    overviewJson.poc4MasterHash,
+    overviewJson2.poc4MasterHash,
+    "Consecutive GET /api/overview requests must return the exact same canonical poc4MasterHash"
+  );
+  assert.equal(
+    "liveCredentialsConfigured" in (overviewJson as Record<string, unknown>),
+    false,
+    "Public GET /api/overview must NOT expose liveCredentialsConfigured"
+  );
+  assert.equal(
+    "keyAudit" in (overviewJson as Record<string, unknown>),
+    false,
+    "Public GET /api/overview must NOT expose raw keyAudit"
+  );
+  assert.ok(
+    overviewJson.publicRpcAccessKeySummary &&
+      overviewJson.publicRpcAccessKeySummary.source.includes("view_access_key_list"),
+    "GET /api/overview must expose redacted publicRpcAccessKeySummary from public RPC"
+  );
 
   const ksOnRes = await invokeServerEndpoint("POST", "/api/policy/kill-switch", {
     enabled: true,
@@ -165,10 +206,10 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(ksOffJson.emergency_kill_switch, false);
 
   console.log(
-    `  ✓ GET /api/overview           : HTTP ${overviewRes.statusCode} | Treasury=${overviewJson.treasuryAccount} (${overviewJson.balanceFormatted}) | NEAR_AI_liveApiUsed=${String(overviewJson.nearAiTee?.liveApiUsed)}`
+    `  ✓ GET /api/overview           : HTTP ${overviewRes.statusCode} | Treasury=${overviewJson.treasuryAccount} (${overviewJson.balanceFormatted}) | H_master=${overviewJson.poc4MasterHash.slice(0, 16)}... | NEAR_AI_liveApiUsed=${String(overviewJson.nearAiTee?.liveApiUsed)}`
   );
   console.log(
-    `  ✓ Live Credentials Detected   : ${JSON.stringify(overviewJson.liveCredentialsConfigured)}`
+    `  ✓ Public RPC Key Hygiene      : liveCredentialsConfigured=REDACTED | publicRpcKeys=${overviewJson.publicRpcAccessKeySummary?.totalKeys ?? 0} (truncated previews)`
   );
   console.log(
     `  ✓ Kill-Switch Toggle API      : HTTP 200 (Armed=true -> Disarmed=false verified)\n`
@@ -220,8 +261,41 @@ async function runServerSmokeTest(): Promise<void> {
     stmtRes.bodyText.includes("size: A4 landscape;"),
     "Printable statement must include A4 landscape single-page CSS"
   );
+  assert.ok(
+    stmtRes.bodyText.includes(overviewJson.poc4MasterHash),
+    "GET /api/payroll/export-statement must carry the exact same poc4MasterHash as GET /api/overview"
+  );
+  assert.ok(
+    csvRes.bodyText.includes(overviewJson.poc4MasterHash),
+    "GET /api/payroll/export-csv must carry the exact same poc4MasterHash as GET /api/overview"
+  );
+  assert.ok(
+    stmtRes.bodyText.includes("SETTLED (ON-CHAIN TX") &&
+      stmtRes.bodyText.includes("https://testnet.nearblocks.io/txns/") &&
+      stmtRes.bodyText.includes("https://testnet.nearblocks.io/address/"),
+    "Printable payroll statement must include clickable NEARBlocks txns and address links on settled rows"
+  );
   assert.ok(llmsRes.bodyText.includes("# KratonOS"));
   assert.ok(llmsRes.bodyText.includes("https://nearhackathon.com/HACKATHON.md"));
+  assert.ok(
+    llmsRes.bodyText.includes("09-games.md") && llmsRes.bodyText.includes("13-open.md"),
+    "/llms.txt must list all 13 official hackathon track prompt specifications (01-13)"
+  );
+
+  const routerPriceSyncRes = await invokeServerEndpoint("POST", "/api/router/quote", {
+    originSymbol: "wNEAR",
+    destinationSymbol: "USDC",
+    amountInHuman: 10,
+  });
+  assert.equal(routerPriceSyncRes.statusCode, 200, "POST /api/router/quote (wNEAR->USDC) must return HTTP 200");
+  const routerPriceSyncJson = JSON.parse(routerPriceSyncRes.bodyText) as {
+    limitOrder: { requestEnvelope: { data: { attributes: { price: string } } } };
+  };
+  assert.equal(
+    routerPriceSyncJson.limitOrder.requestEnvelope.data.attributes.price,
+    overviewJson.oracle.nearUsdMedian.toFixed(3),
+    "Router quote wNEAR limit price must match live overview.oracle.nearUsdMedian"
+  );
   assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
   assert.ok(llmsRes.bodyText.includes("https://trezu.org/"));
   assert.ok(
@@ -467,6 +541,21 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(loopJson.status, "PASS");
   assert.equal(loopJson.underTwoMinutesVerified, true);
   assert.equal(loopJson.stages.length, 5);
+
+  const [postLoopOverviewRes, postLoopStmtRes] = await Promise.all([
+    invokeServerEndpoint("GET", "/api/overview"),
+    invokeServerEndpoint("GET", "/api/payroll/export-statement"),
+  ]);
+  const postLoopOverviewJson = JSON.parse(postLoopOverviewRes.bodyText) as { poc4MasterHash: string };
+  assert.equal(
+    postLoopOverviewJson.poc4MasterHash,
+    loopJson.poc4HMaster,
+    "GET /api/overview must immediately sync to the new loop poc4HMaster"
+  );
+  assert.ok(
+    postLoopStmtRes.bodyText.includes(loopJson.poc4HMaster),
+    "GET /api/payroll/export-statement must immediately sync to the new loop poc4HMaster"
+  );
 
   console.log(
     `  ✓ POST /api/demo/autonomous-loop: HTTP ${loopRes.statusCode} | Status=${loopJson.status} | Elapsed=${loopJson.elapsedMs}ms (< 120,000ms)`

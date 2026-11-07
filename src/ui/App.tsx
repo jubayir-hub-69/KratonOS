@@ -122,7 +122,7 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     id: "docs",
     label: "Docs & API Spec",
-    subtitle: "Mintlify Docs · /llms.txt · OpenAPI",
+    subtitle: "Documentation · /llms.txt · OpenAPI",
     icon: BookOpen,
   },
 ];
@@ -886,6 +886,22 @@ export function App() {
             ? data
             : buildFallback5StageResult(Date.now() - startMs);
         setLoopState({ running: false, activeStage: 5, result: finalData });
+        if (finalData.poc4HMaster) {
+          setOverview((prev: Record<string, unknown> | null) =>
+            prev ? { ...prev, poc4MasterHash: finalData.poc4HMaster } : prev
+          );
+          setPayrollData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  batchResult: {
+                    ...prev.batchResult,
+                    poc4HMaster: finalData.poc4HMaster,
+                  },
+                }
+              : prev
+          );
+        }
         pushNotification(
           `5-Stage Autonomous Loop Verified in ${finalData.elapsedMs}ms (PoC-4 H_master=${String(
             finalData.poc4HMaster ?? ""
@@ -1201,7 +1217,7 @@ export function App() {
                         isBrandAnimating ? "is-animating" : ""
                       }`}
                     >
-                      Sovereign Financial OS
+                      Autonomous Treasury &amp; Policy Vault
                     </p>
                   </div>
                 )}
@@ -1673,6 +1689,22 @@ export function App() {
                 onOpenDocsQuickstart={handleOpenDocsQuickstart}
                 walletContext={walletContext}
                 onProofCommitted={(receipt) => {
+                  if (receipt?.poc4HMaster) {
+                    setOverview((prev: Record<string, unknown> | null) =>
+                      prev ? { ...prev, poc4MasterHash: receipt.poc4HMaster } : prev
+                    );
+                    setPayrollData((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            batchResult: {
+                              ...prev.batchResult,
+                              poc4HMaster: receipt.poc4HMaster,
+                            },
+                          }
+                        : prev
+                    );
+                  }
                   void fetchOverview();
                   if (receipt?.liveBroadcast && receipt?.explorerTxUrl) {
                     pushNotification(
@@ -1720,6 +1752,7 @@ export function App() {
 
             {activeView === "tee" && (
               <DualTeeOracleView
+                overview={overview}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -1727,6 +1760,7 @@ export function App() {
 
             {activeView === "payroll" && (
               <InvoicingPayrollView
+                overview={overview}
                 payrollData={payrollData}
                 loading={payrollLoading}
                 onRunPayroll={handleUserPayroll}
@@ -1763,7 +1797,7 @@ export function App() {
               <div className="flex min-w-0 items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
                 <span className="font-display break-words font-bold text-[var(--text-primary)]">
-                  KratonOS Sovereign Financial Operating System
+                  KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] sm:gap-4 sm:text-xs">

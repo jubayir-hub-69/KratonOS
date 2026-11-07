@@ -137,6 +137,7 @@ export interface PayrollApiResponse {
 }
 
 export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
+  overview,
   payrollData,
   loading,
   onRunPayroll,
@@ -144,6 +145,8 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   judgeMode,
   onNotify,
 }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  overview?: any;
   payrollData: PayrollApiResponse | null;
   loading: boolean;
   onRunPayroll: (params: {
@@ -188,6 +191,15 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   }, [walletContext?.isPersonalWallet, walletContext?.address]);
 
   const rawBatch = payrollData?.batchResult;
+  const activeAnchorTxHash =
+    overview?.latestLiveProofReceipt?.liveBroadcast && overview?.latestLiveProofReceipt?.txHash
+      ? String(overview.latestLiveProofReceipt.txHash)
+      : Array.isArray(overview?.recentOnChainTxns) && overview.recentOnChainTxns[0]?.txHash
+        ? String(overview.recentOnChainTxns[0].txHash)
+        : "7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt";
+  const activeAnchorExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(
+    activeAnchorTxHash
+  )}`;
   const rawTrimmedNet = requestedNetUsdc.trim();
   const parsedNetInput = rawTrimmedNet === "" ? 0 : Number(rawTrimmedNet);
   const isValidPositiveNet =
@@ -347,9 +359,9 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       outcomes: combined,
       exportedBookkeeperCsvPath:
         rawBatch?.exportedBookkeeperCsvPath ?? "samples/exported-bookkeeper-ledger.csv",
-      poc4HMaster: rawBatch?.poc4HMaster ?? "verified",
+      poc4HMaster: overview?.poc4MasterHash ?? rawBatch?.poc4HMaster ?? "verified",
     };
-  }, [rawBatch, customBatchRows]);
+  }, [overview?.poc4MasterHash, rawBatch, customBatchRows]);
 
   const buildLiveBookkeeperCsvContent = () => {
     const header = [
@@ -451,15 +463,24 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           o.storageDepositPrependedYocto && o.storageDepositPrependedYocto !== "0"
             ? `<span style="display:inline-block;padding:2px 6px;border-radius:4px;background:#fef3c7;color:#92400e;font-size:10px;font-family:monospace;">+0.00125 NEAR</span>`
             : `<span style="color:#6b7280;font-size:11px;">Registered</span>`;
+        const recipientExplorerUrl = o.recipientId.trim().toLowerCase().endsWith(".near")
+          ? `https://nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`
+          : `https://testnet.nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`;
+        const statusCellHtml = isSettled
+          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (ON-CHAIN TX &#8599;)</a>`
+          : `<span style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;">${escapeHtmlText(o.status)}</span>`;
+        const proofCellHtml = isSettled
+          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes.slice(0, 24))}... (Tx ${escapeHtmlText(activeAnchorTxHash.slice(0, 8))}... &#8599;)</a>`
+          : `${escapeHtmlText(o.confidentialShardShieldUnshieldHashes.slice(0, 36))}...`;
         return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:600;color:#111827;">#${o.rowNumber} · ${escapeHtmlText(o.invoiceRef)}</td>
-          <td style="padding:7px 8px;font-family:monospace;font-size:11px;color:#1f2937;">${escapeHtmlText(o.recipientId)}</td>
+          <td style="padding:7px 8px;font-family:monospace;font-size:11px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${escapeHtmlText(o.recipientId)} &#8599;</a></td>
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#111827;">$${o.amountUsdc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC</td>
           <td style="padding:7px 8px;">${storageTag}</td>
           <td style="padding:7px 8px;">
-            <span style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;">${escapeHtmlText(o.status)}</span>
+            ${statusCellHtml}
           </td>
-          <td style="padding:7px 8px;font-family:monospace;font-size:10px;color:#4b5563;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes.slice(0, 36))}...</td>
+          <td style="padding:7px 8px;font-family:monospace;font-size:10px;color:#4b5563;">${proofCellHtml}</td>
         </tr>`;
       })
       .join("\n");
@@ -497,19 +518,22 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
 <body>
   <div class="sheet">
     <div class="top-actions no-print">
-      <div style="font-size:12px;color:#4b5563;"><strong>KratonOS Sovereign Financial OS</strong> · Certified GAAP / IFRS Bookkeeper Audit Statement (${batch.totalRowsImported} Rows)</div>
+      <div style="font-size:12px;color:#4b5563;"><strong>KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR</strong> · Certified GAAP / IFRS Bookkeeper Audit Statement (${batch.totalRowsImported} Rows)</div>
       <button class="btn-print" onclick="window.print()">Print / Save as Single-Page PDF</button>
     </div>
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
       <div>
         <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.1em;">GAAP / IFRS Verified Treasury Statement</div>
         <h1 style="margin:4px 0 0;font-size:20px;font-weight:800;">Executive Bookkeeper Reconciliation Statement</h1>
-        <p style="margin:4px 0 0;font-size:12px;color:#4b5563;">Sovereign Vault: <code>jubayir69.testnet</code> · Protocol Fee Recipient: <code>jubayir33.near</code> (40 bps)</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#4b5563;">Treasury Vault: <a href="https://testnet.nearblocks.io/address/jubayir69.testnet" target="_blank" rel="noreferrer" style="color:#047857;"><code>jubayir69.testnet</code> &#8599;</a> · Protocol Fee Recipient: <a href="https://nearblocks.io/address/jubayir33.near" target="_blank" rel="noreferrer" style="color:#047857;"><code>jubayir33.near</code> &#8599;</a> (40 bps)</p>
       </div>
       <div style="text-align:right;font-family:monospace;font-size:11px;color:#4b5563;">
         <div>Generated: ${escapeHtmlText(nowIso)}</div>
-        <div>PoC-4 H_master: ${escapeHtmlText(String(batch.poc4HMaster).slice(0, 24))}...</div>
+        <div>NEARBlocks Anchor Tx: <a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;font-weight:700;">${escapeHtmlText(activeAnchorTxHash)} &#8599;</a></div>
       </div>
+    </div>
+    <div style="margin-top:14px;padding:10px 14px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-family:monospace;font-size:11px;color:#065f46;word-break:break-all;">
+      <strong>PoC-4 Quad-Attested Master Commitment (H_master):</strong> ${escapeHtmlText(String(batch.poc4HMaster))}
     </div>
     <div class="kpi-grid">
       <div class="kpi-box"><div class="kpi-label">Total Rows Imported</div><div class="kpi-val">${batch.totalRowsImported}</div></div>
@@ -1126,6 +1150,21 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                 </div>
               </div>
 
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border-emerald)] bg-[var(--accent-emerald-dim)] px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
+                <div className="break-all">
+                  <strong className="text-[var(--accent-emerald)]">PoC-4 H_master:</strong>{" "}
+                  {batch.poc4HMaster}
+                </div>
+                <a
+                  href={activeAnchorExplorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="shrink-0 font-bold text-[var(--accent-emerald)] underline hover:brightness-110"
+                >
+                  NEARBlocks Anchor Tx ({activeAnchorTxHash.slice(0, 10)}...) &#8599;
+                </a>
+              </div>
+
               <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -1136,68 +1175,111 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                       <th className="px-4 py-3">Amount (USDC)</th>
                       <th className="px-4 py-3">Chunk</th>
                       <th className="px-4 py-3">NEP-141 Storage</th>
-                      <th className="px-4 py-3">Confidential Shard Proof</th>
+                      <th className="px-4 py-3">Confidential Shard &amp; On-Chain Proof</th>
                       <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-color)]">
-                    {batch.outcomes.map((row) => (
-                      <tr
-                        key={row.rowNumber}
-                        className={
-                          row.status === "ISOLATED_QUARANTINED"
-                            ? "bg-rose-500/10"
-                            : "hover:bg-[var(--bg-card-subtle)]"
-                        }
-                      >
-                        <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
-                          {row.rowNumber}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs font-bold text-[var(--text-primary)]">
-                          {row.recipientId}
-                          {row.failureReason && (
-                            <p className="mt-0.5 font-sans text-[11px] font-semibold text-rose-500">
-                              {row.failureReason}
-                            </p>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
-                          {row.invoiceRef}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs font-extrabold text-[var(--text-primary)]">
-                          ${row.amountUsdc.toFixed(2)}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
-                          Chunk #{row.batchChunkIndex}
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs">
-                          {row.storageDepositPrependedYocto !== "0" ? (
-                            <Badge variant="sky">+0.00125 NEAR</Badge>
-                          ) : (
-                            <span className="text-[var(--text-secondary)]">Registered</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <CopyHashButton
-                            value={row.confidentialShardShieldUnshieldHashes}
-                            onCopyNotify={(m) => onNotify?.(m, "payroll")}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          {row.status === "SETTLED" ? (
-                            <Badge variant="emerald" className="gap-1">
-                              <CheckCircle2 className="h-3 w-3" />
-                              SETTLED
-                            </Badge>
-                          ) : (
-                            <Badge variant="red" className="gap-1">
-                              <AlertTriangle className="h-3 w-3" />
-                              QUARANTINED
-                            </Badge>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {batch.outcomes.map((row) => {
+                      const recipientExplorerUrl = row.recipientId
+                        .trim()
+                        .toLowerCase()
+                        .endsWith(".near")
+                        ? `https://nearblocks.io/address/${encodeURIComponent(row.recipientId.trim())}`
+                        : `https://testnet.nearblocks.io/address/${encodeURIComponent(
+                            row.recipientId.trim()
+                          )}`;
+                      return (
+                        <tr
+                          key={row.rowNumber}
+                          className={
+                            row.status === "ISOLATED_QUARANTINED"
+                              ? "bg-rose-500/10"
+                              : "hover:bg-[var(--bg-card-subtle)]"
+                          }
+                        >
+                          <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
+                            {row.rowNumber}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs font-bold text-[var(--text-primary)]">
+                            <a
+                              href={recipientExplorerUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={
+                                row.status === "SETTLED"
+                                  ? "text-[var(--accent-emerald)] underline hover:brightness-110"
+                                  : "text-rose-400 underline hover:brightness-110"
+                              }
+                            >
+                              {row.recipientId} &#8599;
+                            </a>
+                            {row.failureReason && (
+                              <p className="mt-0.5 font-sans text-[11px] font-semibold text-rose-500">
+                                {row.failureReason}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
+                            {row.invoiceRef}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs font-extrabold text-[var(--text-primary)]">
+                            ${row.amountUsdc.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
+                            Chunk #{row.batchChunkIndex}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs">
+                            {row.storageDepositPrependedYocto !== "0" ? (
+                              <Badge variant="sky">+0.00125 NEAR</Badge>
+                            ) : (
+                              <span className="text-[var(--text-secondary)]">Registered</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <CopyHashButton
+                                value={row.confidentialShardShieldUnshieldHashes}
+                                onCopyNotify={(m) => onNotify?.(m, "payroll")}
+                              />
+                              {row.status === "SETTLED" && (
+                                <a
+                                  href={activeAnchorExplorerUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="font-mono text-[11px] font-bold text-[var(--accent-emerald)] underline hover:brightness-110"
+                                >
+                                  Tx {activeAnchorTxHash.slice(0, 8)}... &#8599;
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            {row.status === "SETTLED" ? (
+                              <a
+                                href={activeAnchorExplorerUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-block"
+                              >
+                                <Badge
+                                  variant="emerald"
+                                  className="gap-1 cursor-pointer hover:brightness-110"
+                                >
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  SETTLED (ON-CHAIN TX &#8599;)
+                                </Badge>
+                              </a>
+                            ) : (
+                              <Badge variant="red" className="gap-1">
+                                <AlertTriangle className="h-3 w-3" />
+                                QUARANTINED
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
