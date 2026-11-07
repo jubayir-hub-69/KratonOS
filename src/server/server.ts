@@ -556,6 +556,7 @@ export async function handleKratonHttpRequest(
           amountUsd?: number;
           rawBriefOrMemo?: string;
           agentReputationScore?: number;
+          custodyAccountId?: string;
         }>(req);
 
         const receiverId = String(body.receiverId ?? "scam-drainer-vault.testnet").trim();
@@ -581,6 +582,19 @@ export async function handleKratonHttpRequest(
             : "nusdc.ft-fin.testnet");
 
         const runtime = loadKratonConfig();
+        const requestedCustody = String(body.custodyAccountId ?? "").trim();
+        const isPersonalNearCustody =
+          requestedCustody.length > 0 &&
+          (requestedCustody.endsWith(".testnet") ||
+            requestedCustody.endsWith(".near") ||
+            /^[0-9a-f]{64}$/i.test(requestedCustody));
+        const targetCustodyAccount = isPersonalNearCustody
+          ? requestedCustody
+          : runtime.constraints.treasury_account;
+        const custodyRpcClient = targetCustodyAccount.endsWith(".near")
+          ? new NearRpcClient(["https://rpc.mainnet.near.org", "https://free.rpc.fastnear.com"])
+          : rpcClient;
+
         const [riskVerdict, sanitizedBrief, accessKeyListView] = await Promise.all([
           evaluateCounterpartyRisk({
             receiverId,
@@ -590,8 +604,8 @@ export async function handleKratonHttpRequest(
             rpcClient,
           }),
           Promise.resolve(sanitizeUntrustedBrief(rawBriefOrMemo)),
-          rpcClient
-            .viewAccessKeyList(runtime.constraints.treasury_account)
+          custodyRpcClient
+            .viewAccessKeyList(targetCustodyAccount)
             .catch(() => ({ keys: [], block_height: 0, block_hash: "" })),
         ]);
 
@@ -616,7 +630,7 @@ export async function handleKratonHttpRequest(
 
         sendJson(res, 200, {
           status: "OK",
-          treasuryAccount: runtime.constraints.treasury_account,
+          treasuryAccount: targetCustodyAccount,
           accessKeyList: accessKeyListView.keys,
           accessKeyListLiveVerified: accessKeyListView.keys.length > 0,
           riskVerdict,
@@ -1252,7 +1266,12 @@ export async function handleKratonHttpRequest(
       // 8B. POST /api/onchain/commit-proof (Live NEAR Testnet PoC-4 Proof Signer)
       // ======================================================================
       if (method === "POST" && pathname === "/api/onchain/commit-proof") {
-        const body = await readJsonBody<{ poc4HMaster?: string }>(req);
+        const body = await readJsonBody<{
+          poc4HMaster?: string;
+          connectedWalletAddress?: string;
+          connectedWalletChain?: string;
+          personalSignature?: string;
+        }>(req);
         const runtime = loadKratonConfig();
         const policyHash = computePolicyHash(runtime.constraints);
         const oracleSnap = await getFastOracleSnapshot();
@@ -1277,7 +1296,363 @@ export async function handleKratonHttpRequest(
           rpcClient,
         });
 
-        sendJson(res, 200, proofCommit);
+        sendJson(res, 200, {
+          ...proofCommit,
+          ...(body.connectedWalletAddress
+            ? {
+                connectedWalletAddress: String(body.connectedWalletAddress).trim(),
+                connectedWalletChain: String(body.connectedWalletChain ?? "evm").trim(),
+                personalSignature: String(body.personalSignature ?? "").trim(),
+                relayerAnchoredForPersonalWallet: true,
+              }
+            : {}),
+        });
+        return;
+      }
+
+      // ======================================================================
+      // 8C. POST /api/wallet/balances (Real Live On-Chain Balance Prober: EVM / NEAR / Solana)
+      // ======================================================================
+      if (method === "POST" && pathname === "/api/wallet/balances") {
+        const body = await readJsonBody<{
+          address?: string;
+          chainType?: "near" | "evm" | "solana";
+          chainIdHex?: string;
+        }>(req);
+
+        const address = String(body.address ?? "").trim();
+        const chainType = body.chainType ?? "near";
+        if (!address) {
+          throw new HttpRequestError(400, "address is required.");
+        }
+        if (chainType !== "near" && chainType !== "evm" && chainType !== "solana") {
+          throw new HttpRequestError(400, "Invalid chainType; expected near, evm, or solana.");
+        }
+
+        const scaleBigIntToNumber = (raw: bigint, decimals: number): number => {
+          if (raw <= 0n) return 0;
+          const base = 10n ** BigInt(decimals);
+          const whole = Number(raw / base);
+          const frac = Number(raw % base) / Number(base);
+          return Number((whole + frac).toFixed(6));
+        };
+
+        const parseHexBigInt = (val: unknown): bigint => {
+          if (typeof val !== "string") return 0n;
+          const clean = val.trim();
+          if (!clean || clean === "0x" || clean === "0x0") return 0n;
+          try {
+            return BigInt(clean.startsWith("0x") ? clean : `0x${clean}`);
+          } catch {
+            return 0n;
+          }
+        };
+
+        if (chainType === "evm") {
+          if (!/^0x[0-9a-fA-F]{40}$/.test(address)) {
+            throw new HttpRequestError(400, "Invalid EVM 0x address.");
+          }
+          const paddedAddr = address.slice(2).toLowerCase().padStart(64, "0");
+          const balanceOfCallData = `0x70a08231${paddedAddr}`;
+          let evmRpcVerified = false;
+
+          const evmRpcPost = async (rpcUrl: string, rpcMethod: string, params: unknown[]): Promise<unknown> => {
+            try {
+              const r = await fetch(rpcUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: rpcMethod, params }),
+                signal: AbortSignal.timeout(3500),
+              });
+              if (!r.ok) return null;
+              const j = (await r.json()) as { result?: unknown };
+              if (j && j.result !== undefined && j.result !== null) {
+                evmRpcVerified = true;
+                return j.result;
+              }
+              return null;
+            } catch {
+              return null;
+            }
+          };
+
+          const queryEthBalanceWithFallback = async (urls: string[]): Promise<number> => {
+            for (const u of urls) {
+              const resHex = await evmRpcPost(u, "eth_getBalance", [address, "latest"]);
+              if (typeof resHex === "string" && resHex.startsWith("0x")) {
+                return scaleBigIntToNumber(parseHexBigInt(resHex), 18);
+              }
+            }
+            return 0;
+          };
+
+          const queryErc20WithFallback = async (
+            urls: string[],
+            contractAddr: string,
+            decimals = 6
+          ): Promise<number> => {
+            for (const u of urls) {
+              const resHex = await evmRpcPost(u, "eth_call", [
+                { to: contractAddr, data: balanceOfCallData },
+                "latest",
+              ]);
+              if (typeof resHex === "string" && resHex.startsWith("0x")) {
+                return scaleBigIntToNumber(parseHexBigInt(resHex), decimals);
+              }
+            }
+            return 0;
+          };
+
+          const ethMainnetUrls = [
+            "https://ethereum-rpc.publicnode.com",
+            "https://eth.llamarpc.com",
+            "https://cloudflare-eth.com",
+          ];
+          const sepoliaUrls = ["https://ethereum-sepolia-rpc.publicnode.com"];
+          const baseUrls = ["https://mainnet.base.org", "https://base-rpc.publicnode.com"];
+          const arbUrls = ["https://arb1.arbitrum.io/rpc", "https://arbitrum-one-rpc.publicnode.com"];
+
+          const [
+            ethMainnet,
+            ethSepolia,
+            ethBase,
+            ethArbitrum,
+            usdcMainnet,
+            usdtMainnet,
+            usdcSepolia,
+            usdcBase,
+            usdcArbitrum,
+            usdtArbitrum,
+          ] = await Promise.all([
+            queryEthBalanceWithFallback(ethMainnetUrls),
+            queryEthBalanceWithFallback(sepoliaUrls),
+            queryEthBalanceWithFallback(baseUrls),
+            queryEthBalanceWithFallback(arbUrls),
+            queryErc20WithFallback(ethMainnetUrls, "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", 6),
+            queryErc20WithFallback(ethMainnetUrls, "0xdAC17F958D2ee523a2206206994597C13D831ec7", 6),
+            queryErc20WithFallback(sepoliaUrls, "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", 6),
+            queryErc20WithFallback(baseUrls, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", 6),
+            queryErc20WithFallback(arbUrls, "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", 6),
+            queryErc20WithFallback(arbUrls, "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", 6),
+          ]);
+
+          const chainHexLower = String(body.chainIdHex ?? "").toLowerCase();
+          let nativeEth = ethMainnet;
+          if (chainHexLower === "0xaa36a7") {
+            nativeEth = ethSepolia;
+          } else if (chainHexLower === "0x2105") {
+            nativeEth = ethBase;
+          } else if (chainHexLower === "0xa4b1") {
+            nativeEth = ethArbitrum;
+          } else if (ethMainnet === 0 && (ethBase > 0 || ethArbitrum > 0 || ethSepolia > 0)) {
+            nativeEth = Math.max(ethMainnet, ethBase, ethArbitrum, ethSepolia);
+          }
+
+          const totalUsdc = Number(
+            (chainHexLower === "0xaa36a7"
+              ? usdcSepolia
+              : usdcMainnet + usdcBase + usdcArbitrum
+            ).toFixed(6)
+          );
+          const totalUsdt = Number((usdtMainnet + usdtArbitrum).toFixed(6));
+
+          sendJson(res, 200, {
+            status: "OK",
+            chainType: "evm",
+            address,
+            nativeSymbol: "ETH",
+            nativeBalance: nativeEth,
+            wnearBalance: 0,
+            usdcBalance: totalUsdc,
+            usdtBalance: totalUsdt,
+            tokenBalances: {
+              ETH: nativeEth,
+              "ETH-ETHEREUM": ethMainnet > 0 ? ethMainnet : nativeEth,
+              USDC: totalUsdc,
+              "USDC-NEAR": usdcMainnet,
+              "USDC-BASE": usdcBase > 0 ? usdcBase : usdcMainnet,
+              USDT: totalUsdt,
+              "USDT-NEAR": usdtMainnet,
+              "USDT-ARBITRUM": usdtArbitrum > 0 ? usdtArbitrum : usdtMainnet,
+            },
+            liveRpcVerified: evmRpcVerified,
+          });
+          return;
+        }
+
+        if (chainType === "solana") {
+          if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
+            throw new HttpRequestError(400, "Invalid Solana Base58 address.");
+          }
+          const solRpcUrls = [
+            "https://solana-rpc.publicnode.com",
+            "https://api.mainnet-beta.solana.com",
+            "https://api.devnet.solana.com",
+          ];
+          let solRpcVerified = false;
+          const solPost = async (url: string, solMethod: string, params: unknown[]): Promise<unknown> => {
+            try {
+              const r = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: solMethod, params }),
+                signal: AbortSignal.timeout(3500),
+              });
+              if (!r.ok) return null;
+              const j = (await r.json()) as { result?: unknown };
+              if (j && j.result !== undefined && j.result !== null) {
+                solRpcVerified = true;
+                return j.result;
+              }
+              return null;
+            } catch {
+              return null;
+            }
+          };
+
+          let solBalance = 0;
+          for (const url of solRpcUrls) {
+            const resObj = (await solPost(url, "getBalance", [address])) as { value?: number } | null;
+            if (resObj && typeof resObj.value === "number") {
+              solBalance = Number((resObj.value / 1e9).toFixed(6));
+              break;
+            }
+          }
+
+          const querySplMint = async (mint: string): Promise<number> => {
+            for (const url of solRpcUrls.slice(0, 2)) {
+              const resObj = (await solPost(url, "getTokenAccountsByOwner", [
+                address,
+                { mint },
+                { encoding: "jsonParsed" },
+              ])) as {
+                value?: Array<{
+                  account?: {
+                    data?: {
+                      parsed?: {
+                        info?: { tokenAmount?: { uiAmount?: number } };
+                      };
+                    };
+                  };
+                }>;
+              } | null;
+              if (resObj && Array.isArray(resObj.value)) {
+                const total = resObj.value.reduce((acc, item) => {
+                  const ui = item?.account?.data?.parsed?.info?.tokenAmount?.uiAmount ?? 0;
+                  return acc + (Number.isFinite(ui) ? ui : 0);
+                }, 0);
+                return Number(total.toFixed(6));
+              }
+            }
+            return 0;
+          };
+
+          const [solUsdc, solUsdt] = await Promise.all([
+            querySplMint("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+            querySplMint("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"),
+          ]);
+
+          sendJson(res, 200, {
+            status: "OK",
+            chainType: "solana",
+            address,
+            nativeSymbol: "SOL",
+            nativeBalance: solBalance,
+            wnearBalance: 0,
+            usdcBalance: solUsdc,
+            usdtBalance: solUsdt,
+            tokenBalances: {
+              SOL: solBalance,
+              "SOL-SOLANA": solBalance,
+              USDC: solUsdc,
+              "USDC-NEAR": solUsdc,
+              "USDC-BASE": solUsdc,
+              USDT: solUsdt,
+              "USDT-NEAR": solUsdt,
+              "USDT-ARBITRUM": solUsdt,
+            },
+            liveRpcVerified: solRpcVerified,
+          });
+          return;
+        }
+
+        // Default: NEAR Wallet (.testnet / .near / implicit 64-hex)
+        if (address.length < 2 || address.length > 64 || !/^([a-z0-9_-]+\.)*[a-z0-9_-]+$/.test(address)) {
+          throw new HttpRequestError(400, "Invalid NEAR account ID.");
+        }
+        const isMainnetNear = address.endsWith(".near");
+        const walletRpc = isMainnetNear
+          ? new NearRpcClient(["https://rpc.mainnet.near.org", "https://free.rpc.fastnear.com"])
+          : rpcClient;
+        let nearRpcVerified = false;
+
+        const queryFtBalance = async (tokenContractId: string, decimals: number): Promise<number> => {
+          try {
+            const rawStr = await walletRpc.callViewFunction<string>(
+              tokenContractId,
+              "ft_balance_of",
+              { account_id: address }
+            );
+            nearRpcVerified = true;
+            if (typeof rawStr === "string" && /^\d+$/.test(rawStr)) {
+              return scaleBigIntToNumber(BigInt(rawStr), decimals);
+            }
+            return 0;
+          } catch {
+            return 0;
+          }
+        };
+
+        let nearLiquid = 0;
+        try {
+          const accView = await walletRpc.viewAccount(address);
+          nearRpcVerified = true;
+          nearLiquid = scaleBigIntToNumber(BigInt(accView.amount), 24);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (/does not exist|UNKNOWN_ACCOUNT/i.test(msg)) {
+            nearRpcVerified = true;
+          }
+          nearLiquid = 0;
+        }
+
+        const [wnearBal, usdcBalPrimary, usdcBalAlt, usdtBalPrimary, usdtBalAlt] = await Promise.all([
+          queryFtBalance(isMainnetNear ? "wrap.near" : "wrap.testnet", 24),
+          queryFtBalance(
+            isMainnetNear
+              ? "17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1"
+              : "usdc.fakes.testnet",
+            6
+          ),
+          isMainnetNear ? Promise.resolve(0) : queryFtBalance("nusdc.ft-fin.testnet", 6),
+          queryFtBalance(isMainnetNear ? "usdt.tether-token.near" : "usdt.fakes.testnet", 6),
+          isMainnetNear ? Promise.resolve(0) : queryFtBalance("nusdt.ft-fin.testnet", 6),
+        ]);
+
+        const totalNearUsdc = Number((usdcBalPrimary + usdcBalAlt).toFixed(6));
+        const totalNearUsdt = Number((usdtBalPrimary + usdtBalAlt).toFixed(6));
+        const availableNearAndWnear = Number((nearLiquid + wnearBal).toFixed(6));
+
+        sendJson(res, 200, {
+          status: "OK",
+          chainType: "near",
+          address,
+          nativeSymbol: "NEAR",
+          nativeBalance: nearLiquid,
+          wnearBalance: wnearBal,
+          usdcBalance: totalNearUsdc,
+          usdtBalance: totalNearUsdt,
+          tokenBalances: {
+            NEAR: nearLiquid,
+            wNEAR: availableNearAndWnear,
+            "wNEAR-NEAR": availableNearAndWnear,
+            USDC: totalNearUsdc,
+            "USDC-NEAR": totalNearUsdc,
+            USDT: totalNearUsdt,
+            "USDT-NEAR": totalNearUsdt,
+          },
+          liveRpcVerified: nearRpcVerified,
+        });
         return;
       }
 
@@ -1293,6 +1668,7 @@ export async function handleKratonHttpRequest(
           "## Official Live Deployment & Protocol Reference Links",
           "- Official NEAR Hackathon Specification: https://nearhackathon.com/HACKATHON.md · https://nearhackathon.com",
           "- Official Track Prompt Examples (`01-defi.md` .. `08-realworld.md`): https://github.com/nearai/near-hackathon-prompt-examples",
+          "- Track Prompt Specifications: https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md · https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md",
           "- Live Production Deployment (Vercel): https://kraton-os-taupe.vercel.app",
           "- Live Standalone Documentation Portal: https://kraton-os-taupe.vercel.app/docs",
           "- Live AI Judge Index (`llms.txt`): https://kraton-os-taupe.vercel.app/llms.txt",
@@ -1318,7 +1694,16 @@ export async function handleKratonHttpRequest(
           "- `src/core/payroll-and-invoicing.ts`: Ceiling-rounded `EXACT_OUTPUT` merchant invoicing, 12-row fault-isolated NEP-141 batch payroll, GAAP/IFRS Bookkeeper CSV (`UTF-8 BOM`), and Printable HTML/PDF Audit Statement.",
           "- `src/core/agent-market.ts` & `src/core/swarm-coordinator.ts`: Live `market.near.ai` worker discovery, HTTP `402 Payment Required` (`x402 v2`) escrow settlement, and 20-sub-agent x 5-provider Hamilton pro-rata sealed-bid clearing.",
           "",
-          "## Live REST API Endpoints (11 `/api/*` Endpoints + `/llms.txt` + `/openapi.json`)",
+          "## Dual-Mode Wallet Custody Architecture (Mode A Sandbox vs Mode B Personal Wallet)",
+          "- Mode A — Disconnected / 1-Tap Judge Sandbox Mode (`jubayir69.testnet`): Default mode when no personal browser wallet is connected so headless AI judges (`Claude Code`, `Codex`) and reviewers can test every workflow immediately against the live `jubayir69.testnet` sandbox vault.",
+          "- Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`): Connecting a personal wallet switches 100% of active custody, recipient defaults, live on-chain RPC balances (`POST /api/wallet/balances`, reporting exact `0.00` when empty), strict insufficient-balance locks (`inputAmount > availableWalletBalance`), and real wallet popup signing (`personal_sign` / `signMessage` / NEAR Tx) to the user's connected wallet.",
+          "",
+          "## Cross-Repository Hackathon Submission Disclosure (Rule Q-015)",
+          "- Builder / GitHub Account: Jubayir Haider (https://github.com/jubayir-hub-69)",
+          "- Submission #1 (This Repository): KratonOS — https://github.com/jubayir-hub-69/KratonOS (Live: https://kraton-os-taupe.vercel.app) — Quad-Attested Autonomous Treasury, Policy Vault, Multi-Venue Intents Router & Agent Operating System on NEAR Protocol.",
+          "- Submission #2 (Companion Independent Submission): Arrive — https://github.com/jubayir-hub-69/arrive-near — An independent, separate NEAR Hackathon project built from scratch in its own distinct repository with zero overlapping business logic or duplicate smart contracts.",
+          "",
+          "## Live REST API Endpoints (12 `/api/*` Endpoints + `/llms.txt` + `/openapi.json`)",
           "- `GET /api/overview`: Full-stack telemetry across NEAR Testnet/Mainnet RPC, PoC-4 vault policy, 4-lane NEP-611 gas multiplexer, and 5-asset OutLayer median oracle.",
           "- `POST /api/policy/kill-switch`: Toggle or inspect the emergency vault freeze switch.",
           "- `POST /api/security/evaluate`: Evaluate 4-signal counterparty scam/prompt-injection risk, 3-tier Sputnik DAO V2 escalation (> $150 single-tx or > $500 daily), and NIST FIPS 204 ML-DSA-65 post-quantum signature.",
@@ -1330,6 +1715,7 @@ export async function handleKratonHttpRequest(
           "- `POST /api/market/execute`: Run x402 v2 agent hire, worker loop, and 20x5 sealed-bid swarm market round.",
           "- `POST /api/demo/autonomous-loop`: Execute the complete 5-stage closed-loop autonomous treasury cycle in < 2 minutes.",
           "- `POST /api/onchain/commit-proof`: Sign and commit the current PoC-4 H_master state proof on NEAR Testnet (`jubayir69.testnet`) with clickable NEARBlocks explorer link.",
+          "- `POST /api/wallet/balances`: Query real live on-chain native (`NEAR`, `ETH`, `SOL`) and stablecoin (`USDC`, `USDT`) balances via RPC for any connected NEAR, EVM (`0x...`), or Solana wallet.",
           "- `GET /openapi.json`: OpenAPI 3.1.0 machine-readable specification.",
         ].join("\n");
         res.writeHead(200, {
@@ -1460,6 +1846,42 @@ export async function handleKratonHttpRequest(
               post: {
                 summary: "Sign and commit PoC-4 H_master state proof on NEAR Testnet with NEARBlocks explorer receipt",
                 responses: { "200": { description: "On-chain signed transaction receipt & explorer URL" } },
+              },
+            },
+            "/api/wallet/balances": {
+              post: {
+                summary:
+                  "Query real live on-chain native (NEAR, ETH, SOL) and stablecoin (USDC, USDT) balances via RPC for a connected NEAR, EVM (0x...), or Solana wallet",
+                requestBody: {
+                  required: true,
+                  content: {
+                    "application/json": {
+                      schema: {
+                        type: "object",
+                        required: ["address"],
+                        properties: {
+                          address: {
+                            type: "string",
+                            description: "Connected NEAR account ID, EVM 0x address, or Solana Base58 address",
+                          },
+                          chainType: {
+                            type: "string",
+                            enum: ["near", "evm", "solana"],
+                            description: "Wallet network family (defaults to near)",
+                          },
+                          chainIdHex: {
+                            type: "string",
+                            description: "Optional active EVM chainId hex (e.g. 0x1, 0x2105, 0xa4b1, 0xaa36a7)",
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                responses: {
+                  "200": { description: "Live on-chain native and token balance snapshot (0 when empty)" },
+                  "400": { description: "Missing or malformed wallet address" },
+                },
               },
             },
           },

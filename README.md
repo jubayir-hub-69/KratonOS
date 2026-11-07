@@ -11,7 +11,7 @@ KratonOS is a self-custodial, hardware-attested autonomous treasury, cross-chain
 - **Live OpenAPI 3.1 Specification (`/openapi.json`)**: https://kraton-os-taupe.vercel.app/openapi.json
 - **Official GitHub Repository**: https://github.com/jubayir-hub-69/KratonOS
 
-*(See Section 8 at the bottom of this document for the complete 26-link Official Protocol, Explorer & Contract Reference Directory.)*
+*(See Section 8 at the bottom of this document for the complete 34-link Official Protocol, Track Prompt, Explorer & Contract Reference Directory.)*
 
 ---
 
@@ -110,8 +110,12 @@ npm run build
 | **`npm run verify:outlayer`** | Fetches a live Ethereum Mainnet block header across 5 RPCs, verifies Chainlink `ETH/USD` (`0x5f4e...8419`) via live `eth_getProof` (EIP-1186) Keccak-256 Merkle-Patricia Trie hashing (`stateRootMatches: true`, `storageHashMatches: true`), computes multi-source median prices (`ETH/USD`, `NEAR/USD`), verifies 5x48B Intel TDX registers + Ed25519 VRF anti-MEV slices, and writes/re-verifies `samples/outlayer-execution-proof.json`. |
 | **`npm run verify:ai-tee`** | Runs the 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) hardware attestation verifier (`STATUS: TEE ATTESTATION VERIFIED`), verifies Zero-Retention memory wipe (`2173 bytes overwritten with 0x00, 0 non-zero bytes remaining`), executes 1-round quote negotiation + `A2A + x402` (`x402Version: 2`) NEP-366 `SignedDelegateAction` hiring + `aat_` worker check, and settles the 20-Buyer $\times$ 5-Seller Sealed-Bid Swarm round (`0 LLM calls`, `$357.00` saved). |
 | **`npm run verify:intents-rhea`** | Fetches `210` live tokens from `GET /v0/tokens`, benchmarks `1Click` (`1 bp` stablecoin fee + `40 bps` app fee to `jubayir33.near`) vs `RHEA V2 DCL` vs `RHEA V1 AMM` (`196` active pools on `ref-finance.testnet`), builds a `"confidentiality": "basic"` GTC limit order (`/v0/orders`), verifies `ref-farming.testnet` `withdraw_reward({ amount: "0" })` + `v1.signer-prod.testnet` multi-chain addresses (`EVM`, `BTC`, `SOL`, `ZEC`, `TON`), and runs `EXACT_OUTPUT` ceiling invoicing + 12-row fault-isolated batch payroll (`STATUS: PASS`). |
-| **`npm run verify:server`** | Boots the full-stack server (`src/server/server.ts`), verifies `HTTP 200` on the Obsidian Glass UI (`/`, `/docs`, `/styles.css`, `/app.js`), `/api/overview`, `/api/policy/kill-switch`, `/api/security/evaluate`, `/api/payroll/export-csv`, `/api/payroll/export-statement` (Printable HTML/PDF Audit Statement), `/llms.txt`, `/openapi.json`, `/api/onchain/commit-proof`, the Strict Anti-Hallucination TEE Market/News Co-Pilot (`ETH`, `NEAR`, `XRP`, `SOL`, `BTC` + `UNLISTED_TOKEN` on `AYAN/USDT` + Levenshtein typo suggestion `AVEX -> AVAX`), and executes the 5-stage `/api/demo/autonomous-loop` in $< 120\text{ s}$. |
-| **`npm start` / `npm run dev`** | Starts the Obsidian Glass Command Center at **`http://localhost:4173`** (Live on Vercel at **https://kraton-os-taupe.vercel.app**) and the standalone full-viewport **Mintlify-Grade Documentation Portal (`http://localhost:4173/docs` / https://kraton-os-taupe.vercel.app/docs)** with `@hot-labs/near-connect` wallet integration, interactive 5-Stage SVG architecture inspector, live endpoint explorer, `/llms.txt`, and `/openapi.json`. |
+| **`npm run verify:server`** | Boots the full-stack server (`src/server/server.ts`), verifies `HTTP 200` on the Obsidian Glass UI (`/`, `/docs`, `/styles.css`, `/app.js`), `/api/overview`, `/api/policy/kill-switch`, `/api/security/evaluate`, `/api/payroll/export-csv`, `/api/payroll/export-statement` (Printable HTML/PDF Audit Statement), `/api/wallet/balances` (live NEAR & EVM RPC wallet balance prober), `/llms.txt`, `/openapi.json`, `/api/onchain/commit-proof`, the Strict Anti-Hallucination TEE Market/News Co-Pilot (`ETH`, `NEAR`, `XRP`, `SOL`, `BTC` + `UNLISTED_TOKEN` on `AYAN/USDT` + Levenshtein typo suggestion `AVEX -> AVAX`), and executes the 5-stage `/api/demo/autonomous-loop` in $< 120\text{ s}$. |
+| **`npm start` / `npm run dev`** | Starts the Obsidian Glass Command Center at **`http://localhost:4173`** (Live on Vercel at **https://kraton-os-taupe.vercel.app**) and the standalone full-viewport **Mintlify-Grade Documentation Portal (`http://localhost:4173/docs` / https://kraton-os-taupe.vercel.app/docs)** with Dual-Mode Wallet Custody (`@hot-labs/near-connect`, Rabby/MetaMask EVM, Phantom Solana), interactive 5-Stage SVG architecture inspector, live endpoint explorer, `/llms.txt`, and `/openapi.json`. |
+
+### Dual-Mode Wallet Custody Testing Guide (`Mode A` Sandbox vs `Mode B` Personal Wallet)
+- **Mode A — Disconnected / 1-Tap Judge Sandbox Mode (`jubayir69.testnet`)**: Default mode when opening the app without a browser wallet so automated AI judges (`Claude Code` / `Codex` per `Q-017`) and quick reviewers can test every workflow immediately against the live `jubayir69.testnet` sandbox vault.
+- **Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`)**: Connecting a personal wallet switches the entire app to the user's own wallet, queries real live on-chain balances (`ETH`, `NEAR`, `SOL`, `USDC`, `USDT`) via RPC (`POST /api/wallet/balances` + in-page provider, reporting exact `0.00` when empty), enforces strict insufficient-balance locks whenever `inputAmount > availableWalletBalance`, and requires real wallet extension popup signatures (`personal_sign` / `signMessage` / NEAR Tx) before executing any action.
 
 ---
 
@@ -121,7 +125,7 @@ npm run build
    - Navigating to `http://localhost:4173/docs` (or clicking `Docs & API Spec` in the sidebar) opens a 100% standalone, full-viewport documentation portal (`src/ui/views-docs.tsx`) featuring:
      - **Interactive Animated 5-Stage SVG Architecture Pipeline**: Click any stage node (`1. Human Constraints` $\rightarrow$ `5. Confidential Execution`) to inspect its source file, cryptographic inputs/outputs, and verification command.
      - **In-Browser Verification Matrix (`Do X -> See Y`)**: Click **Run Check in Browser** on any row to execute live backend verification checks and view the JSON receipt inline.
-     - **Interactive REST API Overview & Endpoint Explorer**: Test all 11 live REST endpoints (`Test Live ->`) and inspect `/llms.txt` and `/openapi.json` (OpenAPI `3.1.0`) in a dedicated modal drawer.
+     - **Interactive REST API Overview & Endpoint Explorer**: Test all 12 live REST endpoints (`Test Live ->`) and inspect `/llms.txt` and `/openapi.json` (OpenAPI `3.1.0`) in a dedicated modal drawer.
      - **1-Click `Copy Page Markdown`**: Every chapter includes a `Copy Page Markdown` button for AI agents (`Claude Code`, `Codex`) and judges.
 2. **Strict Anti-Hallucination Multi-Source Price Oracle (`src/core/outlayer-enclave.ts`, `src/core/near-ai-tee.ts`)**:
    - Resolves real-time prices across **Coinbase Spot**, **1Click (`GET /v0/tokens`, 210 tokens)**, and **Kraken / CryptoCompare**.
@@ -139,7 +143,7 @@ npm run build
 
 ---
 
-## 6. Open-Source Libraries vs Original KratonOS Engineering (`Q-005` Disclosure)
+## 6. Open-Source Libraries, Original Engineering & Cross-Repository Disclosures (`Q-005` & `Q-015`)
 
 ### A. Open-Source Libraries & Rust Crates Used (`package.json` & `Cargo.toml`)
 - `@defuse-protocol/one-click-sdk-typescript` (`^0.1.26`) — Official NEAR Intents 1Click TypeScript SDK
@@ -160,7 +164,12 @@ npm run build
   - `src/core/near-ai-tee.ts` (8-Step NEAR AI Cloud `GLM-5.1-FP8` NRAS + Intel TDX verifier + Zero-Retention `0x00` memory wipe)
   - `src/core/intents-rhea-router.ts` & `src/core/rhea-yield-and-mpc.ts` (Tri-Venue `1Click` / `RHEA V2 DCL` / `RHEA V1 AMM` router, `/v0/orders` confidential limit orders, `withdraw_reward({ amount: "0" })` farming sweep, and 5-chain MPC KDF)
   - `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts` (`EXACT_OUTPUT` ceiling invoicing, 12-row fault-isolated NEP-141 batcher, `x402 v2` escrow, and 20x5 SHA-256 commit-reveal swarm)
-- **`src/server/server.ts` & `src/ui/*`**: Full-stack HTTP + Vercel Serverless API (`11` OpenAPI 3.1 endpoints + `/llms.txt` + `/openapi.json`), 7-View Obsidian Glass Command Center (`src/ui/App.tsx`, `src/ui/views-core.tsx`, `src/ui/views-business.tsx`), and Standalone Mintlify-Grade Documentation Portal (`src/ui/views-docs.tsx`).
+- **`src/server/server.ts` & `src/ui/*`**: Full-stack HTTP + Vercel Serverless API (`12` OpenAPI 3.1 endpoints + `/llms.txt` + `/openapi.json`), Dual-Mode Multi-Chain Wallet Controller (`src/ui/wallet-controller.ts`), 7-View Obsidian Glass Command Center (`src/ui/App.tsx`, `src/ui/views-core.tsx`, `src/ui/views-business.tsx`), and Standalone Mintlify-Grade Documentation Portal (`src/ui/views-docs.tsx`).
+
+### C. Cross-Repository Hackathon Submission Disclosure (Rule `Q-015`)
+- **Builder / GitHub Account**: **Jubayir Haider** (https://github.com/jubayir-hub-69)
+- **Submission #1 (This Repository)**: **KratonOS** — https://github.com/jubayir-hub-69/KratonOS (Live: https://kraton-os-taupe.vercel.app) — Quad-Attested Autonomous Treasury, Policy Vault, Multi-Venue Intents Router & Agent Operating System on NEAR Protocol.
+- **Submission #2 (Companion Independent Submission)**: **Arrive** — https://github.com/jubayir-hub-69/arrive-near — An independent, separate NEAR Hackathon project built from scratch in its own distinct repository with zero overlapping business logic or duplicate smart contracts.
 
 ---
 
@@ -170,6 +179,7 @@ See [`STRESS.md`](./STRESS.md) (and `/docs#stress`) for the full **6-Suite, 38-A
 
 | Subsystem / Capability | 100% Live Network Execution | Testnet / Dry-Run Boundary & Intentional Non-Goals |
 | :--- | :--- | :--- |
+| **Dual-Mode Wallet Custody (`Mode A` vs `Mode B`)** | **Mode B (Connected Personal Wallet)**: Connecting `NEAR Wallet`, `Rabby / MetaMask (EVM)`, or `Phantom (Solana)` queries real live on-chain balances (`ETH`, `NEAR`, `SOL`, `USDC`, `USDT` via `POST /api/wallet/balances` — exact `0.00` when empty), enforces strict `inputAmount > availableWalletBalance` locks, and requires real browser wallet popup signatures (`personal_sign` / `signMessage` / NEAR Tx). | **Mode A (Judge Sandbox Default, `Q-017`)**: When no personal browser wallet is connected, the app operates on the explicitly badged **`Protocol Sandbox Vault (jubayir69.testnet)`** so headless AI judges (`Claude Code` / `Codex`) and walletless reviewers can evaluate every workflow immediately without extension popups. |
 | **NEAR Testnet RPC & Indexing** | Live `view_account`, `view_access_key_list` (`https://rpc.testnet.near.org`), Nearblocks transaction ledger (`api-testnet.nearblocks.io`), and signed `broadcast_tx_commit` PoC-4 proof commits on `jubayir69.testnet` when `NEAR_PRIVATE_KEY` is configured. | In air-gapped / keyless CI sandboxes, offline receipts are explicitly badged **`[SIGNED BORSH PROOF (DRY-RUN)]`** or **`[DRY-RUN QUOTE PREVIEW]`** — never mislabeled as broadcast transactions. |
 | **Ethereum Mainnet EIP-1186 & Price Oracles** | Live `eth_getBlockByNumber` + `eth_getProof` across 5 Ethereum Mainnet RPCs verifying Chainlink `ETH/USD` (`0x5f4e...8419`) RLP Keccak-256 tries locally, plus live Coinbase Spot, 1Click (`210` tokens), and Kraken quotes. | Unlisted tickers strictly return `priceUsd: null` (`UNLISTED_TOKEN`) with Levenshtein typo suggestions (`AVEX -> AVAX`), never a fabricated `$1.00` fallback. |
 | **NEAR AI Cloud (`GLM-5.1-FP8`) TEE** | Live `https://cloud-api.near.ai/v1` inference, NRAS Hopper GPU + Intel TDX 5x48B hardware quote verification, ECDSA `secp256k1` recovery, and in-place `0x00` memory wipe. | Capped by `max_daily_inference_spend_usd: 5.00` and `<= 10 calls/min` rate guard in `config.yaml` to prevent runaway cloud inference spend. |
@@ -180,7 +190,7 @@ See [`STRESS.md`](./STRESS.md) (and `/docs#stress`) for the full **6-Suite, 38-A
 
 ---
 
-## 8. Official Protocol, Explorer & Contract Reference Directory (26 Verified Links)
+## 8. Official Protocol, Track Prompt, Explorer & Contract Reference Directory (34 Verified Links)
 
 | Resource / Protocol | Official URL / Explorer Link |
 | :--- | :--- |
@@ -190,7 +200,8 @@ See [`STRESS.md`](./STRESS.md) (and `/docs#stress`) for the full **6-Suite, 38-A
 | **Live OpenAPI 3.1 Specification (`/openapi.json`)** | https://kraton-os-taupe.vercel.app/openapi.json |
 | **Official GitHub Repository** | https://github.com/jubayir-hub-69/KratonOS |
 | **Official NEAR Hackathon Rules** | https://nearhackathon.com/HACKATHON.md · https://nearhackathon.com |
-| **Official Prompt & Track Specifications** | https://github.com/nearai/near-hackathon-prompt-examples (`HACKATHON.md`, `RULES.md`, `AGENTS.md`, `tracks/01-defi.md` .. `tracks/08-realworld.md`) |
+| **Official Track Prompts Repository** | https://github.com/nearai/near-hackathon-prompt-examples |
+| **Official 8 Track Specifications (`01`–`08`)** | [01-defi.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md) · [02-thesis.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md) · [03-privacy.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md) · [04-business.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md) · [05-swarms.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md) · [06-security.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md) · [07-agents.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md) · [08-realworld.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md) |
 | **NEAR Protocol Documentation** | https://docs.near.org/ |
 | **NEAR Intents / 1Click Mainnet API & Explorer** | https://1click.chaindefuser.com (`/v0/tokens`, `/v0/quote`, `/v0/deposit/submit`, `/v0/status`, `/v0/orders`) · https://explorer.near-intents.org/api/v0/transactions · https://docs.near-intents.org/ |
 | **NEAR AI Cloud (Confidential H100 + Intel TDX TEE)** | https://cloud-api.near.ai/v1 (`model: "zai-org/GLM-5.1-FP8"`, `/v1/chat/completions`, `/v1/attestation/report`, `/v1/signature/{chat_id}`) · https://cloud.near.ai · https://docs.near.ai/ |

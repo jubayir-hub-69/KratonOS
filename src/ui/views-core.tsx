@@ -33,6 +33,12 @@ import {
 } from "@/components/ui/interactive-buttons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TextAnimate } from "@/components/ui/text-animate";
+import {
+  formatTokenAmountDisplay,
+  getAvailablePayTokenBalance,
+  WalletSignatureRejectedError,
+  type ConnectedWalletState,
+} from "./wallet-controller";
 
 const PARTNER_PROTOCOLS = [
   { name: "NEAR Intents 1Click", tag: "210 Live Assets · 1-bp Stable Swap" },
@@ -55,6 +61,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   onRunLoop,
   onNavigateSwap,
   onOpenDocsQuickstart,
+  walletContext,
   onProofCommitted,
   feedItems,
   judgeMode,
@@ -70,6 +77,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   onRunLoop: () => void;
   onNavigateSwap: () => void;
   onOpenDocsQuickstart?: () => void;
+  walletContext?: ConnectedWalletState;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onProofCommitted?: (receipt: any) => void;
   feedItems: TelemetryFeedItem[];
@@ -92,23 +100,99 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   const progressPct = Math.round((completedStagesCount / 5) * 100);
 
   const [committingProof, setCommittingProof] = React.useState(false);
+  const [proofError, setProofError] = React.useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [onChainReceipt, setOnChainReceipt] = React.useState<any | null>(null);
 
   const handleCommitProofOnChain = async () => {
     setCommittingProof(true);
+    setProofError(null);
+    const targetHMaster =
+      loopState.result?.poc4HMaster ??
+      overview?.poc4MasterHash ??
+      "bd3a6c960153984366c029fe090127dee6cd9b437522b1071dfb6628791d7c2c";
+
     try {
+      // MODE B (Personal Wallet Connected):
+      if (walletContext?.isPersonalWallet && walletContext.address) {
+        // Case B1: Personal NEAR Wallet -> trigger REAL transaction directly from connected NEAR account
+        if (walletContext.chainType === "near") {
+          const nearTx = await walletContext.anchorNearProofViaWallet(targetHMaster);
+          const nearReceipt = {
+            liveBroadcast: true,
+            status: "PERSONAL_NEAR_WALLET_TX_FINALIZED",
+            signerAccountId: nearTx.signerId,
+            signerPublicKey: `Personal NEAR Wallet (${nearTx.signerId})`,
+            txHash: nearTx.txHash,
+            explorerTxUrl: nearTx.explorerTxUrl,
+            blockHeight: overview?.blockHeight ?? "Finalized",
+            blockHash: "Broadcast via Connected Personal NEAR Wallet",
+            poc4HMaster: targetHMaster,
+            connectedWalletAddress: nearTx.signerId,
+            connectedWalletChain: "near",
+          };
+          setOnChainReceipt(nearReceipt);
+          onProofCommitted?.(nearReceipt);
+          return;
+        }
+
+        // Case B2: Personal EVM (Rabby/MetaMask) or Solana (Phantom) Wallet ->
+        // First open real personal_sign / signMessage wallet popup over PoC-4 H_master!
+        const authMessage = [
+          "KratonOS Sovereign Treasury — PoC-4 On-Chain Proof Authorization",
+          `Connected Wallet: ${walletContext.address} (${walletContext.chainType.toUpperCase()})`,
+          `PoC-4 H_master: ${targetHMaster}`,
+          `Timestamp: ${new Date().toISOString()}`,
+        ].join("\n");
+
+        const personalSig = await walletContext.signPersonalIntent(authMessage);
+
+        const res = await fetch("/api/onchain/commit-proof", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            poc4HMaster: targetHMaster,
+            connectedWalletAddress: personalSig.signerAddress,
+            connectedWalletChain: personalSig.chainType,
+            personalSignature: personalSig.signature,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const enriched = {
+            ...data,
+            connectedWalletAddress: personalSig.signerAddress,
+            connectedWalletChain: personalSig.chainType,
+            personalSignature: personalSig.signature,
+          };
+          setOnChainReceipt(enriched);
+          onProofCommitted?.(enriched);
+        }
+        return;
+      }
+
+      // MODE A (Disconnected / Judge Sandbox Mode):
       const res = await fetch("/api/onchain/commit-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          poc4HMaster: loopState.result?.poc4HMaster ?? overview?.poc4MasterHash,
+          poc4HMaster: targetHMaster,
         }),
       });
       if (res.ok) {
         const data = await res.json();
         setOnChainReceipt(data);
         onProofCommitted?.(data);
+      }
+    } catch (err) {
+      if (err instanceof WalletSignatureRejectedError) {
+        setProofError(
+          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+        );
+      } else {
+        setProofError(
+          `❌ Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     } finally {
       setCommittingProof(false);
@@ -187,13 +271,18 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="sky" className="font-mono">
               <span>
-                Vault Liquid: {unifiedVaultBalance}
-                {overview?.vault?.liveRpcVerified ? " (Live RPC)" : ""}
+                {walletContext?.isPersonalWallet
+                  ? `Connected (${walletContext.shortAddress}): ${walletContext.nativeFormatted} | USDC: ${walletContext.usdcBalance.toFixed(2)}`
+                  : `Sandbox Vault Liquid: ${unifiedVaultBalance}${overview?.vault?.liveRpcVerified ? " (Live RPC)" : ""}`}
               </span>
             </Badge>
             <Badge variant="emerald" className="font-mono">
               <ShieldCheck className="h-3.5 w-3.5" />
-              <span>Zero Master Key Exposure</span>
+              <span>
+                {walletContext?.isPersonalWallet
+                  ? "Personal Wallet Control Active"
+                  : "Zero Master Key Exposure"}
+              </span>
             </Badge>
           </div>
         </div>
@@ -399,7 +488,25 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   Verified On-Chain Proof Panel &amp; Public Explorer Ledger
                 </div>
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                  Inspect real NEAR Testnet transactions for <code className="font-mono text-[var(--accent-emerald)]">jubayir69.testnet</code> on NEARBlocks, or broadcast &amp; anchor a fresh PoC-4 <code className="font-mono text-[var(--accent-emerald)]">H_master</code> digest on-chain.
+                  {walletContext?.isPersonalWallet && walletContext.address ? (
+                    <>
+                      Active Signer:{" "}
+                      <code className="font-mono font-bold text-[var(--accent-emerald)]">
+                        {walletContext.shortAddress} ({walletContext.providerName})
+                      </code>{" "}
+                      — opens a real wallet signature popup before anchoring PoC-4{" "}
+                      <code className="font-mono text-[var(--accent-emerald)]">H_master</code> on-chain.
+                    </>
+                  ) : (
+                    <>
+                      Inspect real NEAR Testnet transactions for{" "}
+                      <code className="font-mono text-[var(--accent-emerald)]">
+                        jubayir69.testnet
+                      </code>{" "}
+                      on NEARBlocks, or broadcast &amp; anchor a fresh PoC-4{" "}
+                      <code className="font-mono text-[var(--accent-emerald)]">H_master</code> digest on-chain.
+                    </>
+                  )}
                 </p>
               </div>
               <button
@@ -415,11 +522,25 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                 )}
                 <span className="break-words text-left">
                   {committingProof
-                    ? "SIGNING ON-CHAIN PROOF..."
-                    : "Verify & Anchor PoC-4 Proof On-Chain"}
+                    ? walletContext?.isPersonalWallet
+                      ? "AWAITING WALLET POPUP APPROVAL..."
+                      : "SIGNING ON-CHAIN PROOF..."
+                    : walletContext?.isPersonalWallet
+                      ? `Sign & Anchor PoC-4 Proof (${walletContext.shortAddress})`
+                      : "Verify & Anchor PoC-4 Proof On-Chain"}
                 </span>
               </button>
             </div>
+
+            {proofError && (
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 rounded-xl border border-rose-500/50 bg-rose-500/15 p-3 font-mono text-xs font-bold text-rose-500 animate-fade-in"
+              >
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
+                <span>{proofError}</span>
+              </div>
+            )}
 
             {/* Clickable External Explorer Pills */}
             <div className="flex flex-wrap items-center gap-2 font-mono text-[11px]">
@@ -530,7 +651,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25"
                     >
-                      <span>Inspect Live Tx on NEARBlocks ({onChainReceipt.txHash.slice(0, 12)}...)</span>
+                      <span>Inspect Live Tx on NEARBlocks ({String(onChainReceipt.txHash).slice(0, 12)}...)</span>
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   ) : (
@@ -546,11 +667,22 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] text-[var(--text-secondary)] sm:grid-cols-2">
                   <div className="break-all">
-                    <strong>Tx Hash:</strong> {onChainReceipt.txHash}
+                    <strong>NEAR Anchor Tx Hash:</strong> {onChainReceipt.txHash}
                   </div>
                   <div className="break-all">
-                    <strong>Signer Key:</strong> {onChainReceipt.signerPublicKey}
+                    <strong>Signer Key / Account:</strong> {onChainReceipt.signerPublicKey}
                   </div>
+                  {onChainReceipt.connectedWalletAddress && (
+                    <div className="break-all text-[var(--accent-emerald)]">
+                      <strong>Connected Wallet ({String(onChainReceipt.connectedWalletChain ?? "").toUpperCase()}):</strong>{" "}
+                      {onChainReceipt.connectedWalletAddress}
+                    </div>
+                  )}
+                  {onChainReceipt.personalSignature && (
+                    <div className="break-all text-[var(--accent-cyan)]">
+                      <strong>Real Wallet Signature:</strong> {onChainReceipt.personalSignature}
+                    </div>
+                  )}
                   <div className="break-all">
                     <strong>Block #{onChainReceipt.blockHeight}:</strong> {onChainReceipt.blockHash}
                   </div>
@@ -657,11 +789,13 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
 
 export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   overview,
+  walletContext,
   judgeMode,
   onNotify,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overview: any;
+  walletContext?: ConnectedWalletState;
   judgeMode: boolean;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
@@ -675,6 +809,50 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   const [loading, setLoading] = React.useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [quoteData, setQuoteData] = React.useState<any | null>(null);
+  const [signingSwap, setSigningSwap] = React.useState(false);
+  const [swapSignError, setSwapSignError] = React.useState<string | null>(null);
+  const [signedSwapReceipt, setSignedSwapReceipt] = React.useState<{
+    signerAddress: string;
+    chainType: string;
+    signature: string;
+    amountIn: string;
+    originSymbol: string;
+    expectedOut: string;
+    destinationSymbol: string;
+    winningVenue: string;
+    recipient: string;
+    signedAtIso: string;
+  } | null>(null);
+  const [signingLimitOrder, setSigningLimitOrder] = React.useState(false);
+  const [limitSignError, setLimitSignError] = React.useState<string | null>(null);
+  const [signedLimitReceipt, setSignedLimitReceipt] = React.useState<{
+    signerAddress: string;
+    chainType: string;
+    signature: string;
+    qtyWnear: string;
+    limitPriceUsdc: string;
+    signedAtIso: string;
+  } | null>(null);
+
+  // Sync recipient address automatically when switching between Connected Personal Wallet and Sandbox Mode
+  React.useEffect(() => {
+    if (walletContext?.isPersonalWallet && walletContext.address) {
+      setRecipient(walletContext.address);
+    } else {
+      setRecipient("jubayir69.testnet");
+    }
+  }, [walletContext?.isPersonalWallet, walletContext?.address]);
+
+  // Clear previous swap signature receipt/error when swap parameters change
+  React.useEffect(() => {
+    setSwapSignError(null);
+    setSignedSwapReceipt(null);
+  }, [amountIn, originTokenId, destinationTokenId, walletContext?.address]);
+
+  React.useEffect(() => {
+    setLimitSignError(null);
+    setSignedLimitReceipt(null);
+  }, [limitQtyWnear, limitPrice, walletContext?.address]);
 
   const tokens = React.useMemo(
     () => [
@@ -932,6 +1110,160 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   const limitOrder = quoteData?.limitOrder;
   const confidentialStatus = quoteData?.confidentialStatus;
 
+  const isPersonalConnected = Boolean(
+    walletContext?.isPersonalWallet && walletContext.address
+  );
+  const userAvailablePayTokenBalance = getAvailablePayTokenBalance(
+    walletContext,
+    originToken.symbol,
+    originToken.id
+  );
+  const formattedUserPayBalance = formatTokenAmountDisplay(
+    userAvailablePayTokenBalance,
+    originToken.symbol
+  );
+  const insufficientSwapBalance =
+    isPersonalConnected &&
+    !walletContext?.balancesLoading &&
+    parsedAmountIn > userAvailablePayTokenBalance;
+
+  const availableWnearBalance = getAvailablePayTokenBalance(
+    walletContext,
+    "wNEAR",
+    "wNEAR-NEAR"
+  );
+  const formattedAvailableWnear = formatTokenAmountDisplay(
+    availableWnearBalance,
+    "wNEAR"
+  );
+  const parsedLimitQtyWnear = Math.max(0, Number(limitQtyWnear) || 0);
+  const insufficientLimitBalance =
+    isPersonalConnected &&
+    !walletContext?.balancesLoading &&
+    parsedLimitQtyWnear > availableWnearBalance;
+
+  const handleExecutePersonalSwap = async () => {
+    if (!walletContext?.isPersonalWallet || !walletContext.address) return;
+    if (isIdenticalPair || parsedAmountIn <= 0) return;
+    if (parsedAmountIn > userAvailablePayTokenBalance) {
+      setSwapSignError(
+        `❌ Insufficient Balance in Connected Wallet (${walletContext.shortAddress}): Your wallet holds ${formattedUserPayBalance} ${originToken.symbol}, but this swap requires ${amountIn} ${originToken.symbol}.`
+      );
+      return;
+    }
+
+    setSigningSwap(true);
+    setSwapSignError(null);
+    try {
+      const expectedOut = liveComputedRoute.winningCandidate.expectedAmountOutFormatted;
+      const intentPayload = {
+        standard: "nep413",
+        verifying_contract: "intents.near",
+        deposit_type: "CONFIDENTIAL_INTENTS",
+        signer_id: walletContext.address,
+        recipient: recipient.trim() || walletContext.address,
+        pay_amount: `${amountIn} ${originToken.symbol}`,
+        expected_receive: `${expectedOut} ${destinationToken.symbol}`,
+        winning_venue: liveComputedRoute.winningVenue,
+        slippage_bps: slippageBps,
+        app_fee_bps: 40,
+        fee_recipient: "jubayir33.near",
+        timestamp: new Date().toISOString(),
+      };
+      const messageToSign = [
+        "KratonOS Cross-Chain Confidential Swap Intent Authorization",
+        JSON.stringify(intentPayload, null, 2),
+      ].join("\n");
+
+      const sig = await walletContext.signPersonalIntent(messageToSign);
+      const signedAtIso = new Date().toISOString();
+      setSignedSwapReceipt({
+        signerAddress: sig.signerAddress,
+        chainType: sig.chainType,
+        signature: sig.signature,
+        amountIn,
+        originSymbol: originToken.symbol,
+        expectedOut,
+        destinationSymbol: destinationToken.symbol,
+        winningVenue: liveComputedRoute.winningVenue,
+        recipient: recipient.trim() || sig.signerAddress,
+        signedAtIso,
+      });
+      onNotify?.(
+        `Swap Intent Cryptographically Signed by ${walletContext.shortAddress}: ${amountIn} ${originToken.symbol} -> ${expectedOut} ${destinationToken.symbol}`,
+        "swap"
+      );
+    } catch (err) {
+      if (err instanceof WalletSignatureRejectedError) {
+        setSwapSignError(
+          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+        );
+      } else {
+        setSwapSignError(
+          `❌ Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    } finally {
+      setSigningSwap(false);
+    }
+  };
+
+  const handleSubmitPersonalLimitOrder = async () => {
+    if (!walletContext?.isPersonalWallet || !walletContext.address) return;
+    if (parsedLimitQtyWnear <= 0) return;
+    if (parsedLimitQtyWnear > availableWnearBalance) {
+      setLimitSignError(
+        `❌ Insufficient Balance in Connected Wallet (${walletContext.shortAddress}): Your wallet holds ${formattedAvailableWnear} wNEAR, but this limit order requires ${limitQtyWnear} wNEAR.`
+      );
+      return;
+    }
+
+    setSigningLimitOrder(true);
+    setLimitSignError(null);
+    try {
+      const orderPayload = {
+        endpoint: "POST /v0/orders",
+        confidentiality: "basic",
+        time_in_force: "GTC",
+        signer_id: walletContext.address,
+        sell_quantity_wnear: limitQtyWnear,
+        limit_price_usdc_per_wnear: limitPrice,
+        timestamp: new Date().toISOString(),
+      };
+      const sig = await walletContext.signPersonalIntent(
+        [
+          "KratonOS Confidential GTC Limit Order (/v0/orders) Authorization",
+          JSON.stringify(orderPayload, null, 2),
+        ].join("\n")
+      );
+      await fetchQuote(false);
+      setSignedLimitReceipt({
+        signerAddress: sig.signerAddress,
+        chainType: sig.chainType,
+        signature: sig.signature,
+        qtyWnear: limitQtyWnear,
+        limitPriceUsdc: limitPrice,
+        signedAtIso: new Date().toISOString(),
+      });
+      onNotify?.(
+        `Confidential GTC Limit Order Signed by ${walletContext.shortAddress} (${limitQtyWnear} wNEAR @ $${limitPrice} USDC)`,
+        "swap"
+      );
+    } catch (err) {
+      if (err instanceof WalletSignatureRejectedError) {
+        setLimitSignError(
+          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+        );
+      } else {
+        setLimitSignError(
+          `❌ Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    } finally {
+      setSigningLimitOrder(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-fade-up">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -1037,6 +1369,38 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     </select>
                   </div>
                 </div>
+
+                {/* Live Connected Wallet Balance Header Above INPUT AMOUNT */}
+                {isPersonalConnected && walletContext ? (
+                  <div
+                    className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 font-mono text-[11px] ${
+                      insufficientSwapBalance
+                        ? "border-rose-500/45 bg-rose-500/10 text-rose-500"
+                        : "border-emerald-500/35 bg-emerald-500/8 text-[var(--accent-emerald)]"
+                    }`}
+                  >
+                    <span className="font-bold break-words">
+                      Your Connected Wallet ({walletContext.shortAddress}) Available{" "}
+                      {originToken.symbol}:{" "}
+                      {walletContext.balancesLoading
+                        ? "Syncing RPC..."
+                        : `${formattedUserPayBalance} ${originToken.symbol}`}
+                    </span>
+                    {userAvailablePayTokenBalance > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setAmountIn(String(userAvailablePayTokenBalance))}
+                        className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25 cursor-pointer"
+                      >
+                        MAX
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-2 font-mono text-[11px] text-[var(--text-secondary)]">
+                    Sandbox Vault Mode (<code className="text-[var(--accent-emerald)]">jubayir69.testnet</code>) — Price Quote Discovery (<code className="text-[var(--text-primary)]">dry: true</code> per Q-007)
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -1152,12 +1516,95 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   label={
                     loading
                       ? "BENCHMARKING 3 VENUES LIVE..."
-                      : "GET LIVE CROSS-CHAIN QUOTE"
+                      : "1. GET LIVE CROSS-CHAIN QUOTE"
                   }
                   onClick={() => void fetchQuote(true)}
                   disabled={loading}
                   className="w-full"
                 />
+
+                {/* Strict Connected-Wallet Balance Validation & Real Wallet Signing Controls */}
+                {isPersonalConnected && walletContext && (
+                  <div className="space-y-3 pt-1">
+                    {insufficientSwapBalance && (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
+                      >
+                        ❌ Insufficient Balance in Connected Wallet ({walletContext.shortAddress}): Your wallet holds{" "}
+                        {formattedUserPayBalance} {originToken.symbol}, but this swap requires{" "}
+                        {amountIn || "0"} {originToken.symbol}. Execution is blocked until your wallet has sufficient{" "}
+                        {originToken.symbol}.
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={
+                        insufficientSwapBalance ||
+                        parsedAmountIn <= 0 ||
+                        isIdenticalPair ||
+                        signingSwap ||
+                        walletContext.balancesLoading
+                      }
+                      onClick={() => void handleExecutePersonalSwap()}
+                      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-center font-mono text-xs font-extrabold transition-all ${
+                        insufficientSwapBalance || parsedAmountIn <= 0 || isIdenticalPair
+                          ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                          : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                      }`}
+                    >
+                      {insufficientSwapBalance ? (
+                        <span>
+                          🔒 Blocked: Insufficient {originToken.symbol} Balance in Connected Wallet
+                        </span>
+                      ) : signingSwap ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                          <span>Awaiting Wallet Signature Popup...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="h-4 w-4 shrink-0" />
+                          <span>
+                            2. Execute &amp; Sign Swap with Connected Wallet ({walletContext.shortAddress})
+                          </span>
+                        </>
+                      )}
+                    </button>
+
+                    {swapSignError && (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
+                      >
+                        {swapSignError}
+                      </div>
+                    )}
+
+                    {signedSwapReceipt && (
+                      <div className="space-y-1.5 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3.5 font-mono text-[11px] animate-fade-in">
+                        <div className="flex items-center justify-between gap-2 font-bold text-[var(--accent-emerald)]">
+                          <span>✓ SWAP INTENT SIGNED BY CONNECTED WALLET</span>
+                          <Badge variant="emerald">
+                            {signedSwapReceipt.chainType.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <div className="break-all text-[var(--text-primary)]">
+                          <strong>Signer:</strong> {signedSwapReceipt.signerAddress}
+                        </div>
+                        <div className="break-words text-[var(--text-secondary)]">
+                          <strong>Swap:</strong> {signedSwapReceipt.amountIn}{" "}
+                          {signedSwapReceipt.originSymbol} → {signedSwapReceipt.expectedOut}{" "}
+                          {signedSwapReceipt.destinationSymbol} ({signedSwapReceipt.winningVenue})
+                        </div>
+                        <div className="break-all text-[var(--accent-cyan)]">
+                          <strong>Cryptographic Signature:</strong> {signedSwapReceipt.signature}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1248,13 +1695,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     ? 10n ** BigInt(destinationToken.decimals - 6)
                     : 1n)
                 ).toString();
+                const activeSignerId =
+                  isPersonalConnected && walletContext?.address
+                    ? walletContext.address
+                    : "jubayir69.testnet";
                 const preSignPayloadObj = {
                   standard: "nep413",
                   verifying_contract: nep413?.verifyingContract ?? "intents.near",
                   deposit_type: nep413?.depositType ?? "CONFIDENTIAL_INTENTS",
-                  dry_run_quote_mode: true,
-                  signer_id: "jubayir69.testnet",
-                  recipient: recipient.trim() || "jubayir69.testnet",
+                  dry_run_quote_mode: !signedSwapReceipt,
+                  signer_id: activeSignerId,
+                  recipient: recipient.trim() || activeSignerId,
                   nonce:
                     nep413?.signedEnvelope?.payload?.nonce ??
                     "a91f3c8e7d6b5a4938271605f4e3d2c1b0a9f8e7d6c5b4a39281706f5e4d3c2b",
@@ -1397,6 +1848,21 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {isPersonalConnected && walletContext && (
+                  <div
+                    className={`rounded-lg border px-3 py-2 font-mono text-[11px] font-bold ${
+                      insufficientLimitBalance
+                        ? "border-rose-500/45 bg-rose-500/10 text-rose-500"
+                        : "border-emerald-500/35 bg-emerald-500/8 text-[var(--accent-emerald)]"
+                    }`}
+                  >
+                    Your Connected Wallet ({walletContext.shortAddress}) Available wNEAR / NEAR:{" "}
+                    {walletContext.balancesLoading
+                      ? "Syncing RPC..."
+                      : `${formattedAvailableWnear} wNEAR`}
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                     Quantity to Sell (wNEAR)
@@ -1419,21 +1885,97 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-bold text-[var(--text-primary)]"
                   />
                 </div>
-                <div className="flex flex-col gap-2.5 pt-1">
-                  <HoldConfirmButton
-                    label="Hold to Submit Confidential Order"
-                    doneLabel="CONFIDENTIAL ORDER COMMITTED"
-                    onConfirm={() => void fetchQuote(true)}
-                    disabled={loading}
-                    className="w-full"
-                  />
-                  <UnseenEnterButton
-                    label="Recalculate Ceiling Quote & VRF Slices"
-                    onClick={() => void fetchQuote(true)}
-                    disabled={loading}
-                    className="w-full"
-                  />
-                </div>
+
+                {isPersonalConnected && walletContext ? (
+                  <div className="flex flex-col gap-2.5 pt-1">
+                    {insufficientLimitBalance && (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
+                      >
+                        ❌ Insufficient Balance in Connected Wallet ({walletContext.shortAddress}): Your wallet holds{" "}
+                        {formattedAvailableWnear} wNEAR, but this limit order requires{" "}
+                        {limitQtyWnear || "0"} wNEAR. Submission is blocked until your wallet holds sufficient wNEAR / NEAR.
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={
+                        insufficientLimitBalance ||
+                        parsedLimitQtyWnear <= 0 ||
+                        signingLimitOrder ||
+                        walletContext.balancesLoading
+                      }
+                      onClick={() => void handleSubmitPersonalLimitOrder()}
+                      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-center font-mono text-xs font-extrabold transition-all ${
+                        insufficientLimitBalance || parsedLimitQtyWnear <= 0
+                          ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                          : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                      }`}
+                    >
+                      {insufficientLimitBalance ? (
+                        <span>🔒 Blocked: Insufficient wNEAR Balance in Connected Wallet</span>
+                      ) : signingLimitOrder ? (
+                        <>
+                          <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                          <span>Awaiting Wallet Signature Popup...</span>
+                        </>
+                      ) : (
+                        <span>
+                          Sign &amp; Submit Confidential Order ({walletContext.shortAddress})
+                        </span>
+                      )}
+                    </button>
+
+                    {limitSignError && (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3 text-xs font-bold text-rose-500 animate-fade-in"
+                      >
+                        {limitSignError}
+                      </div>
+                    )}
+
+                    {signedLimitReceipt && (
+                      <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-[11px] animate-fade-in">
+                        <div className="font-bold text-[var(--accent-emerald)]">
+                          ✓ CONFIDENTIAL GTC ORDER SIGNED ({signedLimitReceipt.qtyWnear} wNEAR @ $
+                          {signedLimitReceipt.limitPriceUsdc})
+                        </div>
+                        <div className="break-all text-[var(--text-primary)]">
+                          <strong>Signer:</strong> {signedLimitReceipt.signerAddress}
+                        </div>
+                        <div className="break-all text-[var(--accent-cyan)]">
+                          <strong>Signature:</strong> {signedLimitReceipt.signature}
+                        </div>
+                      </div>
+                    )}
+
+                    <UnseenEnterButton
+                      label="Recalculate Ceiling Quote & VRF Slices (Preview)"
+                      onClick={() => void fetchQuote(true)}
+                      disabled={loading}
+                      className="w-full"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2.5 pt-1">
+                    <HoldConfirmButton
+                      label="Hold to Submit Confidential Order"
+                      doneLabel="CONFIDENTIAL ORDER COMMITTED"
+                      onConfirm={() => void fetchQuote(true)}
+                      disabled={loading}
+                      className="w-full"
+                    />
+                    <UnseenEnterButton
+                      label="Recalculate Ceiling Quote & VRF Slices"
+                      onClick={() => void fetchQuote(true)}
+                      disabled={loading}
+                      className="w-full"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1502,11 +2044,13 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
 
 export const PolicyShieldView = React.memo(function PolicyShieldView({
   overview,
+  walletContext,
   judgeMode,
   onNotify,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overview: any;
+  walletContext?: ConnectedWalletState;
   judgeMode: boolean;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
@@ -1520,6 +2064,13 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
   const [loading, setLoading] = React.useState(false);
   const [litSignalStep, setLitSignalStep] = React.useState(4);
   const shieldTimerRef = React.useRef<number | null>(null);
+
+  const auditedCustodyAccount =
+    walletContext?.isPersonalWallet &&
+    walletContext.chainType === "near" &&
+    walletContext.address
+      ? walletContext.address
+      : undefined;
 
   React.useEffect(
     () => () => {
@@ -1563,6 +2114,7 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
             tokenContractId,
             amountUsd: targetAmt,
             rawBriefOrMemo: targetBrief,
+            custodyAccountId: auditedCustodyAccount,
           }),
         });
         const json = await res.json();
@@ -1590,19 +2142,27 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
         setLoading(false);
       }
     },
-    [receiverId, amountUsd, brief, onNotify]
+    [receiverId, amountUsd, brief, auditedCustodyAccount, onNotify]
   );
 
-  const didInitScanRef = React.useRef(false);
+  const lastAuditedAccountRef = React.useRef<string | undefined | "__uninit__">("__uninit__");
   React.useEffect(() => {
-    if (!didInitScanRef.current) {
-      didInitScanRef.current = true;
+    if (lastAuditedAccountRef.current !== auditedCustodyAccount) {
+      lastAuditedAccountRef.current = auditedCustodyAccount;
       void runScan(undefined, undefined, undefined, false);
     }
-  }, [runScan]);
+  }, [auditedCustodyAccount, runScan]);
 
   const verdict = evalData?.riskVerdict;
   const escalation = evalData?.governanceEscalation;
+  const activeNearKeyAccount =
+    auditedCustodyAccount ??
+    evalData?.treasuryAccount ??
+    overview?.treasuryAccount ??
+    "jubayir69.testnet";
+  const nearKeyExplorerHref = activeNearKeyAccount.endsWith(".near")
+    ? `https://nearblocks.io/address/${activeNearKeyAccount}#keys`
+    : `https://testnet.nearblocks.io/address/${activeNearKeyAccount}#keys`;
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -1618,9 +2178,20 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
             Live NEAR RPC Counterparty Risk Scorer, Prompt-Injection Firewall, 4-Lane NEP-611 Gas Keys &amp; Sputnik DAO V2 Escalator
           </p>
         </div>
-        <Badge variant="emerald" className="font-mono">
-          RHEA Whitelist: nusdc.ft-fin.testnet
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {walletContext?.isPersonalWallet && walletContext.address ? (
+            <Badge variant="sky" className="font-mono">
+              Connected Wallet: {walletContext.shortAddress}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="font-mono">
+              Sandbox Vault: jubayir69.testnet
+            </Badge>
+          )}
+          <Badge variant="emerald" className="font-mono">
+            RHEA Whitelist: nusdc.ft-fin.testnet
+          </Badge>
+        </div>
       </div>
 
       {judgeMode && (
@@ -1866,7 +2437,7 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
             </CardContent>
           </Card>
 
-          {/* Live On-Chain Access Key Auditor (view_access_key_list on jubayir69.testnet) */}
+          {/* Live On-Chain Access Key Auditor (view_access_key_list) */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1875,14 +2446,14 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                     Live On-Chain Access Key Custody Auditor (view_access_key_list)
                   </CardTitle>
                   <CardDescription className="mt-0.5">
-                    Real-time NEAR Testnet RPC key inventory for{" "}
+                    Real-time NEAR RPC key inventory for{" "}
                     <code className="font-mono text-[var(--accent-emerald)]">
-                      {evalData?.treasuryAccount ?? overview?.treasuryAccount ?? "jubayir69.testnet"}
+                      {activeNearKeyAccount}
                     </code>
                   </CardDescription>
                 </div>
                 <a
-                  href="https://testnet.nearblocks.io/address/jubayir69.testnet#keys"
+                  href={nearKeyExplorerHref}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/12 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/20"
@@ -1894,23 +2465,25 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
             </CardHeader>
             <CardContent className="space-y-2.5 font-mono text-xs">
               {(() => {
+                const isCustomNearAccount =
+                  auditedCustodyAccount &&
+                  auditedCustodyAccount !== (overview?.treasuryAccount ?? "jubayir69.testnet");
                 const liveKeys =
                   Array.isArray(evalData?.accessKeyList) && evalData.accessKeyList.length > 0
                     ? evalData.accessKeyList
-                    : Array.isArray(overview?.accessKeyList)
+                    : !isCustomNearAccount && Array.isArray(overview?.accessKeyList)
                       ? overview.accessKeyList
                       : [];
 
                 if (liveKeys.length === 0) {
                   return (
                     <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3 text-[11px] text-[var(--text-secondary)]">
-                      No live RPC key list returned in offline sandbox — when connected to{" "}
-                      <code className="text-[var(--text-primary)]">https://rpc.testnet.near.org</code>,{" "}
+                      No live RPC key list returned for{" "}
+                      <code className="text-[var(--accent-emerald)]">{activeNearKeyAccount}</code> — when reachable via NEAR RPC,{" "}
                       <code className="text-[var(--accent-emerald)]">view_access_key_list</code> streams every active{" "}
                       <code className="text-[var(--text-primary)]">public_key</code>,{" "}
                       <code className="text-[var(--text-primary)]">nonce</code>, and{" "}
-                      <code className="text-[var(--text-primary)]">permission</code> on{" "}
-                      <code className="text-[var(--accent-emerald)]">jubayir69.testnet</code>.
+                      <code className="text-[var(--text-primary)]">permission</code>.
                     </div>
                   );
                 }

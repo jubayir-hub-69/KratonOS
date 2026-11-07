@@ -1,4 +1,7 @@
-# KratonOS On-Chain Evidence Thesis (`02-thesis.md`)
+# KratonOS On-Chain Evidence Thesis ([`02-thesis.md`](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md))
+
+- **Live Production Deployment**: https://kraton-os-taupe.vercel.app · **Docs Chapter**: https://kraton-os-taupe.vercel.app/docs#thesis
+- **Official Repository**: https://github.com/jubayir-hub-69/KratonOS · **Hackathon Spec**: https://nearhackathon.com/HACKATHON.md
 
 **Title**: Cross-Chain Intent Settlement Velocity (`intents.near`) Coupled with NEP-611 Parallel Gas-Key Throughput as the Primary Leading Indicator of Autonomous Agentic Economy Adoption on NEAR Protocol.
 

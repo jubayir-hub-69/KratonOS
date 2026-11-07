@@ -15,6 +15,7 @@ import {
   Menu,
   Monitor,
   Moon,
+  RefreshCw,
   ShieldCheck,
   Sun,
   Users,
@@ -49,6 +50,14 @@ import {
   type PayrollApiResponse,
 } from "./views-business";
 import { DocsPortalView, type DocPageId } from "./views-docs";
+import {
+  fetchLiveConnectedWalletBalances,
+  formatShortWalletAddress,
+  sendNearTransactionWithPersonalWallet,
+  signMessageWithPersonalWallet,
+  type ConnectedWalletState,
+  type LiveWalletBalanceSnapshot,
+} from "./wallet-controller";
 
 export type ActiveSidebarView =
   | "overview"
@@ -257,6 +266,17 @@ export function App() {
   const [walletAccountId, setWalletAccountId] = useState<string | null>(null);
   const [walletChainType, setWalletChainType] = useState<"near" | "evm" | "solana">("near");
   const [walletProviderName, setWalletProviderName] = useState<string>("NEAR Testnet");
+  const [isPersonalWallet, setIsPersonalWallet] = useState<boolean>(false);
+  const [walletBalancesLoading, setWalletBalancesLoading] = useState<boolean>(false);
+  const [walletBalances, setWalletBalances] = useState<LiveWalletBalanceSnapshot>({
+    nativeSymbol: "NEAR",
+    nativeBalance: 0,
+    nativeFormatted: "0.0000 NEAR",
+    wnearBalance: 0,
+    usdcBalance: 0,
+    usdtBalance: 0,
+    tokenBalances: {},
+  });
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
   const [walletConnecting, setWalletConnecting] = useState<string | null>(null);
@@ -384,6 +404,11 @@ export function App() {
           const existing = accounts?.[0]?.accountId;
           if (active && existing) {
             setWalletAccountId(existing);
+            setWalletChainType("near");
+            setWalletProviderName(
+              existing.endsWith(".near") ? "NEAR Wallet (Mainnet)" : "NEAR Wallet (Testnet)"
+            );
+            setIsPersonalWallet(true);
           }
         })
         .catch(() => {});
@@ -394,15 +419,23 @@ export function App() {
         if (active && acc) {
           setWalletAccountId(acc);
           setWalletChainType("near");
-          setWalletProviderName("NEAR Testnet");
+          setWalletProviderName(
+            acc.endsWith(".near") ? "NEAR Wallet (Mainnet)" : "NEAR Wallet (Testnet)"
+          );
+          setIsPersonalWallet(true);
           setWalletModalOpen(false);
-          pushNotification(`Connected NEAR Wallet: ${acc}`, "shield", "emerald");
+          pushNotification(`Connected Personal NEAR Wallet: ${acc}`, "shield", "emerald");
         }
       });
       connector.on("wallet:signOut", async () => {
         if (active) {
           setWalletAccountId(null);
-          pushNotification("Disconnected NEAR Wallet", "shield", "amber");
+          setIsPersonalWallet(false);
+          pushNotification(
+            "Disconnected NEAR Wallet — Reverted to Protocol Sandbox Vault (jubayir69.testnet)",
+            "shield",
+            "amber"
+          );
         }
       });
     } catch {
@@ -412,6 +445,69 @@ export function App() {
       active = false;
     };
   }, [pushNotification]);
+
+  const refreshConnectedWalletBalances = useCallback(async () => {
+    if (!isPersonalWallet || !walletAccountId) {
+      setWalletBalances({
+        nativeSymbol: "NEAR",
+        nativeBalance: 0,
+        nativeFormatted: "0.0000 NEAR",
+        wnearBalance: 0,
+        usdcBalance: 0,
+        usdtBalance: 0,
+        tokenBalances: {},
+      });
+      return;
+    }
+    setWalletBalancesLoading(true);
+    try {
+      const snap = await fetchLiveConnectedWalletBalances({
+        address: walletAccountId,
+        chainType: walletChainType,
+      });
+      setWalletBalances(snap);
+    } finally {
+      setWalletBalancesLoading(false);
+    }
+  }, [isPersonalWallet, walletAccountId, walletChainType]);
+
+  useEffect(() => {
+    void refreshConnectedWalletBalances();
+  }, [refreshConnectedWalletBalances]);
+
+  // Listen for live EVM account/network switches in Rabby / MetaMask
+  useEffect(() => {
+    if (!isPersonalWallet || walletChainType !== "evm" || typeof window === "undefined") {
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ethProvider = (window as any).ethereum;
+    if (!ethProvider || typeof ethProvider.on !== "function") return;
+
+    const onAccountsChanged = (accs: unknown) => {
+      if (Array.isArray(accs) && typeof accs[0] === "string" && accs[0]) {
+        setWalletAccountId(accs[0]);
+      } else {
+        setWalletAccountId(null);
+        setIsPersonalWallet(false);
+        pushNotification(
+          "EVM wallet disconnected — Reverted to Protocol Sandbox Vault (jubayir69.testnet)",
+          "shield",
+          "amber"
+        );
+      }
+    };
+    const onChainChanged = () => {
+      void refreshConnectedWalletBalances();
+    };
+
+    ethProvider.on("accountsChanged", onAccountsChanged);
+    ethProvider.on("chainChanged", onChainChanged);
+    return () => {
+      ethProvider.removeListener?.("accountsChanged", onAccountsChanged);
+      ethProvider.removeListener?.("chainChanged", onChainChanged);
+    };
+  }, [isPersonalWallet, walletChainType, refreshConnectedWalletBalances, pushNotification]);
 
   const handleConnectWallet = () => {
     if (walletAccountId) {
@@ -431,13 +527,17 @@ export function App() {
         });
       }
       setWalletModalOpen(false);
-      pushNotification("Opening NEAR Protocol Wallet Selector (Meteor / HOT / Nightly)...", "shield", "cyan");
+      pushNotification(
+        "Opening NEAR Protocol Wallet Selector (Meteor / HOT / Nightly / MyNearWallet)...",
+        "shield",
+        "cyan"
+      );
       await connectorRef.current.connect();
     } catch (err) {
       pushNotification(
-        `NEAR Selector notice: ${err instanceof Error ? err.message : "Connected jubayir69.testnet"}`,
+        `NEAR Wallet connection cancelled: ${err instanceof Error ? err.message : "No wallet connected"}`,
         "shield",
-        "cyan"
+        "amber"
       );
     } finally {
       setWalletConnecting(null);
@@ -448,14 +548,23 @@ export function App() {
     const vaultAcc = overview?.treasuryAccount ?? "jubayir69.testnet";
     setWalletAccountId(vaultAcc);
     setWalletChainType("near");
-    setWalletProviderName("NEAR Testnet Vault");
+    setWalletProviderName("Protocol Sandbox Vault");
+    setIsPersonalWallet(false);
     setWalletModalOpen(false);
-    pushNotification(`Connected NEAR Sovereign Vault: ${vaultAcc}`, "shield", "emerald");
+    pushNotification(
+      `Judge Sandbox Mode Active: ${vaultAcc} (Connect a personal wallet anytime for Personal Wallet Control)`,
+      "shield",
+      "cyan"
+    );
   };
 
   const handleConnectEvmInPage = async (preferredLabel = "Rabby / EVM Wallet") => {
     if (evmRequestInFlightRef.current) {
-      pushNotification("EVM wallet connection prompt is already open — check your browser extension.", "shield", "cyan");
+      pushNotification(
+        "EVM wallet connection prompt is already open — check your browser extension.",
+        "shield",
+        "cyan"
+      );
       return;
     }
     setWalletConnecting("evm");
@@ -463,64 +572,54 @@ export function App() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ethProvider = typeof window !== "undefined" ? (window as any).ethereum : undefined;
-      if (ethProvider && typeof ethProvider.request === "function") {
-        // First check already-authorized accounts so we never trigger duplicate eth_requestAccounts locks
-        let accounts: string[] = [];
-        try {
-          const existing = await ethProvider.request({ method: "eth_accounts" });
-          if (Array.isArray(existing) && existing.length > 0) {
-            accounts = existing;
-          }
-        } catch {
-          // Proceed to eth_requestAccounts
-        }
-        if (accounts.length === 0) {
-          const requested = await ethProvider.request({ method: "eth_requestAccounts" });
-          if (Array.isArray(requested)) {
-            accounts = requested;
-          }
-        }
-        const address = accounts[0];
-        if (address) {
-          const detectedName = ethProvider.isRabby
-            ? "Rabby Wallet (EVM)"
-            : ethProvider.isMetaMask
-              ? "MetaMask (EVM)"
-              : preferredLabel;
-          setWalletAccountId(address);
-          setWalletChainType("evm");
-          setWalletProviderName(detectedName);
-          setWalletModalOpen(false);
-          pushNotification(`Connected ${detectedName}: ${address.slice(0, 8)}...${address.slice(-6)}`, "shield", "emerald");
-          return;
-        }
+      if (!ethProvider || typeof ethProvider.request !== "function") {
+        pushNotification(
+          "No EVM browser wallet (Rabby / MetaMask) detected in window.ethereum. Install an EVM wallet extension or continue in Judge Sandbox Mode.",
+          "shield",
+          "amber"
+        );
+        return;
       }
-      // Clean MPC EVM Custody fallback when on mobile or without an injected EVM extension
-      const mpcEvmAddress = "0xB4177bB6593e9bcCFFf9F3202FE005813cD9C3ce";
-      setWalletAccountId(mpcEvmAddress);
+
+      const requested = await ethProvider.request({ method: "eth_requestAccounts" });
+      const address = Array.isArray(requested) && typeof requested[0] === "string" ? requested[0] : null;
+      if (!address) {
+        pushNotification(
+          "EVM wallet did not return an authorized account — staying in Sandbox Vault Mode.",
+          "shield",
+          "amber"
+        );
+        return;
+      }
+
+      const detectedName = ethProvider.isRabby
+        ? "Rabby Wallet (EVM)"
+        : ethProvider.isMetaMask
+          ? "MetaMask (EVM)"
+          : preferredLabel;
+      setWalletAccountId(address);
       setWalletChainType("evm");
-      setWalletProviderName("MPC EVM Custody (v1.signer)");
+      setWalletProviderName(detectedName);
+      setIsPersonalWallet(true);
       setWalletModalOpen(false);
       pushNotification(
-        `Connected MPC EVM Custody Signer (${mpcEvmAddress.slice(0, 8)}...${mpcEvmAddress.slice(-6)}) via v1.signer-prod.testnet`,
+        `Connected ${detectedName}: ${address.slice(0, 8)}...${address.slice(-6)} — Querying live on-chain balances...`,
         "shield",
         "emerald"
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.toLowerCase().includes("already pending") || msg.toLowerCase().includes("still active")) {
-        pushNotification("Rabby / MetaMask popup is already open in your browser toolbar — approve it or use 1-Tap MPC EVM Signer.", "shield", "amber");
-      } else {
-        // Fallback smoothly to MPC EVM Custody Signer so user is never blocked
-        const mpcEvmAddress = "0xB4177bB6593e9bcCFFf9F3202FE005813cD9C3ce";
-        setWalletAccountId(mpcEvmAddress);
-        setWalletChainType("evm");
-        setWalletProviderName("MPC EVM Custody (v1.signer)");
-        setWalletModalOpen(false);
         pushNotification(
-          `Connected MPC EVM Custody Signer (${mpcEvmAddress.slice(0, 8)}...${mpcEvmAddress.slice(-6)})`,
+          "Rabby / MetaMask popup is already open in your browser toolbar — approve or close it first.",
           "shield",
-          "emerald"
+          "amber"
+        );
+      } else {
+        pushNotification(
+          "Wallet connection request was rejected in Rabby / MetaMask — staying in Sandbox Vault Mode.",
+          "shield",
+          "amber"
         );
       }
     } finally {
@@ -534,44 +633,43 @@ export function App() {
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const win = typeof window !== "undefined" ? (window as any) : {};
-      const solProvider = win?.phantom?.solana ?? (win?.solana?.isPhantom ? win.solana : win?.solana);
-      if (solProvider && typeof solProvider.connect === "function") {
-        const resp = await solProvider.connect();
-        const pubKey = resp?.publicKey?.toString?.() ?? solProvider?.publicKey?.toString?.();
-        if (pubKey) {
-          setWalletAccountId(pubKey);
-          setWalletChainType("solana");
-          setWalletProviderName("Phantom Wallet (Solana)");
-          setWalletModalOpen(false);
-          pushNotification(
-            `Connected Phantom Solana Wallet: ${pubKey.slice(0, 6)}...${pubKey.slice(-6)}`,
-            "shield",
-            "emerald"
-          );
-          return;
-        }
+      const solProvider =
+        win?.phantom?.solana ?? (win?.solana?.isPhantom ? win.solana : win?.solana);
+      if (!solProvider || typeof solProvider.connect !== "function") {
+        pushNotification(
+          "No Phantom / Solana wallet extension detected in window.phantom.solana. Install Phantom or continue in Judge Sandbox Mode.",
+          "shield",
+          "amber"
+        );
+        return;
       }
-      // Clean MPC Solana Custody fallback when on mobile or without Phantom extension
-      const mpcSolAddress = "2qeiLd5y8823Q2MFao5B5ShgzCNj3Lv7fwKmtoaQhhk9";
-      setWalletAccountId(mpcSolAddress);
+
+      const resp = await solProvider.connect();
+      const pubKey = resp?.publicKey?.toString?.() ?? solProvider?.publicKey?.toString?.();
+      if (!pubKey) {
+        pushNotification(
+          "Solana wallet did not return a public key — staying in Sandbox Vault Mode.",
+          "shield",
+          "amber"
+        );
+        return;
+      }
+
+      setWalletAccountId(pubKey);
       setWalletChainType("solana");
-      setWalletProviderName("MPC Solana Custody (v1.signer)");
+      setWalletProviderName("Phantom Wallet (Solana)");
+      setIsPersonalWallet(true);
       setWalletModalOpen(false);
       pushNotification(
-        `Connected MPC Solana Custody Signer (${mpcSolAddress.slice(0, 6)}...${mpcSolAddress.slice(-6)}) via v1.signer-prod.testnet`,
+        `Connected Phantom Solana Wallet: ${pubKey.slice(0, 6)}...${pubKey.slice(-6)} — Querying live SOL & SPL balances...`,
         "shield",
         "emerald"
       );
     } catch {
-      const mpcSolAddress = "2qeiLd5y8823Q2MFao5B5ShgzCNj3Lv7fwKmtoaQhhk9";
-      setWalletAccountId(mpcSolAddress);
-      setWalletChainType("solana");
-      setWalletProviderName("MPC Solana Custody (v1.signer)");
-      setWalletModalOpen(false);
       pushNotification(
-        `Connected MPC Solana Custody Signer (${mpcSolAddress.slice(0, 6)}...${mpcSolAddress.slice(-6)})`,
+        "Wallet connection request was rejected in Phantom — staying in Sandbox Vault Mode.",
         "shield",
-        "emerald"
+        "amber"
       );
     } finally {
       setWalletConnecting(null);
@@ -596,7 +694,12 @@ export function App() {
     }
     const prevName = walletProviderName;
     setWalletAccountId(null);
-    pushNotification(`Disconnected ${prevName}`, "shield", "amber");
+    setIsPersonalWallet(false);
+    pushNotification(
+      `Disconnected ${prevName} — Reverted to Protocol Sandbox Vault (jubayir69.testnet)`,
+      "shield",
+      "amber"
+    );
   };
 
   const walletExplorerHref = walletAccountId
@@ -604,7 +707,9 @@ export function App() {
       ? `https://etherscan.io/address/${walletAccountId}`
       : walletChainType === "solana"
         ? `https://solscan.io/account/${walletAccountId}`
-        : `https://testnet.nearblocks.io/address/${walletAccountId}`
+        : walletAccountId.endsWith(".near")
+          ? `https://nearblocks.io/address/${walletAccountId}`
+          : `https://testnet.nearblocks.io/address/${walletAccountId}`
     : "https://testnet.nearblocks.io/address/jubayir69.testnet";
 
   const walletExplorerLabel =
@@ -614,11 +719,65 @@ export function App() {
         ? "View on Solscan Explorer"
         : "View on NEARBlocks Explorer";
 
+  const shortWalletAddr = formatShortWalletAddress(walletAccountId, walletChainType);
+
   const formattedWalletButtonLabel = walletAccountId
-    ? walletAccountId.length > 20
-      ? `${walletAccountId.slice(0, 6)}...${walletAccountId.slice(-4)}`
-      : walletAccountId
+    ? isPersonalWallet
+      ? shortWalletAddr
+      : `Sandbox: ${shortWalletAddr}`
     : "Connect Wallet";
+
+  const walletContext: ConnectedWalletState = React.useMemo(
+    () => ({
+      isPersonalWallet: Boolean(isPersonalWallet && walletAccountId),
+      address: isPersonalWallet ? walletAccountId : null,
+      shortAddress: shortWalletAddr,
+      chainType: walletChainType,
+      providerName: walletProviderName,
+      explorerAccountUrl: walletExplorerHref,
+      balancesLoading: walletBalancesLoading,
+      nativeSymbol: walletBalances.nativeSymbol,
+      nativeBalance: walletBalances.nativeBalance,
+      nativeFormatted: walletBalances.nativeFormatted,
+      wnearBalance: walletBalances.wnearBalance,
+      usdcBalance: walletBalances.usdcBalance,
+      usdtBalance: walletBalances.usdtBalance,
+      tokenBalances: walletBalances.tokenBalances,
+      refreshBalances: refreshConnectedWalletBalances,
+      signPersonalIntent: async (message: string) => {
+        if (!isPersonalWallet || !walletAccountId) {
+          throw new Error("Connect a personal wallet before signing.");
+        }
+        return signMessageWithPersonalWallet({
+          address: walletAccountId,
+          chainType: walletChainType,
+          message,
+          nearConnector: connectorRef.current,
+        });
+      },
+      anchorNearProofViaWallet: async (poc4HMaster: string) => {
+        if (!isPersonalWallet || !walletAccountId || walletChainType !== "near") {
+          throw new Error("Connect a personal NEAR wallet to broadcast directly from your NEAR account.");
+        }
+        return sendNearTransactionWithPersonalWallet({
+          address: walletAccountId,
+          poc4HMaster,
+          nearConnector: connectorRef.current,
+        });
+      },
+    }),
+    [
+      isPersonalWallet,
+      walletAccountId,
+      shortWalletAddr,
+      walletChainType,
+      walletProviderName,
+      walletExplorerHref,
+      walletBalancesLoading,
+      walletBalances,
+      refreshConnectedWalletBalances,
+    ]
+  );
 
   const handleCopyWalletAddress = () => {
     if (!walletAccountId) return;
@@ -1113,50 +1272,86 @@ export function App() {
             </nav>
           </div>
 
-          {/* Sidebar Footer: Unified Live VAULT ACCOUNT Card */}
+          {/* Sidebar Footer: Dual-Mode Custody Card (Connected Personal Wallet vs Protocol Sandbox Vault) */}
           <div className="border-t border-[var(--border-color)] p-3">
             {showExpandedSidebar ? (
-              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                    VAULT ACCOUNT
-                  </span>
-                  <Badge variant="emerald" className="text-[10px]">
-                    {overview?.vault?.liveRpcVerified === false ? "SNAPSHOT" : "LIVE RPC"}
-                  </Badge>
-                </div>
-                <a
-                  href={`https://testnet.nearblocks.io/address/${overview?.treasuryAccount ?? "jubayir69.testnet"}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-1 inline-flex max-w-full items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
-                >
-                  <span className="truncate">{overview?.treasuryAccount ?? "jubayir69.testnet"}</span>
-                  <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
-                </a>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                  <span>Liquid Balance</span>
-                  <span className="font-mono font-bold text-[var(--accent-emerald)]">
-                    {unifiedVaultBalance}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                  <span>Fee Recipient</span>
+              walletContext.isPersonalWallet && walletAccountId ? (
+                <div className="rounded-xl border border-emerald-500/45 bg-emerald-500/8 p-3">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-emerald)]">
+                      CONNECTED WALLET (ACTIVE CONTROL)
+                    </span>
+                    <Badge variant="emerald" className="shrink-0 text-[10px]">
+                      {walletBalancesLoading ? "SYNCING" : "LIVE RPC"}
+                    </Badge>
+                  </div>
                   <a
-                    href={`https://nearblocks.io/address/${overview?.feeRecipient ?? "jubayir33.near"}`}
+                    href={walletExplorerHref}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 font-mono font-bold text-[var(--accent-cyan)] hover:underline"
+                    className="mt-1 inline-flex max-w-full items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
                   >
-                    <span>{overview?.feeRecipient ?? "jubayir33.near"}</span>
-                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                    <span className="truncate">{shortWalletAddr}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
                   </a>
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                    <span>Native Balance</span>
+                    <span className="font-mono font-bold text-[var(--accent-emerald)]">
+                      {walletBalancesLoading ? "Syncing RPC..." : walletContext.nativeFormatted}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                    <span>Stablecoins</span>
+                    <span className="font-mono font-bold text-[var(--accent-cyan)]">
+                      {walletBalancesLoading
+                        ? "Querying..."
+                        : `USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
+                    </span>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                      SANDBOX VAULT ACCOUNT
+                    </span>
+                    <Badge variant="emerald" className="text-[10px]">
+                      {overview?.vault?.liveRpcVerified === false ? "SNAPSHOT" : "LIVE RPC"}
+                    </Badge>
+                  </div>
+                  <a
+                    href={`https://testnet.nearblocks.io/address/${overview?.treasuryAccount ?? "jubayir69.testnet"}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 inline-flex max-w-full items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
+                  >
+                    <span className="truncate">{overview?.treasuryAccount ?? "jubayir69.testnet"}</span>
+                    <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
+                  </a>
+                  <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                    <span>Liquid Balance</span>
+                    <span className="font-mono font-bold text-[var(--accent-emerald)]">
+                      {unifiedVaultBalance}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                    <span>Fee Recipient</span>
+                    <a
+                      href={`https://nearblocks.io/address/${overview?.feeRecipient ?? "jubayir33.near"}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 font-mono font-bold text-[var(--accent-cyan)] hover:underline"
+                    >
+                      <span>{overview?.feeRecipient ?? "jubayir33.near"}</span>
+                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                    </a>
+                  </div>
+                </div>
+              )
             ) : (
               <div className="flex justify-center">
                 <Badge variant="emerald" className="px-1.5 py-0.5 text-[10px]">
-                  LIVE
+                  {walletContext.isPersonalWallet ? "USER" : "LIVE"}
                 </Badge>
               </div>
             )}
@@ -1288,18 +1483,56 @@ export function App() {
                     <div className="flex items-start justify-between gap-2 border-b border-[var(--border-color)] pb-2.5">
                       <div className="min-w-0 flex-1">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                          {walletProviderName}
+                          {walletContext.isPersonalWallet
+                            ? `${walletProviderName} · ACTIVE CONTROL`
+                            : "PROTOCOL SANDBOX VAULT"}
                         </span>
                         <span className="mt-0.5 block break-all font-mono text-xs font-extrabold text-[var(--accent-emerald)]">
                           {walletAccountId}
                         </span>
                       </div>
                       <Badge variant="emerald" className="shrink-0 text-[10px]">
-                        {walletChainType.toUpperCase()}
+                        {walletContext.isPersonalWallet
+                          ? walletChainType.toUpperCase()
+                          : "SANDBOX"}
                       </Badge>
                     </div>
 
+                    {walletContext.isPersonalWallet && (
+                      <div className="mt-2.5 rounded-lg border border-emerald-500/35 bg-emerald-500/8 px-3 py-2 font-mono text-[11px]">
+                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
+                          <span>Live Native:</span>
+                          <span className="font-bold text-[var(--accent-emerald)]">
+                            {walletBalancesLoading ? "Syncing..." : walletContext.nativeFormatted}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center justify-between text-[var(--text-secondary)]">
+                          <span>Stablecoins:</span>
+                          <span className="font-bold text-[var(--accent-cyan)]">
+                            {walletBalancesLoading
+                              ? "Syncing..."
+                              : `USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="mt-2.5 space-y-1.5">
+                      {walletContext.isPersonalWallet && (
+                        <button
+                          type="button"
+                          onClick={() => void refreshConnectedWalletBalances()}
+                          className="flex w-full items-center justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] cursor-pointer"
+                        >
+                          <span>Refresh On-Chain Balances</span>
+                          <RefreshCw
+                            className={`h-3.5 w-3.5 text-[var(--accent-emerald)] ${
+                              walletBalancesLoading ? "animate-spin" : ""
+                            }`}
+                          />
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={handleCopyWalletAddress}
@@ -1351,6 +1584,71 @@ export function App() {
             </div>
           </header>
 
+          {/* Dual-Mode Custody Banner (Mode A: Sandbox Vault vs Mode B: Connected Personal Wallet Control) */}
+          {walletContext.isPersonalWallet && walletAccountId ? (
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-500/35 bg-emerald-500/10 px-3.5 py-2 font-mono text-[11px] leading-relaxed text-[var(--text-secondary)] sm:px-6">
+              <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+                <Badge variant="emerald" className="shrink-0 text-[10px]">
+                  PERSONAL WALLET ACTIVE
+                </Badge>
+                <span className="min-w-0 break-words">
+                  <span className="font-semibold text-[var(--text-primary)]">
+                    PERSONAL WALLET CONTROL
+                  </span>{" "}
+                  (
+                  <strong className="break-all font-extrabold text-[var(--accent-emerald)]">
+                    {walletAccountId}
+                  </strong>
+                  ) —{" "}
+                  <span className="text-[var(--text-primary)]">
+                    Live On-Chain RPC Balances, Strict Balance Locks &amp; Direct Wallet Popup Signing Active.
+                  </span>{" "}
+                  <span className="inline-block font-bold text-[var(--accent-cyan)]">
+                    [
+                    {walletBalancesLoading
+                      ? "Syncing RPC..."
+                      : `${walletContext.nativeFormatted} | USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
+                    ]
+                  </span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void refreshConnectedWalletBalances()}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/25 cursor-pointer"
+              >
+                <RefreshCw
+                  className={`h-3 w-3 ${walletBalancesLoading ? "animate-spin" : ""}`}
+                />
+                <span>Refresh RPC</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2.5 border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3.5 py-2 font-mono text-[11px] leading-relaxed text-[var(--text-secondary)] sm:px-6">
+              <Badge variant="sky" className="shrink-0 text-[10px]">
+                JUDGE SANDBOX
+              </Badge>
+              <span className="min-w-0 break-words">
+                <span className="font-semibold text-[var(--text-primary)]">
+                  SANDBOX VAULT MODE
+                </span>{" "}
+                (
+                <strong className="font-extrabold text-[var(--accent-cyan)]">
+                  {overview?.treasuryAccount ?? "jubayir69.testnet"}
+                </strong>
+                ) — Click{" "}
+                <strong className="font-extrabold text-[var(--accent-emerald)]">
+                  Connect Wallet
+                </strong>{" "}
+                in the top bar to switch to{" "}
+                <strong className="font-extrabold text-[var(--text-primary)]">
+                  Personal Wallet Control
+                </strong>
+                .
+              </span>
+            </div>
+          )}
+
           {/* Emergency Kill-Switch Red Halt Banner (Only shown when explicitly engaged) */}
           {killSwitchEngaged && (
             <div className="flex items-center justify-between border-b border-rose-500/40 bg-rose-500/15 px-6 py-2.5 text-xs font-bold text-rose-500 animate-fade-in">
@@ -1373,6 +1671,7 @@ export function App() {
                 onRunLoop={handleRunAutonomousLoop}
                 onNavigateSwap={handleNavigateSwap}
                 onOpenDocsQuickstart={handleOpenDocsQuickstart}
+                walletContext={walletContext}
                 onProofCommitted={(receipt) => {
                   void fetchOverview();
                   if (receipt?.liveBroadcast && receipt?.explorerTxUrl) {
@@ -1404,6 +1703,7 @@ export function App() {
             {activeView === "swap" && (
               <CrossChainSwapView
                 overview={overview}
+                walletContext={walletContext}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -1412,6 +1712,7 @@ export function App() {
             {activeView === "shield" && (
               <PolicyShieldView
                 overview={overview}
+                walletContext={walletContext}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -1429,6 +1730,7 @@ export function App() {
                 payrollData={payrollData}
                 loading={payrollLoading}
                 onRunPayroll={handleUserPayroll}
+                walletContext={walletContext}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -1448,6 +1750,7 @@ export function App() {
               <MpcRheaYieldView
                 routerData={routerData}
                 onRefresh={fetchMpcAndRhea}
+                walletContext={walletContext}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -1489,14 +1792,14 @@ export function App() {
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] pb-3.5">
               <div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="emerald">MULTI-CHAIN WALLET</Badge>
+                  <Badge variant="emerald">PERSONAL WALLET CONTROL</Badge>
                   <Badge variant="sky">DIRECT IN-PAGE</Badge>
                 </div>
                 <h3 className="mt-1.5 font-display text-base font-extrabold text-[var(--text-primary)]">
-                  Connect Sovereign Treasury Wallet
+                  Connect Personal Wallet or Judge Sandbox
                 </h3>
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                  Connect NEAR, Rabby / MetaMask (EVM), or Phantom (Solana) directly in-page with zero external bridge redirects.
+                  Connecting a personal wallet switches 100% of balances, balance validation, and signing to your wallet.
                 </p>
               </div>
               <button
@@ -1523,7 +1826,7 @@ export function App() {
                       NEAR Protocol Wallets
                     </span>
                     <Badge variant="emerald" className="text-[10px]">
-                      NEAR TESTNET
+                      PERSONAL NEAR
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
@@ -1548,11 +1851,11 @@ export function App() {
                       Rabby Wallet · MetaMask · EVM
                     </span>
                     <Badge variant="sky" className="text-[10px]">
-                      DIRECT EIP-1193
+                      PERSONAL EIP-1193
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                    Direct in-page window.ethereum handshake (or MPC EVM Custody Signer on mobile)
+                    Direct window.ethereum handshake + real eth_getBalance &amp; ERC-20 USDC/USDT verification
                   </p>
                 </div>
                 <span className="shrink-0 rounded-lg border border-sky-500/40 bg-sky-500/20 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-cyan)]">
@@ -1573,11 +1876,11 @@ export function App() {
                       Phantom Wallet (Solana)
                     </span>
                     <Badge variant="emerald" className="text-[10px]">
-                      DIRECT SOLANA
+                      PERSONAL SOLANA
                     </Badge>
                   </div>
                   <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                    Direct in-page window.phantom.solana handshake (or MPC Solana Custody Signer)
+                    Direct window.phantom.solana handshake + real Solana RPC balance &amp; signMessage verification
                   </p>
                 </div>
                 <span className="shrink-0 rounded-lg border border-[var(--border-color)] bg-[var(--panel-solid)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--text-primary)]">
@@ -1585,7 +1888,7 @@ export function App() {
                 </span>
               </button>
 
-              {/* Option 4: 1-Tap Sovereign NEAR Testnet Vault (jubayir69.testnet) */}
+              {/* Option 4: Explicitly Labeled 1-Tap Judge Sandbox (jubayir69.testnet) */}
               <button
                 type="button"
                 onClick={handleConnectNearVaultDirect}
@@ -1593,14 +1896,14 @@ export function App() {
               >
                 <div className="min-w-0 flex-1 pr-2">
                   <span className="block font-mono text-xs font-bold text-[var(--accent-emerald)]">
-                    1-Tap Sovereign Vault: {overview?.treasuryAccount ?? "jubayir69.testnet"}
+                    1-Tap Judge Sandbox: {overview?.treasuryAccount ?? "jubayir69.testnet"}
                   </span>
                   <span className="block text-[11px] text-[var(--text-secondary)]">
-                    Instant Judge / Mobile session bind to on-chain NEAR Testnet Treasury
+                    Protocol Sandbox Treasury Vault Mode (Q-017 walletless judge verification)
                   </span>
                 </div>
-                <Badge variant="emerald" className="text-[10px]">
-                  INSTANT
+                <Badge variant="sky" className="text-[10px]">
+                  SANDBOX
                 </Badge>
               </button>
             </div>

@@ -4,7 +4,9 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Lock,
   Plus,
+  RefreshCw,
   Upload,
 } from "lucide-react";
 import { type TelemetryFeedItem } from "@/components/ui/animated-list";
@@ -21,6 +23,10 @@ import {
   UnseenEnterButton,
 } from "@/components/ui/interactive-buttons";
 import { TextAnimate } from "@/components/ui/text-animate";
+import {
+  WalletSignatureRejectedError,
+  type ConnectedWalletState,
+} from "./wallet-controller";
 
 function CopyHashButton({
   value,
@@ -134,6 +140,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   payrollData,
   loading,
   onRunPayroll,
+  walletContext,
   judgeMode,
   onNotify,
 }: {
@@ -145,6 +152,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     originChainLabel?: string;
     customCsvContent?: string;
   }) => void;
+  walletContext?: ConnectedWalletState;
   judgeMode?: boolean;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
@@ -158,7 +166,26 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       invoiceRef: string;
     }>
   >([]);
+  const [signingBatch, setSigningBatch] = useState(false);
+  const [batchSignError, setBatchSignError] = useState<string | null>(null);
+  const [signedBatchReceipt, setSignedBatchReceipt] = useState<{
+    signerAddress: string;
+    signature: string;
+    totalUsdcFormatted: string;
+    settledRows: number;
+    timestamp: string;
+  } | null>(null);
   const csvFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (walletContext?.isPersonalWallet && walletContext.address) {
+      setFreelancerAccountId(walletContext.address);
+    } else {
+      setFreelancerAccountId("alice-dev.testnet");
+    }
+    setBatchSignError(null);
+    setSignedBatchReceipt(null);
+  }, [walletContext?.isPersonalWallet, walletContext?.address]);
 
   const rawBatch = payrollData?.batchResult;
   const rawTrimmedNet = requestedNetUsdc.trim();
@@ -551,21 +578,104 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     );
   };
 
+  const userUsdcFormatted =
+    walletContext?.usdcBalance != null ? walletContext.usdcBalance.toFixed(2) : "0.00";
+  const requiredBatchUsdc = batch?.totalSettledUsdc ?? 264;
+  const insufficientBatchUsdc = Boolean(
+    walletContext?.isPersonalWallet &&
+      walletContext.address &&
+      !walletContext.balancesLoading &&
+      walletContext.usdcBalance < requiredBatchUsdc
+  );
+
+  const handleAuthorizeAndExecuteBatch = async (customCsvContent?: string) => {
+    setBatchSignError(null);
+    if (!walletContext?.isPersonalWallet || !walletContext.address) {
+      onRunPayroll({
+        freelancerAccountId,
+        requestedNetUsdc: Number(requestedNetUsdc) || 250,
+        originChainLabel,
+        customCsvContent,
+      });
+      return;
+    }
+
+    if (walletContext.usdcBalance < requiredBatchUsdc) {
+      const errMsg = `❌ Connected Wallet (${walletContext.shortAddress}) holds ${userUsdcFormatted} USDC; $${requiredBatchUsdc.toFixed(
+        2
+      )} USDC required for on-chain settlement. Execution is blocked until your wallet holds sufficient USDC.`;
+      setBatchSignError(errMsg);
+      onNotify?.(errMsg, "payroll");
+      return;
+    }
+
+    setSigningBatch(true);
+    try {
+      const signPayload = [
+        "KratonOS Batch Payroll Authorization",
+        `Payer Wallet: ${walletContext.address} (${walletContext.chainType.toUpperCase()})`,
+        `Settled Rows: ${batch.totalSettledCount}/${batch.totalRowsImported}`,
+        `Total Settlement Amount: $${requiredBatchUsdc.toFixed(2)} USDC`,
+        `PoC-4 H_master: ${batch.poc4HMaster}`,
+        `Timestamp: ${new Date().toISOString()}`,
+      ].join("\n");
+
+      const signed = await walletContext.signPersonalIntent(signPayload);
+      setSignedBatchReceipt({
+        signerAddress: signed.signerAddress,
+        signature: signed.signature,
+        totalUsdcFormatted: `$${requiredBatchUsdc.toFixed(2)} USDC`,
+        settledRows: batch.totalSettledCount,
+        timestamp: new Date().toLocaleTimeString(),
+      });
+      onRunPayroll({
+        freelancerAccountId,
+        requestedNetUsdc: Number(requestedNetUsdc) || 250,
+        originChainLabel,
+        customCsvContent,
+      });
+      onNotify?.(
+        `Signed & Authorized $${requiredBatchUsdc.toFixed(2)} USDC Batch Payroll via ${walletContext.shortAddress}`,
+        "payroll"
+      );
+    } catch (err) {
+      if (err instanceof WalletSignatureRejectedError) {
+        setBatchSignError(
+          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+        );
+        onNotify?.(
+          "Transaction Cancelled: Signature request was rejected in your connected wallet.",
+          "payroll"
+        );
+      } else {
+        const msg = err instanceof Error ? err.message : "Wallet signing failed.";
+        setBatchSignError(`❌ Wallet Signing Error: ${msg}`);
+        onNotify?.(`Wallet Signing Error: ${msg}`, "payroll");
+      }
+    } finally {
+      setSigningBatch(false);
+    }
+  };
+
   const handleUploadCustomCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       const text = await file.text();
-      onRunPayroll({
-        freelancerAccountId,
-        requestedNetUsdc: Number(requestedNetUsdc) || 250,
-        originChainLabel,
-        customCsvContent: text,
-      });
-      onNotify?.(
-        `Uploaded custom CSV (${file.name}) & executing fault-isolated batch payroll`,
-        "payroll"
-      );
+      if (walletContext?.isPersonalWallet && walletContext.address) {
+        await handleAuthorizeAndExecuteBatch(text);
+      } else {
+        onRunPayroll({
+          freelancerAccountId,
+          requestedNetUsdc: Number(requestedNetUsdc) || 250,
+          originChainLabel,
+          customCsvContent: text,
+        });
+        onNotify?.(
+          `Uploaded custom CSV (${file.name}) & executing fault-isolated batch payroll`,
+          "payroll"
+        );
+      }
     } finally {
       e.target.value = "";
     }
@@ -591,9 +701,20 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
             Zero-shortfall ceiling-math freelancer invoicing combined with chunked NEP-141 batch payroll and bookkeeper CSV reconciliation
           </p>
         </div>
-        <Badge variant="emerald" className="font-mono">
-          100.00% Net Payout Guarantee
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          {walletContext?.isPersonalWallet && walletContext.address ? (
+            <Badge variant="sky" className="font-mono">
+              Connected Wallet: {walletContext.shortAddress}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="font-mono">
+              Sandbox Vault: jubayir69.testnet
+            </Badge>
+          )}
+          <Badge variant="emerald" className="font-mono">
+            100.00% Net Payout Guarantee
+          </Badge>
+        </div>
       </div>
 
       {judgeMode && (
@@ -616,9 +737,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                Freelancer NEAR Account (Gasless Meta-Tx Recipient)
-              </label>
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                  Freelancer / Recipient Account (Gasless Meta-Tx Recipient)
+                </label>
+                {walletContext?.isPersonalWallet && walletContext.address && (
+                  <span className="font-mono text-[10px] font-bold text-[var(--accent-emerald)]">
+                    Synced to Connected Wallet
+                  </span>
+                )}
+              </div>
               <input
                 type="text"
                 value={freelancerAccountId}
@@ -813,6 +941,19 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="sky">NEAR-fast-ft-transfer Pattern</Badge>
                 <Badge variant="emerald">Auto storage_deposit (0.00125 NEAR)</Badge>
+                {walletContext?.isPersonalWallet && walletContext.address ? (
+                  <Badge
+                    variant={insufficientBatchUsdc ? "amber" : "emerald"}
+                    className="font-mono"
+                  >
+                    Payer: Connected Wallet ({walletContext.shortAddress} — Available:{" "}
+                    {walletContext.balancesLoading ? "Syncing..." : `${userUsdcFormatted} USDC`})
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="font-mono">
+                    Payer: Protocol Sandbox Vault (jubayir69.testnet)
+                  </Badge>
+                )}
               </div>
               <CardTitle className="mt-2">
                 12-Row Fault-Isolated Batch Payroll &amp; Bookkeeper Reconciliation
@@ -822,21 +963,59 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               </CardDescription>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <HoldConfirmButton
-                label={`Hold to Execute $${batch.totalSettledUsdc.toLocaleString("en-US", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })} Batch Payroll`}
-                doneLabel={`${batch.totalSettledCount}/${batch.totalRowsImported} PAYROLL SETTLED`}
-                disabled={loading}
-                onConfirm={() =>
-                  onRunPayroll({
-                    freelancerAccountId,
-                    requestedNetUsdc: Number(requestedNetUsdc) || 250,
-                    originChainLabel,
-                  })
-                }
-              />
+              {walletContext?.isPersonalWallet && walletContext.address ? (
+                <button
+                  type="button"
+                  disabled={
+                    loading ||
+                    signingBatch ||
+                    walletContext.balancesLoading ||
+                    insufficientBatchUsdc
+                  }
+                  onClick={() => void handleAuthorizeAndExecuteBatch()}
+                  className={`inline-flex min-h-10 h-auto items-center justify-center gap-2 rounded-full border px-4 py-2 text-center font-mono text-xs font-extrabold tracking-wider whitespace-normal transition-all ${
+                    insufficientBatchUsdc
+                      ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                      : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                  }`}
+                >
+                  {insufficientBatchUsdc ? (
+                    <>
+                      <Lock className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        Blocked: Insufficient USDC ({userUsdcFormatted} / $
+                        {requiredBatchUsdc.toFixed(2)} USDC)
+                      </span>
+                    </>
+                  ) : signingBatch ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span>Awaiting Wallet Signature Popup...</span>
+                    </>
+                  ) : (
+                    <span>
+                      Sign &amp; Execute ${requiredBatchUsdc.toFixed(2)} Batch Payroll (
+                      {walletContext.shortAddress})
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <HoldConfirmButton
+                  label={`Hold to Execute $${batch.totalSettledUsdc.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })} Batch Payroll`}
+                  doneLabel={`${batch.totalSettledCount}/${batch.totalRowsImported} PAYROLL SETTLED`}
+                  disabled={loading}
+                  onConfirm={() =>
+                    onRunPayroll({
+                      freelancerAccountId,
+                      requestedNetUsdc: Number(requestedNetUsdc) || 250,
+                      originChainLabel,
+                    })
+                  }
+                />
+              )}
               <input
                 ref={csvFileInputRef}
                 type="file"
@@ -847,7 +1026,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <button
                 type="button"
                 onClick={() => csvFileInputRef.current?.click()}
-                disabled={loading}
+                disabled={loading || signingBatch}
                 className="inline-flex min-h-10 h-auto items-center justify-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-4 py-2 text-center font-mono text-xs font-bold tracking-wider whitespace-normal uppercase text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)] cursor-pointer"
               >
                 <Upload className="h-3.5 w-3.5 shrink-0" />
@@ -865,6 +1044,45 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          {walletContext?.isPersonalWallet && walletContext.address && insufficientBatchUsdc && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-500/55 bg-rose-500/12 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
+            >
+              ❌ Connected Wallet ({walletContext.shortAddress}) holds {userUsdcFormatted} USDC; $
+              {requiredBatchUsdc.toFixed(2)} USDC required for on-chain settlement. On-chain batch
+              execution is blocked until your connected wallet holds at least $
+              {requiredBatchUsdc.toFixed(2)} USDC.
+            </div>
+          )}
+
+          {batchSignError && (
+            <div
+              role="alert"
+              className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3 text-xs font-bold text-rose-500 animate-fade-in"
+            >
+              {batchSignError}
+            </div>
+          )}
+
+          {signedBatchReceipt && (
+            <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3.5 font-mono text-xs animate-fade-in">
+              <div className="flex flex-wrap items-center justify-between gap-2 font-bold text-[var(--accent-emerald)]">
+                <span>
+                  ✓ BATCH PAYROLL AUTHORIZED ({signedBatchReceipt.settledRows} Rows ·{" "}
+                  {signedBatchReceipt.totalUsdcFormatted})
+                </span>
+                <Badge variant="emerald">{signedBatchReceipt.timestamp}</Badge>
+              </div>
+              <div className="break-all text-[11px] text-[var(--text-primary)]">
+                <strong>Connected Payer Wallet:</strong> {signedBatchReceipt.signerAddress}
+              </div>
+              <div className="break-all text-[11px] text-[var(--accent-cyan)]">
+                <strong>Wallet Signature:</strong> {signedBatchReceipt.signature}
+              </div>
+            </div>
+          )}
+
           {batch && (
             <>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -1654,11 +1872,13 @@ export interface MpcRheaRouterSlice {
 export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
   routerData,
   onRefresh,
+  walletContext,
   judgeMode,
   onNotify,
 }: {
   routerData: MpcRheaRouterSlice | null;
   onRefresh?: (customDerivationPath?: string) => void;
+  walletContext?: ConnectedWalletState;
   judgeMode?: boolean;
   onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
 }) {
@@ -1671,11 +1891,18 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
     usdValue: string;
     timestamp: string;
     laneAccount: string;
+    signature?: string;
   } | null>(null);
+  const [sweepError, setSweepError] = useState<string | null>(null);
   const [sweeping, setSweeping] = useState(false);
   const flashTimerRef = useRef<number | null>(null);
   const mpc = routerData?.mpcSuite;
   const rhea = routerData?.rheaFarms;
+
+  useEffect(() => {
+    setSweepError(null);
+    setSweepReceipt(null);
+  }, [walletContext?.isPersonalWallet, walletContext?.address]);
 
   useEffect(() => {
     if (rhea?.mcaLendingHealth) {
@@ -1704,8 +1931,55 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
     };
   }, [customCollateralUsd, customBorrowedUsd]);
 
-  const handleExecuteRewardSweep = () => {
+  const handleExecuteRewardSweep = async () => {
+    setSweepError(null);
     setSweeping(true);
+
+    if (walletContext?.isPersonalWallet && walletContext.address) {
+      try {
+        const signPayload = [
+          "KratonOS RHEA Single-Tx LP Reward Sweep Authorization",
+          `Signer Wallet: ${walletContext.address} (${walletContext.chainType.toUpperCase()})`,
+          `Contract: ${rhea?.farmingContractId ?? "ref-farming.testnet"}`,
+          `Method: withdraw_reward({ "token_id": "wrap.testnet", "amount": "0" })`,
+          `MPC Derivation Path: ${derivationPath}`,
+          `Timestamp: ${new Date().toISOString()}`,
+        ].join("\n");
+
+        const signed = await walletContext.signPersonalIntent(signPayload);
+        onRefresh?.(derivationPath);
+        const nowTime = new Date().toLocaleTimeString();
+        setSweepReceipt({
+          sweptAmountWnear: "0.0000 wNEAR (0 Unclaimed Seed Balance)",
+          usdValue: "$0.00 USD",
+          timestamp: nowTime,
+          laneAccount: signed.signerAddress,
+          signature: signed.signature,
+        });
+        onNotify?.(
+          `Signed RHEA withdraw_reward({ amount: "0" }) authorization via ${walletContext.shortAddress}`,
+          "swap"
+        );
+      } catch (err) {
+        if (err instanceof WalletSignatureRejectedError) {
+          setSweepError(
+            "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+          );
+          onNotify?.(
+            "Transaction Cancelled: Signature request was rejected in your connected wallet.",
+            "swap"
+          );
+        } else {
+          const msg = err instanceof Error ? err.message : "Wallet signing failed.";
+          setSweepError(`❌ Wallet Signing Error: ${msg}`);
+          onNotify?.(`Wallet Signing Error: ${msg}`, "swap");
+        }
+      } finally {
+        setSweeping(false);
+      }
+      return;
+    }
+
     onRefresh?.(derivationPath);
     window.setTimeout(() => {
       const nowTime = new Date().toLocaleTimeString();
@@ -1813,6 +2087,15 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {walletContext?.isPersonalWallet && walletContext.address ? (
+            <Badge variant="sky" className="font-mono">
+              Connected Wallet: {walletContext.shortAddress}
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="font-mono">
+              Sandbox Vault: jubayir69.testnet
+            </Badge>
+          )}
           <a
             href="https://testnet.nearblocks.io/address/v1.signer-prod.testnet"
             target="_blank"
@@ -2031,20 +2314,39 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 <UnseenEnterButton
                   label={
                     sweeping
-                      ? "Executing Single-Tx Reward Sweep..."
-                      : 'Execute Single-Tx LP Reward Sweep ("amount": "0")'
+                      ? walletContext?.isPersonalWallet
+                        ? "Awaiting Wallet Signature Popup..."
+                        : "Executing Single-Tx Reward Sweep..."
+                      : walletContext?.isPersonalWallet && walletContext.address
+                        ? `Sign & Execute LP Reward Sweep (${walletContext.shortAddress})`
+                        : 'Execute Single-Tx LP Reward Sweep ("amount": "0")'
                   }
                   disabled={sweeping}
-                  onClick={handleExecuteRewardSweep}
+                  onClick={() => void handleExecuteRewardSweep()}
                   className="w-full"
                 />
+                {sweepError && (
+                  <div
+                    role="alert"
+                    className="rounded-xl border border-rose-500/60 bg-rose-500/15 px-3.5 py-2.5 text-xs font-bold text-rose-500 animate-fade-in"
+                  >
+                    {sweepError}
+                  </div>
+                )}
                 {sweepReceipt && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/45 bg-emerald-500/12 px-3.5 py-2.5 font-mono text-xs text-[var(--accent-emerald)] animate-fade-in">
-                    <span>
-                      ✓ Swept {sweepReceipt.sweptAmountWnear} ({sweepReceipt.usdValue}) via{" "}
-                      {sweepReceipt.laneAccount}
-                    </span>
-                    <Badge variant="emerald">{sweepReceipt.timestamp}</Badge>
+                  <div className="space-y-1.5 rounded-xl border border-emerald-500/45 bg-emerald-500/12 px-3.5 py-2.5 font-mono text-xs text-[var(--accent-emerald)] animate-fade-in">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="break-all">
+                        ✓ Swept {sweepReceipt.sweptAmountWnear} ({sweepReceipt.usdValue}) via{" "}
+                        {sweepReceipt.laneAccount}
+                      </span>
+                      <Badge variant="emerald">{sweepReceipt.timestamp}</Badge>
+                    </div>
+                    {sweepReceipt.signature && (
+                      <div className="break-all text-[11px] text-[var(--accent-cyan)]">
+                        <strong>Wallet Signature:</strong> {sweepReceipt.signature}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

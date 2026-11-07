@@ -322,11 +322,13 @@ const API_SPECS: ApiEndpointSpec[] = [
     path: "/api/onchain/commit-proof",
     summary:
       "Signs and commits the current PoC-4 H_master digest on NEAR Testnet (jubayir69.testnet) and returns the txHash, signerPublicKey, blockHash, and clickable NEARBlocks explorer link.",
-    auth: "Ed25519 Vault Signer",
+    auth: "Ed25519 Vault Signer / Connected Wallet",
     curlExample: `curl -X POST http://localhost:4173/api/onchain/commit-proof -H "Content-Type: application/json" -d '{}'`,
     tsExample: `const res = await fetch("/api/onchain/commit-proof", { method: "POST" });`,
     params: [
       { name: "poc4HMaster", type: "string", required: false, desc: "Optional 64-char SHA-256 H_master commitment to anchor on-chain." },
+      { name: "connectedWalletAddress", type: "string", required: false, desc: "Optional connected personal wallet address when anchoring a personal signature." },
+      { name: "personalSignature", type: "string", required: false, desc: "Optional personal wallet signature (personal_sign / signMessage) over H_master." },
     ],
     sampleBody: {},
     sampleResponse: {
@@ -334,6 +336,34 @@ const API_SPECS: ApiEndpointSpec[] = [
       signerAccountId: "jubayir69.testnet",
       ed25519Verified: true,
       explorerTxUrl: "https://testnet.nearblocks.io/txns/...",
+    },
+  },
+  {
+    method: "POST",
+    path: "/api/wallet/balances",
+    summary:
+      "Queries real live on-chain native (NEAR, ETH, SOL) and stablecoin (USDC, USDT) balances via RPC for any connected NEAR, EVM (0x...), or Solana wallet address (reporting exact 0.00 when empty).",
+    auth: "Public Multi-Chain RPC Read",
+    curlExample: `curl -X POST http://localhost:4173/api/wallet/balances \\\n  -H "Content-Type: application/json" \\\n  -d '{"address":"jubayir69.testnet","chainType":"near"}'`,
+    tsExample: `const res = await fetch("/api/wallet/balances", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ address: "jubayir69.testnet", chainType: "near" })\n});`,
+    params: [
+      { name: "address", type: "string", required: true, desc: "Connected NEAR account ID, EVM 0x address, or Solana Base58 address." },
+      { name: "chainType", type: "string", required: false, desc: "Wallet network family: near | evm | solana (defaults to near)." },
+      { name: "chainIdHex", type: "string", required: false, desc: "Optional EVM chainId hex (0x1 Mainnet, 0x2105 Base, 0xa4b1 Arbitrum, 0xaa36a7 Sepolia)." },
+    ],
+    sampleBody: {
+      address: "jubayir69.testnet",
+      chainType: "near",
+    },
+    sampleResponse: {
+      status: "OK",
+      chainType: "near",
+      address: "jubayir69.testnet",
+      nativeSymbol: "NEAR",
+      nativeBalance: 5.0,
+      usdcBalance: 0,
+      usdtBalance: 0,
+      liveRpcVerified: true,
     },
   },
 ];
@@ -415,9 +445,9 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
 
 const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   intro:
-    "# KratonOS Sovereign Financial Operating System\n\nQuad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Cross-Chain Confidential Liquidity Router (`1Click Private Shard` + `RHEA V1/V2 DCL`), and Multi-Agent Commerce OS on NEAR Protocol v88.\n\n## Core Equation\n`H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)`\n",
+    "# KratonOS Sovereign Financial Operating System\n\nQuad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Cross-Chain Confidential Liquidity Router (`1Click Private Shard` + `RHEA V1/V2 DCL`), and Multi-Agent Commerce OS on NEAR Protocol v88.\n\n## Core Equation\n`H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)`\n\n## Dual-Mode Wallet Custody\n- **Mode A — Disconnected / 1-Tap Judge Sandbox (`jubayir69.testnet`)**: Default mode for headless AI judges (`Claude Code` / `Codex`) and walletless reviewers.\n- **Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`)**: Queries real live RPC balances (`POST /api/wallet/balances`), blocks execution when `inputAmount > availableWalletBalance`, and requires real browser wallet popup signatures.\n\n## Cross-Repository Submission Disclosure (Rule Q-015)\n- **Builder**: Jubayir Haider (`https://github.com/jubayir-hub-69`)\n- **Submission #1**: KratonOS (`https://github.com/jubayir-hub-69/KratonOS`)\n- **Submission #2 (Independent Companion Project)**: Arrive (`https://github.com/jubayir-hub-69/arrive-near`) — separate repository with zero overlapping business logic or duplicate smart contracts.\n",
   quickstart:
-    "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n",
+    "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- **Mode A (Sandbox)**: Open the app without a browser wallet (or pick `1-Tap Judge Sandbox`) to test all workflows against `jubayir69.testnet`.\n- **Mode B (Personal Wallet)**: Connect `NEAR Wallet`, `Rabby / MetaMask (EVM)`, or `Phantom (Solana)` to switch 100% of balances, balance guards, and popup signing to your wallet.\n- **Rule Q-015 Cross-Repository Disclosure**: Companion independent submission by Jubayir Haider (`https://github.com/jubayir-hub-69`): **Arrive** (`https://github.com/jubayir-hub-69/arrive-near`).\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n- `npm run verify:server`: Verifies all 12 OpenAPI 3.1 REST endpoints (including `POST /api/wallet/balances`) + `/llms.txt` + `/openapi.json`.\n",
   poc4:
     "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Sputnik DAO V2 Escalation\n\n- Source: `contracts/kratonos-policy-vault/src/lib.rs`, `src/core/poc4.ts`\n- 3-Tier Governance: `<= $50.00` (`<= $150.00` verified counterparty) Auto-Approve, `$50.01-$150.00` 1-Council Fast-Track, `> $150.00` single-tx or `> $500.00` daily Sputnik DAO V2 Proposal (`1 NEAR` bond).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
   nep611:
@@ -429,7 +459,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   payroll:
     "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit`.\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
   "api-overview":
-    "# KratonOS REST API Overview (11 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
+    "# KratonOS REST API Overview (12 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
   "api-explorer":
     "# Interactive REST API Endpoint Explorer\n\nSelect any endpoint to inspect request parameters, copy cURL/TypeScript snippets, and execute live HTTP requests.\n",
   "live-status":
@@ -439,7 +469,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   shipped:
     "# Shipped Feature Matrix & Verification Coverage\n\nAll 8 core modules and 6 verification suites are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
-    "# KratonOS Engineering Changelog\n\n- v2026.5: Standalone Mintlify `/docs` route, Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n",
+    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` Personal Wallet Control) & `POST /api/wallet/balances` live multi-RPC balance prober.\n- v2026.5: Standalone Mintlify `/docs` route, Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n",
 };
 
 function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
@@ -474,6 +504,15 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Dual-Mode Wallet Custody</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Mode B (Connected Personal Wallet)</strong>: Connecting <code className="font-mono text-[var(--accent-emerald)]">NEAR Wallet</code>, <code className="font-mono text-[var(--accent-emerald)]">Rabby / MetaMask (EVM)</code>, or <code className="font-mono text-[var(--accent-emerald)]">Phantom (Solana)</code> queries real on-chain balances (<code className="font-mono">POST /api/wallet/balances</code>, <code className="font-mono">0.00</code> when empty), enforces strict <code className="font-mono">inputAmount &gt; availableBalance</code> locks, and requires real wallet popup signatures (<code className="font-mono">personal_sign</code> / <code className="font-mono">signMessage</code> / NEAR Tx).
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Mode A (Judge Sandbox Default, <code className="font-mono">Q-017</code>)</strong>: When no browser wallet is connected, KratonOS runs against the clearly badged <code className="font-mono font-bold text-[var(--accent-cyan)]">Protocol Sandbox Vault (jubayir69.testnet)</code> so headless AI judges (<code className="font-mono">Claude Code</code> / <code className="font-mono">Codex</code>) can verify every workflow without extension popups.
+              </td>
+            </tr>
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; Ledger</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
@@ -526,6 +565,42 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 <strong>Intentionally Blocked (Non-Goal)</strong>: Sub-agents cannot call <code className="font-mono">AddKey</code> or spawn child agents, preventing unbounded recursive spend fan-out and preserving human <code className="font-mono">config.yaml</code> budget isolation.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Cross-Repository Disclosure (Q-015)</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Submission #1 (This Repo)</strong>:{" "}
+                <a
+                  href="https://github.com/jubayir-hub-69/KratonOS"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono font-bold text-[var(--accent-emerald)] hover:underline"
+                >
+                  jubayir-hub-69/KratonOS ↗
+                </a>{" "}
+                by{" "}
+                <a
+                  href="https://github.com/jubayir-hub-69"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono font-semibold text-[var(--text-primary)] hover:underline"
+                >
+                  Jubayir Haider
+                </a>
+                — Quad-Attested Autonomous Treasury, Policy Vault &amp; Intents OS.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Submission #2 (Companion Independent Project)</strong>:{" "}
+                <a
+                  href="https://github.com/jubayir-hub-69/arrive-near"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono font-bold text-[var(--accent-cyan)] hover:underline"
+                >
+                  Arrive (jubayir-hub-69/arrive-near) ↗
+                </a>{" "}
+                — Independent NEAR Hackathon project built from scratch in a separate repository with zero overlapping business logic or duplicate smart contracts.
               </td>
             </tr>
           </tbody>
@@ -1040,7 +1115,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
                   { label: "Cryptographic Pillars", val: "4 Pillars", sub: "PoC-4 Quad-Attested Gate" },
-                  { label: "Live REST & Spec APIs", val: "11 + 2 Specs", sub: "11 REST + /llms.txt + OpenAPI" },
+                  { label: "Live REST & Spec APIs", val: "12 + 2 Specs", sub: "12 REST + /llms.txt + OpenAPI" },
                   { label: "Parallel Gas Lanes", val: "4 NEP-611 Lanes", sub: "~1.2s Cross-Lane Finality" },
                   { label: "Master Key Exposure", val: "0% Local Keys", sub: "Scoped Keys + MPC v1.signer" },
                 ].map((stat) => (
@@ -1081,6 +1156,45 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       policy hash, a hardware-attested signature from NEAR AI Cloud (<code className="font-mono">zai-org/GLM-5.1-FP8</code>), an OutLayer WASI P2 Ethereum Mainnet <code className="font-mono">eth_getProof</code> (EIP-1186) stateRoot receipt, and a 1Click Confidential Private Shard quote.
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Dual-Mode Wallet Custody Overview (Mode A Sandbox vs Mode B Personal Wallet Control) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="sky" className="font-mono text-[10px]">
+                      MODE A // DEFAULT SANDBOX (Q-017)
+                    </Badge>
+                    <code className="font-mono text-[11px] font-bold text-[var(--accent-emerald)]">
+                      jubayir69.testnet
+                    </code>
+                  </div>
+                  <h3 className="font-display mt-2 text-sm font-bold text-[var(--text-primary)]">
+                    Disconnected / 1-Tap Judge Sandbox Mode
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+                    Opening the app without a browser wallet operates on the clearly labeled{" "}
+                    <code className="font-mono text-[var(--text-primary)]">Protocol Sandbox Vault (jubayir69.testnet)</code>{" "}
+                    so automated AI judges (<code className="font-mono">Claude Code</code> / <code className="font-mono">Codex</code>) and quick reviewers can test every workflow immediately.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/8 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="emerald" className="font-mono text-[10px]">
+                      MODE B // ACTIVE PERSONAL CONTROL
+                    </Badge>
+                    <span className="font-mono text-[11px] font-bold text-[var(--accent-cyan)]">
+                      NEAR · EVM · Solana
+                    </span>
+                  </div>
+                  <h3 className="font-display mt-2 text-sm font-bold text-[var(--text-primary)]">
+                    Connected Personal Wallet Control Mode
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
+                    Connecting <code className="font-mono">NEAR Wallet</code>, <code className="font-mono">Rabby / MetaMask</code>, or <code className="font-mono">Phantom</code> switches 100% of active balances (<code className="font-mono">POST /api/wallet/balances</code>, exact <code className="font-mono">0.00</code> when empty), recipient fields, strict insufficient-balance locks, and real wallet popup signing to your personal wallet.
+                  </p>
                 </div>
               </div>
 
@@ -1311,6 +1425,37 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </p>
               </div>
 
+              {/* Dual-Mode Wallet Testing Guide (Mode A Sandbox vs Mode B Personal Wallet) */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="sky" className="font-mono text-[10px]">
+                      MODE A // DISCONNECTED / 1-TAP JUDGE SANDBOX
+                    </Badge>
+                    <code className="font-mono text-[11px] font-bold text-[var(--accent-emerald)]">
+                      jubayir69.testnet
+                    </code>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
+                    Default mode when opening the app without a browser wallet so automated AI judges (<code className="font-mono">Claude Code</code> / <code className="font-mono">Codex</code> per <code className="font-mono">Q-017</code>) and quick reviewers can test every workflow immediately against the live <code className="font-mono">jubayir69.testnet</code> sandbox vault.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/8 p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="emerald" className="font-mono text-[10px]">
+                      MODE B // CONNECTED PERSONAL WALLET CONTROL
+                    </Badge>
+                    <span className="font-mono text-[11px] font-bold text-[var(--accent-cyan)]">
+                      NEAR · EVM · Solana
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
+                    Connecting <code className="font-mono">NEAR Wallet</code>, <code className="font-mono">Rabby / MetaMask (EVM)</code>, or <code className="font-mono">Phantom (Solana)</code> switches the entire app to your own wallet, queries real live on-chain balances (<code className="font-mono">ETH</code>, <code className="font-mono">NEAR</code>, <code className="font-mono">SOL</code>, <code className="font-mono">USDC</code>, <code className="font-mono">USDT</code> via RPC — <code className="font-mono">0.00</code> when empty), enforces strict insufficient-balance locks whenever <code className="font-mono">inputAmount &gt; availableWalletBalance</code>, and requires real wallet extension popup signatures (<code className="font-mono">personal_sign</code> / <code className="font-mono">signMessage</code> / NEAR Tx) before executing any action.
+                  </p>
+                </div>
+              </div>
+
               {/* CLI & Browser Verification Matrix Table */}
               <div className="overflow-x-auto rounded-xl border border-[var(--border-color)]">
                 <table className="w-full text-left text-xs">
@@ -1369,6 +1514,14 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         method: "POST" as const,
                         body: { freelancerAccountId: "alice-dev.testnet", requestedNetUsdc: 250 },
                         out: "Computes 100.00% net invoice math (250.000000 USDC), settles 11/12 batch payroll rows while quarantining Row #12, and generates CSV/PDF bookkeeper ledgers.",
+                      },
+                      {
+                        cmd: "POST /api/wallet/balances",
+                        title: "Live Multi-Chain Wallet RPC Balance Prober",
+                        endpoint: "/api/wallet/balances",
+                        method: "POST" as const,
+                        body: { address: "jubayir69.testnet", chainType: "near" },
+                        out: "Queries live NEAR, EVM (Ethereum/Base/Arbitrum/Sepolia), or Solana RPCs for exact native and USDC/USDT balances (0.00 when empty) to enforce Mode B personal wallet guards.",
                       },
                       {
                         cmd: "POST /api/onchain/commit-proof",
@@ -1481,6 +1634,10 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       label: "GitHub: jubayir-hub-69/KratonOS",
                       href: "https://github.com/jubayir-hub-69/KratonOS",
                     },
+                    {
+                      label: "Companion Repo (Q-015): arrive-near",
+                      href: "https://github.com/jubayir-hub-69/arrive-near",
+                    },
                   ].map((link) => (
                     <a
                       key={link.href}
@@ -1498,7 +1655,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <details className="group rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3">
                   <summary className="flex cursor-pointer list-none items-center justify-between font-mono text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
                     <span>
-                      View Complete 26-Link Official Protocol, Explorer &amp; Contract Reference Directory
+                      View Complete 35-Link Official Protocol, Track Prompt, Explorer &amp; Contract Reference Directory
                     </span>
                     <ChevronRight className="h-4 w-4 transition-transform group-open:rotate-90 text-[var(--accent-emerald)]" />
                   </summary>
@@ -1509,8 +1666,44 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         href: "https://nearhackathon.com/HACKATHON.md",
                       },
                       {
-                        label: "Track Specs: near-hackathon-prompt-examples",
+                        label: "NEAR Hackathon Portal: nearhackathon.com",
+                        href: "https://nearhackathon.com",
+                      },
+                      {
+                        label: "Track Specs Repo: near-hackathon-prompt-examples",
                         href: "https://github.com/nearai/near-hackathon-prompt-examples",
+                      },
+                      {
+                        label: "Track 01 (DeFi): 01-defi.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md",
+                      },
+                      {
+                        label: "Track 02 (Thesis): 02-thesis.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md",
+                      },
+                      {
+                        label: "Track 03 (Privacy): 03-privacy.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md",
+                      },
+                      {
+                        label: "Track 04 (Business): 04-business.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md",
+                      },
+                      {
+                        label: "Track 05 (Swarms): 05-swarms.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md",
+                      },
+                      {
+                        label: "Track 06 (Security): 06-security.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md",
+                      },
+                      {
+                        label: "Track 07 (Agents): 07-agents.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md",
+                      },
+                      {
+                        label: "Track 08 (Real World): 08-realworld.md",
+                        href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md",
                       },
                       {
                         label: "NEAR Docs: docs.near.org",
@@ -2816,7 +3009,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           suite: "Suite 5",
                           cmd: "npm run verify:server",
                           checks: "9",
-                          desc: "HTTP 200 across all 11 OpenAPI 3.1 REST endpoints + /docs + /llms.txt + /openapi.json, UNLISTED_TOKEN anti-hallucination check (AYAN/USDT), Levenshtein typo suggestion (AVEX -> AVAX), and < 120s 5-stage loop.",
+                          desc: "HTTP 200 across all 12 OpenAPI 3.1 REST endpoints (including POST /api/wallet/balances) + /docs + /llms.txt + /openapi.json, UNLISTED_TOKEN anti-hallucination check (AYAN/USDT), Levenshtein typo suggestion (AVEX -> AVAX), and < 120s 5-stage loop.",
                         },
                         {
                           suite: "Suite 6",
@@ -2958,6 +3151,14 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
               <div className="space-y-4">
                 {[
+                  {
+                    ver: "v2026.6 — Dual-Mode Wallet Custody (Mode A Sandbox vs Mode B Personal Wallet) & Live RPC Balance Guard",
+                    items: [
+                      "Implemented Dual-Mode Wallet Execution Architecture separating Mode A (Disconnected / 1-Tap Judge Sandbox Vault jubayir69.testnet) from Mode B (Connected Personal Wallet Control via NEAR Wallet, Rabby / MetaMask EVM, or Phantom Solana).",
+                      "Added POST /api/wallet/balances querying real live on-chain native (NEAR, ETH, SOL) and stablecoin (USDC, USDT) balances across NEAR, Ethereum, Base, Arbitrum, Sepolia, and Solana RPCs (reporting exact 0.00 when empty).",
+                      "Enforced strict inputAmount > availableWalletBalance execution locks and real browser wallet popup signing (personal_sign / signMessage / NEAR Tx) across Swaps, Confidential Limit Orders, Batch Payroll, RHEA LP Sweeps, and On-Chain PoC-4 Proof Anchoring.",
+                    ],
+                  },
                   {
                     ver: "v2026.5 — Standalone Mintlify /docs Route, Anti-Hallucination Oracle & Interactive 5-Stage SVG Pipeline",
                     items: [

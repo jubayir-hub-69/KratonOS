@@ -1,5 +1,9 @@
 # KratonOS Protocol Rules & Architectural Specification (`RULES.md`)
 
+- **Live Production Deployment**: https://kraton-os-taupe.vercel.app · **Docs Portal**: https://kraton-os-taupe.vercel.app/docs
+- **AI Judge Index & OpenAPI 3.1**: https://kraton-os-taupe.vercel.app/llms.txt · https://kraton-os-taupe.vercel.app/openapi.json
+- **Official Repository & Hackathon Spec**: https://github.com/jubayir-hub-69/KratonOS · https://nearhackathon.com/HACKATHON.md
+
 **KratonOS** is a hardware-attested, cryptographically constrained autonomous treasury and multi-agent operating system built on NEAR Protocol for the **NEAR Hackathon 2026**.
 
 Every capital movement, cross-chain swap, DeFi yield allocation, and agentic bounty settlement in KratonOS is governed by deterministic on-chain constraints (`config.yaml` + `kratonos-policy-vault`), hardware enclave attestations, and non-bypassable protocol invariants.

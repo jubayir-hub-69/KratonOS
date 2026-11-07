@@ -224,13 +224,31 @@ async function runServerSmokeTest(): Promise<void> {
   assert.ok(llmsRes.bodyText.includes("https://nearhackathon.com/HACKATHON.md"));
   assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
   assert.ok(llmsRes.bodyText.includes("https://trezu.org/"));
+  assert.ok(
+    llmsRes.bodyText.includes("/api/wallet/balances"),
+    "/llms.txt must document POST /api/wallet/balances"
+  );
+  assert.ok(
+    llmsRes.bodyText.includes("Q-015") &&
+      llmsRes.bodyText.includes("https://github.com/jubayir-hub-69/arrive-near"),
+    "/llms.txt must include Rule Q-015 cross-repository disclosure for arrive-near"
+  );
 
   const openApiJson = JSON.parse(openApiRes.bodyText) as { openapi: string; paths: Record<string, unknown> };
   assert.equal(openApiJson.openapi, "3.1.0");
   assert.ok(openApiJson.paths["/api/payroll/export-statement"]);
+  assert.ok(
+    openApiJson.paths["/api/wallet/balances"],
+    "/openapi.json must document POST /api/wallet/balances"
+  );
+  assert.equal(
+    Object.keys(openApiJson.paths).length,
+    12,
+    "/openapi.json must register all 12 REST API endpoints"
+  );
 
-  // Input validation & HTTP 400 boundary checks (malformed JSON, unlisted token, identical swap)
-  const [badJsonRes, unlistedQuoteRes, sameAssetQuoteRes] = await Promise.all([
+  // Input validation & HTTP 400 boundary checks (malformed JSON, unlisted token, identical swap, invalid EVM address)
+  const [badJsonRes, unlistedQuoteRes, sameAssetQuoteRes, badEvmWalletRes] = await Promise.all([
     invokeRawServerEndpoint("POST", "/api/policy/kill-switch", "{malformed_json"),
     invokeServerEndpoint("POST", "/api/router/quote", {
       originSymbol: "AYAN",
@@ -242,10 +260,15 @@ async function runServerSmokeTest(): Promise<void> {
       destinationSymbol: "wNEAR",
       amountInHuman: 100,
     }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "not-a-valid-0x-address",
+      chainType: "evm",
+    }),
   ]);
   assert.equal(badJsonRes.statusCode, 400, "Malformed JSON body must return HTTP 400 (never 500)");
   assert.equal(unlistedQuoteRes.statusCode, 400, "Unlisted router token must return HTTP 400");
   assert.equal(sameAssetQuoteRes.statusCode, 400, "Identical origin/destination asset must return HTTP 400");
+  assert.equal(badEvmWalletRes.statusCode, 400, "Invalid EVM address on /api/wallet/balances must return HTTP 400");
 
   const teeMarketJson = JSON.parse(teeMarketRes.bodyText) as {
     liveApiUsed?: boolean;
@@ -346,6 +369,64 @@ async function runServerSmokeTest(): Promise<void> {
     "https://testnet.nearblocks.io/address/jubayir69.testnet"
   );
 
+  // 3H. Test POST /api/wallet/balances across NEAR, EVM & Solana
+  const [nearBalRes, evmBalRes, solBalRes] = await Promise.all([
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "jubayir69.testnet",
+      chainType: "near",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "0x000000000000000000000000000000000000dEaD",
+      chainType: "evm",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "11111111111111111111111111111111",
+      chainType: "solana",
+    }),
+  ]);
+  assert.equal(nearBalRes.statusCode, 200, "POST /api/wallet/balances (NEAR) must return HTTP 200");
+  assert.equal(evmBalRes.statusCode, 200, "POST /api/wallet/balances (EVM) must return HTTP 200");
+  assert.equal(solBalRes.statusCode, 200, "POST /api/wallet/balances (Solana) must return HTTP 200");
+
+  interface WalletBalancesResponsePayload {
+    status: string;
+    chainType: string;
+    address: string;
+    nativeSymbol: string;
+    nativeBalance: number;
+    wnearBalance: number;
+    usdcBalance: number;
+    usdtBalance: number;
+    tokenBalances: Record<string, number>;
+    liveRpcVerified: boolean;
+  }
+
+  const nearBalJson = JSON.parse(nearBalRes.bodyText) as WalletBalancesResponsePayload;
+  const evmBalJson = JSON.parse(evmBalRes.bodyText) as WalletBalancesResponsePayload;
+  const solBalJson = JSON.parse(solBalRes.bodyText) as WalletBalancesResponsePayload;
+
+  assert.equal(nearBalJson.status, "OK");
+  assert.equal(nearBalJson.chainType, "near");
+  assert.equal(nearBalJson.nativeSymbol, "NEAR");
+  assert.ok(typeof nearBalJson.nativeBalance === "number" && nearBalJson.nativeBalance >= 0);
+  assert.ok(typeof nearBalJson.usdcBalance === "number" && nearBalJson.usdcBalance >= 0);
+  assert.ok(typeof nearBalJson.usdtBalance === "number" && nearBalJson.usdtBalance >= 0);
+  assert.equal(typeof nearBalJson.liveRpcVerified, "boolean");
+
+  assert.equal(evmBalJson.status, "OK");
+  assert.equal(evmBalJson.chainType, "evm");
+  assert.equal(evmBalJson.nativeSymbol, "ETH");
+  assert.ok(typeof evmBalJson.nativeBalance === "number" && evmBalJson.nativeBalance >= 0);
+  assert.ok(typeof evmBalJson.usdcBalance === "number" && evmBalJson.usdcBalance >= 0);
+  assert.ok(typeof evmBalJson.usdtBalance === "number" && evmBalJson.usdtBalance >= 0);
+  assert.equal(typeof evmBalJson.liveRpcVerified, "boolean");
+
+  assert.equal(solBalJson.status, "OK");
+  assert.equal(solBalJson.chainType, "solana");
+  assert.equal(solBalJson.nativeSymbol, "SOL");
+  assert.ok(typeof solBalJson.nativeBalance === "number" && solBalJson.nativeBalance >= 0);
+  assert.equal(typeof solBalJson.liveRpcVerified, "boolean");
+
   console.log(
     `  ✓ POST /api/security/evaluate : HTTP ${secRes.statusCode} | Decision=${secJson.riskVerdict.decision.toUpperCase()} (Score=${secJson.riskVerdict.riskScore}/100)`
   );
@@ -363,6 +444,9 @@ async function runServerSmokeTest(): Promise<void> {
   );
   console.log(
     `  ✓ Anti-Hallucination Oracle   : AYAN/USDT -> ${ayanQuote.status} (priceUsd=${String(ayanQuote.priceUsd)}) | AVEX/USDT -> Did you mean ${avexQuote.suggestion} ($${avexQuote.suggestionPriceUsd?.toFixed(2)})?`
+  );
+  console.log(
+    `  ✓ POST /api/wallet/balances   : HTTP 200 | NEAR=${nearBalJson.nativeBalance.toFixed(4)} NEAR (rpc=${String(nearBalJson.liveRpcVerified)}) | EVM=${evmBalJson.nativeBalance.toFixed(4)} ETH (rpc=${String(evmBalJson.liveRpcVerified)}) | SOL=${solBalJson.nativeBalance.toFixed(4)} SOL`
   );
   console.log(
     `  ✓ POST /api/onchain/commit-proof: HTTP ${proofRes.statusCode} | TxHash=${proofJson.txHash.slice(0, 16)}... | Ed25519=${String(proofJson.ed25519Verified)} | ${proofJson.explorerTxUrl}\n`
