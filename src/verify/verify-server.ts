@@ -280,11 +280,40 @@ async function runServerSmokeTest(): Promise<void> {
     "GET /api/payroll/export-csv must carry the exact same poc4MasterHash as GET /api/overview"
   );
   assert.ok(
-    stmtRes.bodyText.includes("SETTLED (ON-CHAIN TX") &&
+    stmtRes.bodyText.includes("SETTLED (BATCH ANCHOR TX") &&
+      /shield_[0-9a-f]{16}\|unshield_[0-9a-f]{16}/.test(stmtRes.bodyText) &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/txns/") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/address/"),
-    "Printable payroll statement must include clickable NEARBlocks txns and address links on settled rows"
+    "Printable payroll statement must include full untruncated shield/unshield proof and clickable NEARBlocks batch anchor tx links"
   );
+  assert.ok(
+    Boolean((overviewJson as Record<string, unknown>).latestLiveProofReceipt),
+    "GET /api/overview must always include a verified latestLiveProofReceipt (never null on cold start)"
+  );
+
+  // Verify 3-Tier Earned-Trust Governance on POST /api/security/evaluate ($45 AUTO_APPROVE vs $85 ONE_COUNCIL_FAST_TRACK)
+  const [safeTier1Res, fastTrackTier2Res] = await Promise.all([
+    invokeServerEndpoint("POST", "/api/security/evaluate", {
+      receiverId: "alice-dev.testnet",
+      amountUsd: 45,
+    }),
+    invokeServerEndpoint("POST", "/api/security/evaluate", {
+      receiverId: "alice-dev.testnet",
+      amountUsd: 85,
+    }),
+  ]);
+  const safeTier1Json = JSON.parse(safeTier1Res.bodyText) as {
+    riskVerdict: { decision: string };
+    governanceEscalation: { tier: string };
+  };
+  const fastTrackTier2Json = JSON.parse(fastTrackTier2Res.bodyText) as {
+    riskVerdict: { decision: string };
+    governanceEscalation: { tier: string };
+  };
+  assert.equal(safeTier1Json.riskVerdict.decision, "allow", "$45 safe receiver must return decision === allow");
+  assert.equal(safeTier1Json.governanceEscalation.tier, "AUTO_APPROVE", "$45 safe receiver must return tier === AUTO_APPROVE");
+  assert.equal(fastTrackTier2Json.riskVerdict.decision, "warn", "$85 receiver must return decision === warn (Tier 2)");
+  assert.equal(fastTrackTier2Json.governanceEscalation.tier, "ONE_COUNCIL_FAST_TRACK", "$85 receiver must return tier === ONE_COUNCIL_FAST_TRACK");
   assert.ok(llmsRes.bodyText.includes("# KratonOS"));
   assert.ok(llmsRes.bodyText.includes("https://nearhackathon.com/HACKATHON.md"));
   assert.ok(
@@ -318,8 +347,13 @@ async function runServerSmokeTest(): Promise<void> {
     "/llms.txt must include Rule Q-015 cross-repository disclosure for arrive-near"
   );
 
-  const openApiJson = JSON.parse(openApiRes.bodyText) as { openapi: string; paths: Record<string, unknown> };
+  const openApiJson = JSON.parse(openApiRes.bodyText) as {
+    openapi: string;
+    info: { version: string };
+    paths: Record<string, unknown>;
+  };
   assert.equal(openApiJson.openapi, "3.1.0");
+  assert.equal(openApiJson.info.version, "2026.6", "/openapi.json info.version must be 2026.6");
   assert.ok(openApiJson.paths["/api/payroll/export-statement"]);
   assert.ok(
     openApiJson.paths["/api/wallet/balances"],

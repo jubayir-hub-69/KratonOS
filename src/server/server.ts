@@ -696,7 +696,7 @@ export async function handleKratonHttpRequest(
         }>(req);
 
         const receiverId = String(body.receiverId ?? "alice-dev.testnet").trim();
-        const amountUsd = Number(body.amountUsd ?? 85);
+        const amountUsd = Number(body.amountUsd ?? 45);
         if (!receiverId) {
           throw new HttpRequestError(400, "receiverId must be a non-empty NEAR account string.");
         }
@@ -734,6 +734,7 @@ export async function handleKratonHttpRequest(
         const [riskVerdict, sanitizedBrief, accessKeyListView] = await Promise.all([
           evaluateCounterpartyRisk({
             receiverId,
+            requestedAmountUsd: amountUsd,
             tokenContractId: resolvedTokenContractId,
             rawBriefOrMemo,
             agentReputationScore,
@@ -764,10 +765,22 @@ export async function handleKratonHttpRequest(
           signature: pqSig,
         });
 
+        const redactEvaluateKey = (pk: string): string => {
+          const trimmed = String(pk ?? "").trim();
+          if (trimmed.length <= 22) return trimmed;
+          return `${trimmed.slice(0, 14)}...${trimmed.slice(-6)} (public RPC preview)`;
+        };
+
         sendJson(res, 200, {
           status: "OK",
           treasuryAccount: targetCustodyAccount,
-          accessKeyList: accessKeyListView.keys,
+          accessKeyList: accessKeyListView.keys.slice(0, 8).map((k) => ({
+            public_key: redactEvaluateKey(k.public_key),
+            access_key: {
+              nonce: k.access_key.nonce,
+              permission: k.access_key.permission,
+            },
+          })),
           accessKeyListLiveVerified: accessKeyListView.keys.length > 0,
           riskVerdict,
           sanitizedBrief,
@@ -793,10 +806,18 @@ export async function handleKratonHttpRequest(
         ]);
 
         const unifiedLiveApiUsed = Boolean(liveReasoning.usedLiveApi || tee8Step.liveApiUsed);
+        const resolvedEcdsaAddr =
+          liveReasoning.signingAddress ??
+          tee8Step.step8_signatureRecoveryVerified.recoveredEcdsaAddress;
         const normalizedTee8Step = {
           ...tee8Step,
           liveApiUsed: unifiedLiveApiUsed,
           liveChatId: liveReasoning.chatId ?? tee8Step.liveChatId,
+          recoveredEcdsaAddress: resolvedEcdsaAddr,
+          step8_signatureRecoveryVerified: {
+            ...tee8Step.step8_signatureRecoveryVerified,
+            recoveredEcdsaAddress: resolvedEcdsaAddr,
+          },
         };
         const normalizedLiveReasoning = {
           ...liveReasoning,
@@ -1921,7 +1942,7 @@ export async function handleKratonHttpRequest(
           openapi: "3.1.0",
           info: {
             title: "KratonOS — Autonomous Treasury & Policy Vault on NEAR API",
-            version: "1.0.0",
+            version: "2026.6",
             description:
               "Verifiable Confidential Treasury, Cross-Chain Liquidity & Agentic Commerce OS built on NEAR Protocol v88.",
             license: {

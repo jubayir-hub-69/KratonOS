@@ -107,7 +107,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Live NEAR RPC block telemetry, PoC-4 vault policy, 4-lane NEP-611 gas multiplexer, 5-chain MPC custody addresses, and multi-asset OutLayer median oracle (ETH, NEAR, XRP, SOL, BTC).",
     auth: "Public / Scoped Session",
-    curlExample: `curl -s http://localhost:4173/api/overview | jq .`,
+    curlExample: `curl -s https://kraton-os-taupe.vercel.app/api/overview | jq .`,
     tsExample: `const res = await fetch("/api/overview");\nconst telemetry = await res.json();`,
     params: [],
     sampleResponse: {
@@ -138,7 +138,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Executes live NEAR AI Cloud (zai-org/GLM-5.1-FP8) any-asset market/news/policy co-pilot + 8-step NRAS/TDX hardware attestation + Zero-Retention wipe + Ethereum Mainnet EIP-1186 storage proof.",
     auth: "Bearer NEARAI_CLOUD_API_KEY (Auto-injected)",
-    curlExample: `curl -X POST http://localhost:4173/api/tee/verify \\\n  -H "Content-Type: application/json" \\\n  -d '{"prompt":"NEAR/USDT, XRP/USDT CURRENT MARKET PRICE and crypto news."}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/tee/verify \\\n  -H "Content-Type: application/json" \\\n  -d '{"prompt":"NEAR/USDT, XRP/USDT CURRENT MARKET PRICE and crypto news."}'`,
     tsExample: `const res = await fetch("/api/tee/verify", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ prompt: "NEAR/USDT, XRP/USDT CURRENT MARKET PRICE and crypto news." })\n});`,
     params: [
       {
@@ -168,7 +168,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Benchmarks 1Click Confidential Intents vs RHEA V1 Classic vs RHEA V2 DCL (196 pools), builds a confidential GTC limit order (/v0/orders), and derives 5 foreign-chain MPC addresses.",
     auth: "Bearer ONECLICK_API_KEY JWT (Auto-injected)",
-    curlExample: `curl -X POST http://localhost:4173/api/router/quote \\\n  -H "Content-Type: application/json" \\\n  -d '{"originSymbol":"USDC","destinationSymbol":"USDT","amountInHuman":250,"derivationPath":"kratonos-treasury-1"}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/router/quote \\\n  -H "Content-Type: application/json" \\\n  -d '{"originSymbol":"USDC","destinationSymbol":"USDT","amountInHuman":250,"derivationPath":"kratonos-treasury-1"}'`,
     tsExample: `const res = await fetch("/api/router/quote", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ originSymbol: "USDC", destinationSymbol: "USDT", amountInHuman: 250 })\n});`,
     params: [
       { name: "originSymbol", type: "string", required: false, desc: "Source token ticker (USDC, USDT, wNEAR, ETH, BTC, SOL)." },
@@ -197,7 +197,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Runs 4-signal counterparty scam/prompt-injection risk analysis, 3-tier Sputnik DAO V2 escalation (> $150 single-tx / > $500 daily), and NIST FIPS 204 ML-DSA-65 post-quantum signature verification.",
     auth: "PoC-4 Enclave Gate",
-    curlExample: `curl -X POST http://localhost:4173/api/security/evaluate \\\n  -H "Content-Type: application/json" \\\n  -d '{"receiverId":"scam-drainer-vault.testnet","amountUsd":420}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/security/evaluate \\\n  -H "Content-Type: application/json" \\\n  -d '{"receiverId":"scam-drainer-vault.testnet","amountUsd":420}'`,
     tsExample: `const res = await fetch("/api/security/evaluate", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ receiverId: "scam-drainer-vault.testnet", amountUsd: 420 })\n});`,
     params: [
       { name: "receiverId", type: "string", required: true, desc: "Target NEAR account or foreign-chain recipient." },
@@ -220,7 +220,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Computes BigInt ceiling-rounded EXACT_OUTPUT invoice math (100.00% net delivery) and executes 12-row fault-isolated NEP-141 batch payroll with automatic 0.00125 NEAR storage_deposit.",
     auth: "NEP-611 Lane 2 (payroll)",
-    curlExample: `curl -X POST http://localhost:4173/api/payroll/run \\\n  -H "Content-Type: application/json" \\\n  -d '{"freelancerAccountId":"alice-dev.testnet","requestedNetUsdc":250,"originChainLabel":"Arbitrum"}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/payroll/run \\\n  -H "Content-Type: application/json" \\\n  -d '{"freelancerAccountId":"alice-dev.testnet","requestedNetUsdc":250,"originChainLabel":"Arbitrum"}'`,
     tsExample: `const res = await fetch("/api/payroll/run", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ freelancerAccountId: "alice-dev.testnet", requestedNetUsdc: 250 })\n});`,
     params: [
       { name: "freelancerAccountId", type: "string", required: false, desc: "Recipient NEAR account ID for EXACT_OUTPUT invoice." },
@@ -244,7 +244,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Downloads the reconciled GAAP/IFRS Bookkeeper CSV ledger (with UTF-8 BOM for Excel / Google Sheets).",
     auth: "Public Read",
-    curlExample: `curl -O http://localhost:4173/api/payroll/export-csv`,
+    curlExample: `curl -O https://kraton-os-taupe.vercel.app/api/payroll/export-csv`,
     tsExample: `window.open("/api/payroll/export-csv", "_blank");`,
     params: [],
     sampleResponse: {
@@ -258,7 +258,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Renders the self-contained, printable HTML/PDF Executive Bookkeeper Audit & Reconciliation Statement.",
     auth: "Public Read",
-    curlExample: `curl -s http://localhost:4173/api/payroll/export-statement > statement.html`,
+    curlExample: `curl -s https://kraton-os-taupe.vercel.app/api/payroll/export-statement > statement.html`,
     tsExample: `window.open("/api/payroll/export-statement", "_blank");`,
     params: [],
     sampleResponse: {
@@ -272,7 +272,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Discovers live agents on market.near.ai, negotiates quotes, settles HTTP 402 (x402 v2) NEP-366 SignedDelegateAction escrow, and runs the 20x5 Sealed-Bid Swarm round.",
     auth: "Bearer AGENT_MARKET_API_TOKEN (aat_...)",
-    curlExample: `curl -X POST http://localhost:4173/api/market/execute \\\n  -H "Content-Type: application/json" \\\n  -d '{"query":"research","quotedAmountUsd":4.2,"plannedBudgetUsd":2.5}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/market/execute \\\n  -H "Content-Type: application/json" \\\n  -d '{"query":"research","quotedAmountUsd":4.2,"plannedBudgetUsd":2.5}'`,
     tsExample: `const res = await fetch("/api/market/execute", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ query: "research", quotedAmountUsd: 4.2, plannedBudgetUsd: 2.5 })\n});`,
     params: [
       { name: "query", type: "string", required: false, desc: "Capability search keyword on market.near.ai." },
@@ -296,7 +296,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Executes the complete 5-Stage Autonomous Closed Loop end-to-end in < 2 minutes with PoC-4 H_master commitment.",
     auth: "PoC-4 Enclave Gate",
-    curlExample: `curl -X POST http://localhost:4173/api/demo/autonomous-loop -H "Content-Type: application/json" -d '{}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/demo/autonomous-loop -H "Content-Type: application/json" -d '{}'`,
     tsExample: `const res = await fetch("/api/demo/autonomous-loop", { method: "POST" });`,
     params: [],
     sampleBody: {},
@@ -312,7 +312,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Arms or disarms the emergency PoC-4 & NEP-611 global vault kill-switch.",
     auth: "Human Treasurer Override",
-    curlExample: `curl -X POST http://localhost:4173/api/policy/kill-switch -H "Content-Type: application/json" -d '{"enabled":false}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/policy/kill-switch -H "Content-Type: application/json" -d '{"enabled":false}'`,
     tsExample: `await fetch("/api/policy/kill-switch", { method: "POST", body: JSON.stringify({ enabled: false }) });`,
     params: [
       { name: "enabled", type: "boolean", required: false, desc: "Set true to halt all autonomous execution; false to resume." },
@@ -329,7 +329,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Signs and commits the current PoC-4 H_master digest on NEAR Testnet (jubayir69.testnet) and returns the txHash, signerPublicKey, blockHash, and clickable NEARBlocks explorer link.",
     auth: "Ed25519 Vault Signer / Connected Wallet",
-    curlExample: `curl -X POST http://localhost:4173/api/onchain/commit-proof -H "Content-Type: application/json" -d '{}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/onchain/commit-proof -H "Content-Type: application/json" -d '{}'`,
     tsExample: `const res = await fetch("/api/onchain/commit-proof", { method: "POST" });`,
     params: [
       { name: "poc4HMaster", type: "string", required: false, desc: "Optional 64-char SHA-256 H_master commitment to anchor on-chain." },
@@ -350,7 +350,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Queries real live on-chain native (NEAR, ETH, SOL) and stablecoin (USDC, USDT) balances via RPC for any connected NEAR, EVM (0x...), or Solana wallet address (reporting exact 0.00 when empty).",
     auth: "Public Multi-Chain RPC Read",
-    curlExample: `curl -X POST http://localhost:4173/api/wallet/balances \\\n  -H "Content-Type: application/json" \\\n  -d '{"address":"jubayir69.testnet","chainType":"near"}'`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/wallet/balances \\\n  -H "Content-Type: application/json" \\\n  -d '{"address":"jubayir69.testnet","chainType":"near"}'`,
     tsExample: `const res = await fetch("/api/wallet/balances", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ address: "jubayir69.testnet", chainType: "near" })\n});`,
     params: [
       { name: "address", type: "string", required: true, desc: "Connected NEAR account ID, EVM 0x address, or Solana Base58 address." },
@@ -481,7 +481,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   shipped:
     "# Shipped Feature Matrix & Verification Coverage\n\nAll 8 core modules and 6 verification suites are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
-    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` Personal Wallet Control) & `POST /api/wallet/balances` live multi-RPC balance prober.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n",
+    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub) & `POST /api/wallet/balances` live multi-RPC balance prober.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
 };
 
 function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
@@ -837,6 +837,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
   const activeStageNode =
     ARCHITECTURE_STAGE_NODES.find((n) => n.stage === selectedArchStage) ??
     ARCHITECTURE_STAGE_NODES[0];
+  const activeTelemetry = liveStatusData ?? overview;
+  const allDocItems = DOC_NAV_TREE.flatMap((g) => g.items);
+  const activeChapterNum = Math.max(
+    1,
+    allDocItems.findIndex((i) => i.id === activePage) + 1
+  );
+  const totalChaptersCount = allDocItems.length;
 
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[var(--bg-card)]/95 animate-fade-in">
@@ -886,7 +893,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
               KratonOS Docs
             </span>
             <Badge variant="emerald" className="font-mono text-[10px] shrink-0">
-              v2026.5
+              v2026.6
             </Badge>
           </div>
           <button
@@ -1198,28 +1205,50 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <div className="rounded-xl border border-emerald-500/35 bg-emerald-500/8 p-4">
                   <div className="flex items-center justify-between gap-2">
                     <Badge variant="emerald" className="font-mono text-[10px]">
-                      MODE B // ACTIVE PERSONAL CONTROL
+                      MODE B // MULTI-CHAIN WALLET HUB
                     </Badge>
                     <span className="font-mono text-[11px] font-bold text-[var(--accent-cyan)]">
-                      NEAR · EVM · Solana
+                      NEAR · EVM · SOL · BTC · SUI · TON · XRP
                     </span>
                   </div>
                   <h3 className="font-display mt-2 text-sm font-bold text-[var(--text-primary)]">
-                    Connected Personal Wallet Control Mode
+                    Simultaneous Multi-Chain Personal Wallet Hub
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    Connecting <code className="font-mono">NEAR Wallet</code> (<code className="font-mono">Meteor / HOT</code>), <code className="font-mono">Rabby / MetaMask</code>, or <code className="font-mono">Phantom</code> switches 100% of active balances (<code className="font-mono">POST /api/wallet/balances</code>, exact <code className="font-mono">0.00</code> when empty), recipient fields, strict insufficient-balance locks, and real wallet popup signing across all 7 views.
+                    Connect <code className="font-mono">NEAR Wallet</code> (<code className="font-mono">Meteor / HOT</code>), <code className="font-mono">Rabby / MetaMask</code>, <code className="font-mono">Phantom</code>, <code className="font-mono">UniSat</code>, <code className="font-mono">Sui Wallet</code>, <code className="font-mono">Tonkeeper</code>, and <code className="font-mono">Crossmark</code> simultaneously without disconnecting previously connected chains. Selecting any <code className="font-mono">Pay Token</code> routes balance verification and signing to its matching origin-chain wallet while auto-filling <code className="font-mono">Receive Token</code> with your connected destination-chain wallet.
                   </p>
                   <div className="mt-2.5 space-y-1.5 rounded-lg border border-emerald-500/30 bg-[var(--bg-card)] p-2.5 font-mono text-[11px] leading-snug text-[var(--text-secondary)]">
                     <div>
                       <strong className="text-[var(--accent-emerald)]">Spendable vs Total On-Chain NEAR:</strong>{" "}
-                      Total On-Chain = <code className="text-[var(--text-primary)]">4.9980 NEAR</code>; minus <code className="text-[var(--text-primary)]">0.0018 NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">4.7962 NEAR</strong> Spendable (matching Meteor Wallet 1:1).
+                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "4.9980 NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "4.7962 NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
                     </div>
                     <div>
                       <strong className="text-[var(--accent-cyan)]">Meteor Wallet Permission Notice:</strong>{" "}
                       Initial wallet connection is strictly read-only (<code className="text-[var(--text-primary)]">&quot;This does not allow: Calling methods or signing transactions on your behalf&quot;</code>). Every transaction or intent requires an explicit per-action approval popup inside your wallet.
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Live Synchronized Telemetry Bar on /docs#intro */}
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/8 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
+                <div className="break-all">
+                  <strong className="text-[var(--accent-emerald)]">Live Synced PoC-4 H_master:</strong>{" "}
+                  {activeTelemetry?.poc4MasterHash ?? "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152"}
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--text-secondary)]">
+                  <span>
+                    ETH/USD: <strong className="text-[var(--accent-emerald)]">${Number(activeTelemetry?.oracle?.ethUsdMedian ?? 2246.48).toFixed(2)}</strong>
+                  </span>
+                  <span>
+                    NEAR/USD: <strong className="text-[var(--accent-cyan)]">${Number(activeTelemetry?.oracle?.nearUsdMedian ?? 3.74).toFixed(4)}</strong>
+                  </span>
+                  <span>
+                    BTC/USD: <strong className="text-[var(--text-primary)]">${Number(activeTelemetry?.oracle?.btcUsdMedian ?? 76124.84).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                  </span>
+                  <span>
+                    Block: <strong className="text-[var(--accent-emerald)]">#{activeTelemetry?.blockHeight ?? 276724260}</strong>
+                  </span>
                 </div>
               </div>
 
@@ -2192,7 +2221,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           strokeWidth="1.4"
                         />
                         <text x={832} y={l.y + 23.5} textAnchor="middle" fill={l.color} className="font-mono text-[9.5px] font-extrabold">
-                          PARALLEL FINALITY ✓
+                          PARALLEL FINALITY [OK]
                         </text>
                       </g>
                     ))}
@@ -2350,7 +2379,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       ECDSA secp256k1 + Ed25519
                     </text>
                     <text x={807} y={118} textAnchor="middle" fill="#38BDF8" className="font-mono text-[9px]">
-                      8 / 8 Hardware Steps Verified ✓
+                      8 / 8 Hardware Steps Verified
                     </text>
                   </svg>
                 </div>
@@ -2572,7 +2601,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       41 bps Fee Covered by Payer
                     </text>
                     <text x={147} y={142} textAnchor="middle" fill="#00EC97" className="font-mono text-[10px] font-extrabold">
-                      Freelancer Net: 100.00% ✓
+                      Freelancer Net: 100.00%
                     </text>
 
                     <path d="M 280 97 L 338 97" stroke="#00EC97" strokeWidth="2" strokeDasharray="4 4" />
@@ -2909,37 +2938,58 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           <code>
                             {liveEndpointOutput && liveEndpointOutput.path === ep.path
                               ? liveEndpointOutput.jsonText
-                              : ep.path === "/api/overview" && (liveStatusData || overview)
+                              : ep.path === "/api/overview" && activeTelemetry
                                 ? JSON.stringify(
                                     {
-                                      status: (liveStatusData ?? overview).status ?? "OK",
+                                      status: activeTelemetry.status ?? "OK",
                                       treasuryAccount:
-                                        (liveStatusData ?? overview).treasuryAccount ??
+                                        activeTelemetry.treasuryAccount ??
                                         "jubayir69.testnet",
                                       feeRecipient:
-                                        (liveStatusData ?? overview).feeRecipient ??
+                                        activeTelemetry.feeRecipient ??
                                         "jubayir33.near",
                                       balanceFormatted:
-                                        (liveStatusData ?? overview).balanceFormatted ??
+                                        activeTelemetry.balanceFormatted ??
                                         "4.9980 NEAR",
                                       spendableBalanceFormatted:
-                                        (liveStatusData ?? overview).spendableBalanceFormatted ??
+                                        activeTelemetry.spendableBalanceFormatted ??
                                         "4.7962 NEAR",
                                       totalNearBalance:
-                                        (liveStatusData ?? overview).totalNearBalance ?? 4.998,
+                                        activeTelemetry.totalNearBalance ?? 4.998,
                                       spendableNearBalance:
-                                        (liveStatusData ?? overview).spendableNearBalance ??
+                                        activeTelemetry.spendableNearBalance ??
                                         4.7962,
                                       poc4MasterHash:
-                                        (liveStatusData ?? overview).poc4MasterHash ??
+                                        activeTelemetry.poc4MasterHash ??
                                         "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
-                                      poc4Valid: (liveStatusData ?? overview).poc4Valid ?? true,
-                                      oracle: (liveStatusData ?? overview).oracle ?? ep.sampleResponse.oracle,
+                                      poc4Valid: activeTelemetry.poc4Valid ?? true,
+                                      oracle: activeTelemetry.oracle ?? ep.sampleResponse.oracle,
                                     },
                                     null,
                                     2
                                   )
-                                : JSON.stringify(ep.sampleResponse, null, 2)}
+                                : ep.path === "/api/wallet/balances" && activeTelemetry
+                                  ? JSON.stringify(
+                                      {
+                                        ...ep.sampleResponse,
+                                        nativeBalance:
+                                          activeTelemetry.spendableNearBalance ?? 4.7962,
+                                        totalNearBalance:
+                                          activeTelemetry.totalNearBalance ?? 4.998,
+                                        spendableNearBalance:
+                                          activeTelemetry.spendableNearBalance ?? 4.7962,
+                                        storageLockedNear:
+                                          activeTelemetry.storageLockedNear ?? 0.0018,
+                                        totalNearFormatted:
+                                          activeTelemetry.balanceFormatted ?? "4.9980 NEAR",
+                                        spendableNearFormatted:
+                                          activeTelemetry.spendableBalanceFormatted ??
+                                          "4.7962 NEAR",
+                                      },
+                                      null,
+                                      2
+                                    )
+                                  : JSON.stringify(ep.sampleResponse, null, 2)}
                           </code>
                         </pre>
                       </div>
@@ -3259,6 +3309,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     ],
                   },
                   {
+                    ver: "v2026.2 — Multi-Venue Intents Router & 12-Row Fault-Isolated Payroll",
+                    items: [
+                      "Implemented Tri-Venue Smart Liquidity Router benchmarking 1Click Confidential Private Shard (1 bp stablecoin spread + 40 bps app fee) against RHEA V2 DCL (196 pools) and RHEA V1 AMM.",
+                      "Added EXACT_OUTPUT BigInt ceiling-math invoicing (100.00% net freelancer delivery) and 12-row fault-isolated NEP-141 batch payroll with automatic 0.00125 NEAR storage_deposit injection.",
+                    ],
+                  },
+                  {
                     ver: "v2026.1 — Core 4 Cryptographic Pillars & Full-Stack Server",
                     items: [
                       "Implemented PoC-4 Policy Vault, 4-Lane NEP-611 Gas Keys, ML-DSA-65 PQ Shield, OutLayer EIP-1186 Prover, 1Click + RHEA Router, and x402 Swarm.",
@@ -3284,7 +3341,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
           {/* Footer Return Bar */}
           <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-color)] pt-6">
             <span className="font-mono text-xs text-[var(--text-muted)]">
-              KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR — Documentation v2026.5
+              KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR — Documentation v2026.6 (Chapter {activeChapterNum} of {totalChaptersCount})
             </span>
             <button
               type="button"

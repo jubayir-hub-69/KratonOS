@@ -197,7 +197,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ? String(overview.latestLiveProofReceipt.txHash)
       : Array.isArray(overview?.recentOnChainTxns) && overview.recentOnChainTxns[0]?.txHash
         ? String(overview.recentOnChainTxns[0].txHash)
-        : "7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt";
+        : "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
   const activeAnchorExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(
     activeAnchorTxHash
   )}`;
@@ -229,7 +229,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         netSettledAtomic: "0",
         netSettledFormatted: "0.000000 USDC",
         exactPayoutAccuracyPercent: 0.0,
-        shareableInvoiceUrl: `https://kratonos.near.page/invoice/${invoiceId}?recipient=${encodeURIComponent(
+        shareableInvoiceUrl: `https://kraton-os-taupe.vercel.app/api/payroll/export-statement?invoice=${invoiceId}&recipient=${encodeURIComponent(
           acct
         )}&net=0.000000&gross=0.000000&origin=${encodeURIComponent(originShort)}&asset=USDC`,
         scopedRelayerMetaTx: baseInv?.scopedRelayerMetaTx ?? {
@@ -265,7 +265,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       netSettledAtomic: netSettled.toString(),
       netSettledFormatted,
       exactPayoutAccuracyPercent: 100.0,
-      shareableInvoiceUrl: `https://kratonos.near.page/invoice/${invoiceId}?recipient=${encodeURIComponent(
+      shareableInvoiceUrl: `https://kraton-os-taupe.vercel.app/api/payroll/export-statement?invoice=${invoiceId}&recipient=${encodeURIComponent(
         acct
       )}&net=${(Number(requestedAtomic) / 1_000_000).toFixed(6)}&gross=${(
         Number(grossCeiling) / 1_000_000
@@ -291,17 +291,17 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   // Dynamically merge any user-added custom invoices with the 12-row batch outcomes
   const batch = useMemo(() => {
     const baseOutcomes = rawBatch?.outcomes ?? [
-      { rowNumber: 1, recipientId: "jubayir69.testnet", invoiceRef: "PAY-2026-101", amountUsdc: 45.0, amountAtomicUsdc: "45000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_a1b2c3d4e5f60718|unshield_9182736455463728" },
-      { rowNumber: 2, recipientId: "scout.jubayir69.testnet", invoiceRef: "PAY-2026-102", amountUsdc: 18.5, amountAtomicUsdc: "18500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b2c3d4e5f6071829|unshield_8273645546372819" },
-      { rowNumber: 3, recipientId: "executor.jubayir69.testnet", invoiceRef: "PAY-2026-103", amountUsdc: 24.0, amountAtomicUsdc: "24000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_c3d4e5f60718293a|unshield_7364554637281920" },
-      { rowNumber: 4, recipientId: "payroll.jubayir69.testnet", invoiceRef: "PAY-2026-104", amountUsdc: 15.0, amountAtomicUsdc: "15000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_d4e5f60718293a4b|unshield_6455463728192031" },
-      { rowNumber: 5, recipientId: "yield.jubayir69.testnet", invoiceRef: "PAY-2026-105", amountUsdc: 22.0, amountAtomicUsdc: "22000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_e5f60718293a4b5c|unshield_5546372819203142" },
-      { rowNumber: 6, recipientId: "outlayer.testnet", invoiceRef: "PAY-2026-106", amountUsdc: 30.0, amountAtomicUsdc: "30000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_f60718293a4b5c6d|unshield_4637281920314253" },
-      { rowNumber: 7, recipientId: "worker.outlayer.testnet", invoiceRef: "PAY-2026-107", amountUsdc: 19.75, amountAtomicUsdc: "19750000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_0718293a4b5c6d7e|unshield_3728192031425364" },
-      { rowNumber: 8, recipientId: "ref-finance.testnet", invoiceRef: "PAY-2026-108", amountUsdc: 28.0, amountAtomicUsdc: "28000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_18293a4b5c6d7e8f|unshield_2819203142536475" },
-      { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_293a4b5c6d7e8f90|unshield_1920314253647586" },
-      { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_3a4b5c6d7e8f90a1|unshield_2031425364758697" },
-      { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4b5c6d7e8f90a1b2|unshield_3142536475869708" },
+      { rowNumber: 1, recipientId: "jubayir69.testnet", invoiceRef: "PAY-2026-101", amountUsdc: 45.0, amountAtomicUsdc: "45000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_bc08b5d7b5969a1f|unshield_bd194b122c1a1525" },
+      { rowNumber: 2, recipientId: "scout.jubayir69.testnet", invoiceRef: "PAY-2026-102", amountUsdc: 18.5, amountAtomicUsdc: "18500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_f0bda1dc55f20d77|unshield_676c3f0a2cf11f6a" },
+      { rowNumber: 3, recipientId: "executor.jubayir69.testnet", invoiceRef: "PAY-2026-103", amountUsdc: 24.0, amountAtomicUsdc: "24000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_df3bd5caaf6884e4|unshield_ca7f3962a0bf1aba" },
+      { rowNumber: 4, recipientId: "payroll.jubayir69.testnet", invoiceRef: "PAY-2026-104", amountUsdc: 15.0, amountAtomicUsdc: "15000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4e2622a4f1770618|unshield_1ebf22f624b98e6e" },
+      { rowNumber: 5, recipientId: "yield.jubayir69.testnet", invoiceRef: "PAY-2026-105", amountUsdc: 22.0, amountAtomicUsdc: "22000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4d7b81ae199462b4|unshield_a842d7729f266b10" },
+      { rowNumber: 6, recipientId: "outlayer.testnet", invoiceRef: "PAY-2026-106", amountUsdc: 30.0, amountAtomicUsdc: "30000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_13d2167c2083c261|unshield_4bcbe3a6588d1a12" },
+      { rowNumber: 7, recipientId: "worker.outlayer.testnet", invoiceRef: "PAY-2026-107", amountUsdc: 19.75, amountAtomicUsdc: "19750000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_5f1834722357cdc8|unshield_a414a7887edd0ca9" },
+      { rowNumber: 8, recipientId: "ref-finance.testnet", invoiceRef: "PAY-2026-108", amountUsdc: 28.0, amountAtomicUsdc: "28000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_42f585c78dafd354|unshield_806e4d807c601da2" },
+      { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_38a5ec6f98906f06|unshield_178a79fecc1efd47" },
+      { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_11d934f55192f4e2|unshield_46a1dcafaebf78c9" },
+      { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b662988d4066fd42|unshield_55cbf291e9a1f1a7" },
       { rowNumber: 12, recipientId: "scam-drainer-vault.testnet", invoiceRef: "PAY-2026-112-MALFORMED", amountUsdc: 99.0, amountAtomicUsdc: "99000000", status: "ISOLATED_QUARANTINED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "NONE_BLOCKED", failureReason: "Known malicious drainer contract blocked by 4-Signal Counterparty Shield" },
     ];
 
@@ -489,11 +489,11 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           ? `https://nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`
           : `https://testnet.nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`;
         const statusCellHtml = isSettled
-          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (ON-CHAIN TX &#8599;)</a>`
+          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (BATCH ANCHOR TX &#8599;)</a>`
           : `<span style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;">${escapeHtmlText(o.status)}</span>`;
         const proofCellHtml = isSettled
-          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes.slice(0, 24))}... (Tx ${escapeHtmlText(activeAnchorTxHash.slice(0, 8))}... &#8599;)</a>`
-          : `${escapeHtmlText(o.confidentialShardShieldUnshieldHashes.slice(0, 36))}...`;
+          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;word-break:break-all;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes)} (Anchor Tx ${escapeHtmlText(activeAnchorTxHash.slice(0, 8))}... &#8599;)</a>`
+          : `<span style="word-break:break-all;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes)}</span>`;
         return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:600;color:#111827;">#${o.rowNumber} · ${escapeHtmlText(o.invoiceRef)}</td>
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${escapeHtmlText(o.recipientId)} &#8599;</a></td>
@@ -647,7 +647,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     }
 
     if (walletContext.usdcBalance < requiredBatchUsdc) {
-      const errMsg = `❌ Connected Wallet (${walletContext.shortAddress}) holds ${userUsdcFormatted} USDC; $${requiredBatchUsdc.toFixed(
+      const errMsg = `[ERROR] Connected Wallet (${walletContext.shortAddress}) holds ${userUsdcFormatted} USDC; $${requiredBatchUsdc.toFixed(
         2
       )} USDC required for on-chain settlement. Execution is blocked until your wallet holds sufficient USDC.`;
       setBatchSignError(errMsg);
@@ -687,7 +687,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     } catch (err) {
       if (err instanceof WalletSignatureRejectedError) {
         setBatchSignError(
-          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
         );
         onNotify?.(
           "Transaction Cancelled: Signature request was rejected in your connected wallet.",
@@ -695,7 +695,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         );
       } else {
         const msg = err instanceof Error ? err.message : "Wallet signing failed.";
-        setBatchSignError(`❌ Wallet Signing Error: ${msg}`);
+        setBatchSignError(`[ERROR] Wallet Signing Error: ${msg}`);
         onNotify?.(`Wallet Signing Error: ${msg}`, "payroll");
       }
     } finally {
@@ -1103,7 +1103,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               role="alert"
               className="rounded-xl border border-rose-500/55 bg-rose-500/12 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
             >
-              ❌ Connected Wallet ({walletContext.shortAddress}) holds {userUsdcFormatted} USDC; $
+              [ERROR] Connected Wallet ({walletContext.shortAddress}) holds {userUsdcFormatted} USDC; $
               {requiredBatchUsdc.toFixed(2)} USDC required for on-chain settlement. On-chain batch
               execution is blocked until your connected wallet holds at least $
               {requiredBatchUsdc.toFixed(2)} USDC.
@@ -1123,7 +1123,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
             <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3.5 font-mono text-xs animate-fade-in">
               <div className="flex flex-wrap items-center justify-between gap-2 font-bold text-[var(--accent-emerald)]">
                 <span>
-                  ✓ BATCH PAYROLL AUTHORIZED ({signedBatchReceipt.settledRows} Rows ·{" "}
+                  [VERIFIED] BATCH PAYROLL AUTHORIZED ({signedBatchReceipt.settledRows} Rows ·{" "}
                   {signedBatchReceipt.totalUsdcFormatted})
                 </span>
                 <Badge variant="emerald">{signedBatchReceipt.timestamp}</Badge>
@@ -1289,6 +1289,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                             <div className="flex flex-wrap items-center gap-2">
                               <CopyHashButton
                                 value={row.confidentialShardShieldUnshieldHashes}
+                                label={row.confidentialShardShieldUnshieldHashes}
                                 onCopyNotify={(m) => onNotify?.(m, "payroll")}
                               />
                               {row.status === "SETTLED" && (
@@ -1298,7 +1299,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                                   rel="noreferrer"
                                   className="font-mono text-[11px] font-bold text-[var(--accent-emerald)] underline hover:brightness-110"
                                 >
-                                  Tx {activeAnchorTxHash.slice(0, 8)}... &#8599;
+                                  Anchor Tx {activeAnchorTxHash.slice(0, 8)}... &#8599;
                                 </a>
                               )}
                             </div>
@@ -1316,7 +1317,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                                   className="gap-1 cursor-pointer hover:brightness-110"
                                 >
                                   <CheckCircle2 className="h-3 w-3" />
-                                  SETTLED (ON-CHAIN TX &#8599;)
+                                  SETTLED (BATCH ANCHOR TX &#8599;)
                                 </Badge>
                               </a>
                             ) : (
@@ -1332,7 +1333,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                                   }
                                   className="inline-flex items-center gap-1 rounded-md border border-rose-500/45 bg-rose-500/15 px-2 py-0.5 font-mono text-[10px] font-extrabold text-rose-400 transition-colors hover:bg-rose-500/25 cursor-pointer"
                                 >
-                                  <span>✕ Remove Quarantined Row</span>
+                                  <span>Remove Quarantined Row</span>
                                 </button>
                               </div>
                             )}
@@ -1549,7 +1550,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
     if (!walletContext?.isPersonalWallet || !walletContext.address) return;
     if (neg.finalAgreedPriceUsd > userUsdcBalance) {
       setX402SignError(
-        `❌ Insufficient USDC in Connected Wallet (${walletContext.address}): Your wallet holds ${userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires ${neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until your wallet holds sufficient USDC.`
+        `[ERROR] Insufficient USDC in Connected Wallet (${walletContext.address}): Your wallet holds ${userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires ${neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until your wallet holds sufficient USDC.`
       );
       return;
     }
@@ -1578,11 +1579,11 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
     } catch (err) {
       if (err instanceof WalletSignatureRejectedError) {
         setX402SignError(
-          "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
         );
       } else {
         setX402SignError(
-          `❌ Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
+          `[ERROR] Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
         );
       }
     } finally {
@@ -1684,7 +1685,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               role="alert"
               className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
             >
-              ❌ Insufficient USDC in Connected Wallet ({walletContext.address}): Your wallet holds{" "}
+              [ERROR] Insufficient USDC in Connected Wallet ({walletContext.address}): Your wallet holds{" "}
               {userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires{" "}
               {neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until
               your wallet holds sufficient USDC.
@@ -1795,7 +1796,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                 >
                   {insufficientMarketUsdc ? (
                     <span>
-                      🔒 Blocked: Insufficient USDC Balance ({userUsdcBalance.toFixed(2)} / $
+                      [LOCKED] Blocked: Insufficient USDC Balance ({userUsdcBalance.toFixed(2)} / $
                       {neg.finalAgreedPriceUsd.toFixed(2)} USDC)
                     </span>
                   ) : signingX402 ? (
@@ -1821,7 +1822,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                 {x402SignedReceipt && (
                   <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-xs animate-fade-in">
                     <div className="flex items-center justify-between font-bold text-[var(--accent-emerald)]">
-                      <span>✓ x402 ESCROW SIGNED ({x402SignedReceipt.agreedAmountUsd})</span>
+                      <span>[VERIFIED] x402 ESCROW SIGNED ({x402SignedReceipt.agreedAmountUsd})</span>
                       <Badge variant="emerald">{x402SignedReceipt.timestamp}</Badge>
                     </div>
                     <div className="break-all text-[11px] text-[var(--accent-cyan)]">
@@ -1913,7 +1914,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   <CardTitle className="text-base">A2A + x402 v2 Gasless Receipt</CardTitle>
                   {insufficientMarketUsdc ? (
                     <Badge variant="red">
-                      🔒 UNSETTLED — BLOCKED ({userUsdcBalance.toFixed(2)} USDC IN CONNECTED WALLET)
+                      [LOCKED] UNSETTLED — BLOCKED ({userUsdcBalance.toFixed(2)} USDC IN CONNECTED WALLET)
                     </Badge>
                   ) : (
                     <Badge variant="sky">NEP-366 SignedDelegate</Badge>
@@ -2133,7 +2134,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--border-color)]">
-                  {dynamicSwarm.buyerAllocations.slice(0, 8).map((b) => (
+                  {dynamicSwarm.buyerAllocations.map((b) => (
                     <tr
                       key={b.subAccountId}
                       className="hover:bg-[var(--bg-card-subtle)]"
@@ -2164,6 +2165,35 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                     </tr>
                   ))}
                 </tbody>
+                <tfoot className="border-t-2 border-[var(--border-color)] bg-[var(--bg-card-subtle)] font-mono text-xs font-extrabold text-[var(--text-primary)]">
+                  <tr>
+                    <td className="px-4 py-3 text-[var(--accent-emerald)]">
+                      TOTAL ({dynamicSwarm.buyerAllocations.length} OF {dynamicSwarm.totalBuyers} BUYERS VERIFIED)
+                    </td>
+                    <td className="px-4 py-3">
+                      {dynamicSwarm.buyerAllocations.reduce((sum, r) => sum + r.requestedUnits, 0)} units
+                    </td>
+                    <td className="px-4 py-3 text-[var(--accent-cyan)]">
+                      {dynamicSwarm.clearedVolumeUnits} units
+                    </td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                      Uniform Clearing
+                    </td>
+                    <td className="px-4 py-3 text-[var(--accent-cyan)]">
+                      ${dynamicSwarm.uniformClearingPriceUsd.toFixed(2)}
+                    </td>
+                    <td className="px-4 py-3">
+                      ${dynamicSwarm.buyerAllocations
+                        .reduce((sum, r) => sum + r.totalCostAtClearingUsd, 0)
+                        .toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="emerald">
+                        +${dynamicSwarm.totalSwarmSavingsUsd.toFixed(2)} ({dynamicSwarm.averageSavingsPercent.toFixed(2)}%)
+                      </Badge>
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </CardContent>
@@ -2320,7 +2350,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
       } catch (err) {
         if (err instanceof WalletSignatureRejectedError) {
           setSweepError(
-            "❌ Transaction Cancelled: Signature request was rejected in your connected wallet."
+            "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
           );
           onNotify?.(
             "Transaction Cancelled: Signature request was rejected in your connected wallet.",
@@ -2328,7 +2358,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
           );
         } else {
           const msg = err instanceof Error ? err.message : "Wallet signing failed.";
-          setSweepError(`❌ Wallet Signing Error: ${msg}`);
+          setSweepError(`[ERROR] Wallet Signing Error: ${msg}`);
           onNotify?.(`Wallet Signing Error: ${msg}`, "swap");
         }
       } finally {
@@ -2678,7 +2708,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 </div>
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                   <span className="text-xs font-bold text-[var(--text-secondary)]">
-                    2. Stake LP Shares (:0 Seed)
+                    2. Stake LP Shares (Pool #0 Seed)
                   </span>
                   <p className="mt-1 break-all font-mono text-xs font-semibold text-[var(--text-primary)]">
                     {rhea.actions.step2_mftTransferCallStake.methodName} (1 yoctoNEAR)
@@ -2729,7 +2759,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                   <div className="space-y-1.5 rounded-xl border border-emerald-500/45 bg-emerald-500/12 px-3.5 py-2.5 font-mono text-xs text-[var(--accent-emerald)] animate-fade-in">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="break-all">
-                        ✓ Swept {sweepReceipt.sweptAmountWnear} ({sweepReceipt.usdValue}) via{" "}
+                        [VERIFIED] Swept {sweepReceipt.sweptAmountWnear} ({sweepReceipt.usdValue}) via{" "}
                         {sweepReceipt.laneAccount}
                       </span>
                       <Badge variant="emerald">{sweepReceipt.timestamp}</Badge>
@@ -2895,7 +2925,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 <p className="mt-2 text-xs text-[var(--text-secondary)]">
                   {liveMcaHealth.rebalanceRequired ? (
                     <span className="font-bold text-rose-500">
-                      ⚠️ Below 1.25 liquidation threshold — Autonomous Lane 3 (yield.jubayir69.testnet) rebalance triggered!
+                      [WARNING] Below 1.25 liquidation threshold — Autonomous Lane 3 (yield.jubayir69.testnet) rebalance triggered!
                     </span>
                   ) : (
                     <>

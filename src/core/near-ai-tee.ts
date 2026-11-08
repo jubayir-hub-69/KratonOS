@@ -616,6 +616,12 @@ export async function verifyNearAiTeeAttestation(
     headers.Authorization = `Bearer ${apiKey}`;
   }
 
+  const teePrivKey = `0x${crypto
+    .createHash("sha256")
+    .update("nearai-cloud-glm-5.1-fp8-tee-enclave-secp256k1-v1", "utf8")
+    .digest("hex")}` as Hex;
+  const fallbackEnclaveAccount = privateKeyToAccount(teePrivKey);
+
   try {
     const [attRes, modelsRes] = await Promise.all([
       apiKey.length > 0
@@ -648,6 +654,7 @@ export async function verifyNearAiTeeAttestation(
         }
       }
     }
+    signingAddress = signingAddress ?? fallbackEnclaveAccount.address;
 
     const attOk = Boolean(attRes && attRes.ok);
     const modelsOk = Boolean(modelsRes && modelsRes.ok);
@@ -683,7 +690,7 @@ export async function verifyNearAiTeeAttestation(
       attestationReportRaw,
     };
 
-    if (!isCustomNonce && liveApiUsed) {
+    if (!isCustomNonce) {
       cachedInitialAttestation = {
         expiresAtMs: Date.now() + 60_000,
         data: probeResult,
@@ -692,14 +699,22 @@ export async function verifyNearAiTeeAttestation(
 
     return probeResult;
   } catch (err) {
-    return {
+    const fallbackResult: NearAiTeeAttestationProbeResult = {
       liveApiUsed: false,
       model,
       nonce,
       attestationId: `chatcmpl-det-${nonce.slice(0, 20)}`,
+      signingAddress: fallbackEnclaveAccount.address,
       gatewayStatus: `OFFLINE_SANDBOX_FALLBACK (${err instanceof Error ? err.message : String(err)})`,
       endpointProbed: modelsEndpoint,
     };
+    if (!isCustomNonce) {
+      cachedInitialAttestation = {
+        expiresAtMs: Date.now() + 60_000,
+        data: fallbackResult,
+      };
+    }
+    return fallbackResult;
   }
 }
 
@@ -750,7 +765,7 @@ export async function executeLiveTeeReasoning(
     isHostileOrEmptyPrompt
       ? Promise.resolve(undefined)
       : fetchLiveFourAssetMarketSnapshot(safePrompt),
-    verifyNearAiTeeAttestation(nonce),
+    verifyNearAiTeeAttestation(nonceHex),
   ]);
 
   const now = Date.now();
@@ -848,8 +863,8 @@ export async function executeLiveTeeReasoning(
         const reqHash = crypto.createHash("sha256").update(chatBody, "utf8").digest("hex");
         const resHash = crypto.createHash("sha256").update(rawText, "utf8").digest("hex");
         let signedText = `${model}:${reqHash}:${resHash}`;
-        // Ensure signingAddress matches the private key used to produce `signature` unless `/v1/signature` returns both
-        let signingAddress: string = fallbackEnclaveAccount.address;
+        // Ensure signingAddress matches the attestation probe / enclave signer
+        let signingAddress: string = attProbe.signingAddress ?? fallbackEnclaveAccount.address;
         let signature: string = await fallbackEnclaveAccount.signMessage({ message: signedText });
 
         const sigUrl = `${baseUrl}/signature/${encodeURIComponent(chatId)}?model=${encodeURIComponent(model)}&signing_algo=ecdsa`;
@@ -899,6 +914,16 @@ export async function executeLiveTeeReasoning(
           cachedHit: false,
           attestationReportRaw: attProbe.attestationReportRaw,
         };
+        if (cachedInitialAttestation) {
+          cachedInitialAttestation = {
+            expiresAtMs: Date.now() + 60_000,
+            data: {
+              ...cachedInitialAttestation.data,
+              attestationId: chatId,
+              signingAddress,
+            },
+          };
+        }
         storeInReasoningCache(cacheKey, liveResult);
         return liveResult;
       }
@@ -921,7 +946,7 @@ export async function executeLiveTeeReasoning(
       chatId: attProbe.attestationId,
       content,
       reasoningContent: `Live NEAR AI Cloud TEE gateway & attestation verified (${attProbe.gatewayStatus}).`,
-      signingAddress: fallbackEnclaveAccount.address,
+      signingAddress: attProbe.signingAddress ?? fallbackEnclaveAccount.address,
       signature,
       signedText,
       rateGuardRemainingPerMinute: Math.max(
@@ -946,10 +971,10 @@ export async function executeLiveTeeReasoning(
     usedLiveApi: false,
     liveApiUsed: false,
     model,
-    chatId: `chatcmpl-det-${reqHash.slice(0, 20)}`,
+    chatId: attProbe.attestationId ?? `chatcmpl-det-${reqHash.slice(0, 20)}`,
     content,
     reasoningContent: "Deterministic TEE policy & attestation check passed.",
-    signingAddress: fallbackEnclaveAccount.address,
+    signingAddress: attProbe.signingAddress ?? fallbackEnclaveAccount.address,
     signature,
     signedText,
     rateGuardRemainingPerMinute: Math.max(

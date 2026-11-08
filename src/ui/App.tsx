@@ -51,12 +51,17 @@ import {
 } from "./views-business";
 import { DocsPortalView, type DocPageId } from "./views-docs";
 import {
+  ALL_WALLET_CHAINS,
+  CHAIN_FAMILY_META,
+  connectInPageBrowserWallet,
   fetchLiveConnectedWalletBalances,
   formatShortWalletAddress,
+  getWalletExplorerAccountUrl,
   sendNearTransactionWithPersonalWallet,
   signMessageWithPersonalWallet,
+  type ConnectedChainWallet,
   type ConnectedWalletState,
-  type LiveWalletBalanceSnapshot,
+  type WalletChainType,
 } from "./wallet-controller";
 
 export type ActiveSidebarView =
@@ -261,24 +266,17 @@ export function App() {
     });
   }, []);
 
-  // Multi-Chain Wallet Connection State (@hot-labs/near-connect + Direct In-Page Rabby/EVM + Direct In-Page Phantom Solana)
+  // Simultaneous Multi-Chain Wallet Hub (@hot-labs/near-connect + EVM + Solana + Bitcoin + Sui + TON + XRP)
   const connectorRef = useRef<NearConnector | null>(null);
-  const [walletAccountId, setWalletAccountId] = useState<string | null>(null);
-  const [walletChainType, setWalletChainType] = useState<"near" | "evm" | "solana">("near");
-  const [walletProviderName, setWalletProviderName] = useState<string>("NEAR Testnet");
-  const [isPersonalWallet, setIsPersonalWallet] = useState<boolean>(false);
-  const [walletBalancesLoading, setWalletBalancesLoading] = useState<boolean>(false);
-  const [walletBalances, setWalletBalances] = useState<LiveWalletBalanceSnapshot>({
-    nativeSymbol: "NEAR",
-    nativeBalance: 0,
-    nativeFormatted: "0.0000 NEAR",
-    wnearBalance: 0,
-    usdcBalance: 0,
-    usdtBalance: 0,
-    tokenBalances: {},
-  });
+  const [connectedWalletsByChain, setConnectedWalletsByChain] = useState<
+    Partial<Record<WalletChainType, ConnectedChainWallet>>
+  >({});
+  const [primaryChainType, setPrimaryChainType] = useState<WalletChainType>("near");
+  const [sandboxExplicitSelected, setSandboxExplicitSelected] = useState<boolean>(false);
   const [walletMenuOpen, setWalletMenuOpen] = useState(false);
   const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [walletModalHighlightedChain, setWalletModalHighlightedChain] =
+    useState<WalletChainType | null>(null);
   const [walletConnecting, setWalletConnecting] = useState<string | null>(null);
   const [walletCopied, setWalletCopied] = useState(false);
   const evmRequestInFlightRef = useRef(false);
@@ -388,6 +386,68 @@ export function App() {
   const [marketLoading, setMarketLoading] = useState(false);
   const [killSwitchLoading, setKillSwitchLoading] = useState(false);
 
+  const registerAndSyncChainWallet = useCallback(
+    async (chainType: WalletChainType, address: string, providerName: string) => {
+      const meta = CHAIN_FAMILY_META[chainType];
+      const shortAddress = formatShortWalletAddress(address, chainType);
+      const explorerAccountUrl = getWalletExplorerAccountUrl(address, chainType);
+
+      setSandboxExplicitSelected(false);
+      setPrimaryChainType(chainType);
+      setConnectedWalletsByChain((prev) => ({
+        ...prev,
+        [chainType]: {
+          chainType,
+          address,
+          shortAddress,
+          providerName,
+          explorerAccountUrl,
+          balancesLoading: true,
+          nativeSymbol: meta.nativeSymbol,
+          nativeBalance: prev[chainType]?.nativeBalance ?? 0,
+          nativeFormatted:
+            prev[chainType]?.nativeFormatted ?? `0.0000 ${meta.nativeSymbol}`,
+          wnearBalance: prev[chainType]?.wnearBalance ?? 0,
+          usdcBalance: prev[chainType]?.usdcBalance ?? 0,
+          usdtBalance: prev[chainType]?.usdtBalance ?? 0,
+          tokenBalances: prev[chainType]?.tokenBalances ?? {},
+        },
+      }));
+
+      try {
+        const snap = await fetchLiveConnectedWalletBalances({
+          address,
+          chainType,
+        });
+        setConnectedWalletsByChain((prev) => {
+          const current = prev[chainType];
+          if (!current || current.address !== address) return prev;
+          return {
+            ...prev,
+            [chainType]: {
+              ...current,
+              ...snap,
+              balancesLoading: false,
+            },
+          };
+        });
+      } catch {
+        setConnectedWalletsByChain((prev) => {
+          const current = prev[chainType];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [chainType]: {
+              ...current,
+              balancesLoading: false,
+            },
+          };
+        });
+      }
+    },
+    []
+  );
+
   // Initialize @hot-labs/near-connect
   useEffect(() => {
     let active = true;
@@ -403,12 +463,13 @@ export function App() {
         .then((accounts) => {
           const existing = accounts?.[0]?.accountId;
           if (active && existing) {
-            setWalletAccountId(existing);
-            setWalletChainType("near");
-            setWalletProviderName(
-              existing.endsWith(".near") ? "NEAR Wallet (Mainnet)" : "NEAR Wallet (Testnet)"
+            void registerAndSyncChainWallet(
+              "near",
+              existing,
+              existing.endsWith(".near")
+                ? "NEAR Wallet (Mainnet)"
+                : "NEAR Wallet (Testnet)"
             );
-            setIsPersonalWallet(true);
           }
         })
         .catch(() => {});
@@ -417,22 +478,30 @@ export function App() {
         const p = payload as { accounts?: Array<{ accountId?: string }> };
         const acc = p?.accounts?.[0]?.accountId;
         if (active && acc) {
-          setWalletAccountId(acc);
-          setWalletChainType("near");
-          setWalletProviderName(
-            acc.endsWith(".near") ? "NEAR Wallet (Mainnet)" : "NEAR Wallet (Testnet)"
+          void registerAndSyncChainWallet(
+            "near",
+            acc,
+            acc.endsWith(".near")
+              ? "NEAR Wallet (Mainnet)"
+              : "NEAR Wallet (Testnet)"
           );
-          setIsPersonalWallet(true);
           setWalletModalOpen(false);
-          pushNotification(`Connected Personal NEAR Wallet: ${acc}`, "shield", "emerald");
+          pushNotification(
+            `Connected Personal NEAR Wallet: ${acc}`,
+            "shield",
+            "emerald"
+          );
         }
       });
       connector.on("wallet:signOut", async () => {
         if (active) {
-          setWalletAccountId(null);
-          setIsPersonalWallet(false);
+          setConnectedWalletsByChain((prev) => {
+            const next = { ...prev };
+            delete next.near;
+            return next;
+          });
           pushNotification(
-            "Disconnected NEAR Wallet — Reverted to Protocol Sandbox Vault (jubayir69.testnet)",
+            "Disconnected NEAR Wallet session.",
             "shield",
             "amber"
           );
@@ -444,40 +513,67 @@ export function App() {
     return () => {
       active = false;
     };
-  }, [pushNotification]);
+  }, [pushNotification, registerAndSyncChainWallet]);
 
   const refreshConnectedWalletBalances = useCallback(async () => {
-    if (!isPersonalWallet || !walletAccountId) {
-      setWalletBalances({
-        nativeSymbol: "NEAR",
-        nativeBalance: 0,
-        nativeFormatted: "0.0000 NEAR",
-        wnearBalance: 0,
-        usdcBalance: 0,
-        usdtBalance: 0,
-        tokenBalances: {},
-      });
-      return;
-    }
-    setWalletBalancesLoading(true);
-    try {
-      const snap = await fetchLiveConnectedWalletBalances({
-        address: walletAccountId,
-        chainType: walletChainType,
-      });
-      setWalletBalances(snap);
-    } finally {
-      setWalletBalancesLoading(false);
-    }
-  }, [isPersonalWallet, walletAccountId, walletChainType]);
+    const entries = Object.values(connectedWalletsByChain).filter(
+      Boolean
+    ) as ConnectedChainWallet[];
+    if (entries.length === 0) return;
 
-  useEffect(() => {
-    void refreshConnectedWalletBalances();
-  }, [refreshConnectedWalletBalances]);
+    setConnectedWalletsByChain((prev) => {
+      const next = { ...prev };
+      for (const w of entries) {
+        if (next[w.chainType]) {
+          next[w.chainType] = {
+            ...next[w.chainType]!,
+            balancesLoading: true,
+          };
+        }
+      }
+      return next;
+    });
 
-  // Listen for live EVM account/network switches in Rabby / MetaMask
+    await Promise.all(
+      entries.map(async (w) => {
+        try {
+          const snap = await fetchLiveConnectedWalletBalances({
+            address: w.address,
+            chainType: w.chainType,
+          });
+          setConnectedWalletsByChain((prev) => {
+            const cur = prev[w.chainType];
+            if (!cur || cur.address !== w.address) return prev;
+            return {
+              ...prev,
+              [w.chainType]: {
+                ...cur,
+                ...snap,
+                balancesLoading: false,
+              },
+            };
+          });
+        } catch {
+          setConnectedWalletsByChain((prev) => {
+            const cur = prev[w.chainType];
+            if (!cur) return prev;
+            return {
+              ...prev,
+              [w.chainType]: {
+                ...cur,
+                balancesLoading: false,
+              },
+            };
+          });
+        }
+      })
+    );
+  }, [connectedWalletsByChain]);
+
+  // Listen for live EVM account/network switches in Rabby / MetaMask without dropping other chains
   useEffect(() => {
-    if (!isPersonalWallet || walletChainType !== "evm" || typeof window === "undefined") {
+    const evmWallet = connectedWalletsByChain.evm;
+    if (!evmWallet || typeof window === "undefined") {
       return;
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -486,19 +582,18 @@ export function App() {
 
     const onAccountsChanged = (accs: unknown) => {
       if (Array.isArray(accs) && typeof accs[0] === "string" && accs[0]) {
-        setWalletAccountId(accs[0]);
+        void registerAndSyncChainWallet("evm", accs[0], evmWallet.providerName);
       } else {
-        setWalletAccountId(null);
-        setIsPersonalWallet(false);
-        pushNotification(
-          "EVM wallet disconnected — Reverted to Protocol Sandbox Vault (jubayir69.testnet)",
-          "shield",
-          "amber"
-        );
+        setConnectedWalletsByChain((prev) => {
+          const next = { ...prev };
+          delete next.evm;
+          return next;
+        });
+        pushNotification("EVM wallet disconnected.", "shield", "amber");
       }
     };
     const onChainChanged = () => {
-      void refreshConnectedWalletBalances();
+      void registerAndSyncChainWallet("evm", evmWallet.address, evmWallet.providerName);
     };
 
     ethProvider.on("accountsChanged", onAccountsChanged);
@@ -507,17 +602,56 @@ export function App() {
       ethProvider.removeListener?.("accountsChanged", onAccountsChanged);
       ethProvider.removeListener?.("chainChanged", onChainChanged);
     };
-  }, [isPersonalWallet, walletChainType, refreshConnectedWalletBalances, pushNotification]);
+  }, [connectedWalletsByChain.evm, registerAndSyncChainWallet, pushNotification]);
+
+  const connectedWalletList = React.useMemo(
+    () =>
+      ALL_WALLET_CHAINS.map((c) => connectedWalletsByChain[c]).filter(
+        Boolean
+      ) as ConnectedChainWallet[],
+    [connectedWalletsByChain]
+  );
+
+  const hasPersonalWallet = connectedWalletList.length > 0;
+  const activePersonalWallet: ConnectedChainWallet | null =
+    connectedWalletsByChain[primaryChainType] ?? connectedWalletList[0] ?? null;
+
+  const walletAccountId = hasPersonalWallet
+    ? activePersonalWallet?.address ?? null
+    : sandboxExplicitSelected
+      ? overview?.treasuryAccount ?? "jubayir69.testnet"
+      : null;
+  const walletChainType: WalletChainType = hasPersonalWallet
+    ? activePersonalWallet?.chainType ?? "near"
+    : "near";
+  const walletProviderName = hasPersonalWallet
+    ? activePersonalWallet?.providerName ?? "Personal Wallet"
+    : "Protocol Sandbox Vault";
+  const isPersonalWallet = hasPersonalWallet;
+  const walletBalancesLoading = connectedWalletList.some((w) => w.balancesLoading);
+
+  const openWalletModalWithChain = useCallback(
+    (preferredChain?: WalletChainType) => {
+      if (preferredChain) {
+        setWalletModalHighlightedChain(preferredChain);
+      } else {
+        setWalletModalHighlightedChain(null);
+      }
+      setWalletMenuOpen(false);
+      setWalletModalOpen(true);
+    },
+    []
+  );
 
   const handleConnectWallet = () => {
-    if (walletAccountId) {
+    if (hasPersonalWallet || sandboxExplicitSelected) {
       setWalletMenuOpen((open) => !open);
       return;
     }
-    setWalletModalOpen(true);
+    openWalletModalWithChain();
   };
 
-  const handleConnectNearSelector = async () => {
+  const handleConnectNearSelector = useCallback(async () => {
     setWalletConnecting("near");
     try {
       if (!connectorRef.current) {
@@ -542,14 +676,129 @@ export function App() {
     } finally {
       setWalletConnecting(null);
     }
-  };
+  }, [pushNotification]);
+
+  const handleConnectChainWallet = useCallback(
+    async (chainType: WalletChainType) => {
+      if (chainType === "near") {
+        await handleConnectNearSelector();
+        return;
+      }
+      if (chainType === "evm" && evmRequestInFlightRef.current) {
+        pushNotification(
+          "EVM wallet connection prompt is already open — check your browser extension.",
+          "shield",
+          "cyan"
+        );
+        return;
+      }
+
+      setWalletConnecting(chainType);
+      if (chainType === "evm") {
+        evmRequestInFlightRef.current = true;
+      }
+      try {
+        const { address, providerName } = await connectInPageBrowserWallet(chainType);
+        await registerAndSyncChainWallet(chainType, address, providerName);
+        pushNotification(
+          `Connected ${providerName}: ${formatShortWalletAddress(address, chainType)} — Active alongside your multi-chain wallet hub.`,
+          "shield",
+          "emerald"
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (
+          msg.toLowerCase().includes("already pending") ||
+          msg.toLowerCase().includes("still active")
+        ) {
+          pushNotification(
+            "Wallet popup is already open in your browser toolbar — approve or close it first.",
+            "shield",
+            "amber"
+          );
+        } else {
+          pushNotification(`[WARNING] ${msg}`, "shield", "amber");
+        }
+      } finally {
+        if (chainType === "evm") {
+          evmRequestInFlightRef.current = false;
+        }
+        setWalletConnecting(null);
+      }
+    },
+    [handleConnectNearSelector, pushNotification, registerAndSyncChainWallet]
+  );
+
+  const handleDisconnectChainWallet = useCallback(
+    async (chainType: WalletChainType) => {
+      const target = connectedWalletsByChain[chainType];
+      try {
+        if (chainType === "near" && connectorRef.current) {
+          await connectorRef.current.disconnect().catch(async () => {
+            const wallet = await connectorRef.current?.wallet();
+            await wallet?.signOut();
+          });
+        } else if (chainType === "solana" && typeof window !== "undefined") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const solProvider = (window as any)?.phantom?.solana ?? (window as any)?.solana;
+          await solProvider?.disconnect?.().catch(() => {});
+        }
+      } catch {
+        // Ignore disconnect errors
+      }
+
+      setConnectedWalletsByChain((prev) => {
+        const next = { ...prev };
+        delete next[chainType];
+        const remaining = ALL_WALLET_CHAINS.filter((c) => Boolean(next[c]));
+        if (remaining.length > 0 && primaryChainType === chainType) {
+          setPrimaryChainType(remaining[0]);
+        }
+        if (remaining.length === 0) {
+          setWalletMenuOpen(false);
+        }
+        return next;
+      });
+
+      pushNotification(
+        `Disconnected ${target?.providerName ?? CHAIN_FAMILY_META[chainType].label}.`,
+        "shield",
+        "amber"
+      );
+    },
+    [connectedWalletsByChain, primaryChainType, pushNotification]
+  );
+
+  const handleDisconnectAllWallets = useCallback(async () => {
+    setWalletMenuOpen(false);
+    try {
+      if (connectedWalletsByChain.near && connectorRef.current) {
+        await connectorRef.current.disconnect().catch(async () => {
+          const wallet = await connectorRef.current?.wallet();
+          await wallet?.signOut();
+        });
+      }
+      if (connectedWalletsByChain.solana && typeof window !== "undefined") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const solProvider = (window as any)?.phantom?.solana ?? (window as any)?.solana;
+        await solProvider?.disconnect?.().catch(() => {});
+      }
+    } catch {
+      // Ignore disconnect errors
+    }
+    setConnectedWalletsByChain({});
+    setSandboxExplicitSelected(false);
+    pushNotification(
+      "Disconnected all personal wallets — Reverted to Protocol Sandbox Vault (jubayir69.testnet)",
+      "shield",
+      "amber"
+    );
+  }, [connectedWalletsByChain, pushNotification]);
 
   const handleConnectNearVaultDirect = () => {
     const vaultAcc = overview?.treasuryAccount ?? "jubayir69.testnet";
-    setWalletAccountId(vaultAcc);
-    setWalletChainType("near");
-    setWalletProviderName("Protocol Sandbox Vault");
-    setIsPersonalWallet(false);
+    setConnectedWalletsByChain({});
+    setSandboxExplicitSelected(true);
     setWalletModalOpen(false);
     pushNotification(
       `Judge Sandbox Mode Active: ${vaultAcc} (Connect a personal wallet anytime for Personal Wallet Control)`,
@@ -558,238 +807,150 @@ export function App() {
     );
   };
 
-  const handleConnectEvmInPage = async (preferredLabel = "Rabby / EVM Wallet") => {
-    if (evmRequestInFlightRef.current) {
-      pushNotification(
-        "EVM wallet connection prompt is already open — check your browser extension.",
-        "shield",
-        "cyan"
-      );
-      return;
-    }
-    setWalletConnecting("evm");
-    evmRequestInFlightRef.current = true;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const ethProvider = typeof window !== "undefined" ? (window as any).ethereum : undefined;
-      if (!ethProvider || typeof ethProvider.request !== "function") {
-        pushNotification(
-          "No EVM browser wallet (Rabby / MetaMask) detected in window.ethereum. Install an EVM wallet extension or continue in Judge Sandbox Mode.",
-          "shield",
-          "amber"
-        );
-        return;
-      }
-
-      const requested = await ethProvider.request({ method: "eth_requestAccounts" });
-      const address = Array.isArray(requested) && typeof requested[0] === "string" ? requested[0] : null;
-      if (!address) {
-        pushNotification(
-          "EVM wallet did not return an authorized account — staying in Sandbox Vault Mode.",
-          "shield",
-          "amber"
-        );
-        return;
-      }
-
-      const detectedName = ethProvider.isRabby
-        ? "Rabby Wallet (EVM)"
-        : ethProvider.isMetaMask
-          ? "MetaMask (EVM)"
-          : preferredLabel;
-      setWalletAccountId(address);
-      setWalletChainType("evm");
-      setWalletProviderName(detectedName);
-      setIsPersonalWallet(true);
-      setWalletModalOpen(false);
-      pushNotification(
-        `Connected ${detectedName}: ${address.slice(0, 8)}...${address.slice(-6)} — Querying live on-chain balances...`,
-        "shield",
-        "emerald"
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.toLowerCase().includes("already pending") || msg.toLowerCase().includes("still active")) {
-        pushNotification(
-          "Rabby / MetaMask popup is already open in your browser toolbar — approve or close it first.",
-          "shield",
-          "amber"
-        );
-      } else {
-        pushNotification(
-          "Wallet connection request was rejected in Rabby / MetaMask — staying in Sandbox Vault Mode.",
-          "shield",
-          "amber"
-        );
-      }
-    } finally {
-      evmRequestInFlightRef.current = false;
-      setWalletConnecting(null);
-    }
-  };
-
-  const handleConnectPhantomSolanaInPage = async () => {
-    setWalletConnecting("solana");
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const win = typeof window !== "undefined" ? (window as any) : {};
-      const solProvider =
-        win?.phantom?.solana ?? (win?.solana?.isPhantom ? win.solana : win?.solana);
-      if (!solProvider || typeof solProvider.connect !== "function") {
-        pushNotification(
-          "No Phantom / Solana wallet extension detected in window.phantom.solana. Install Phantom or continue in Judge Sandbox Mode.",
-          "shield",
-          "amber"
-        );
-        return;
-      }
-
-      const resp = await solProvider.connect();
-      const pubKey = resp?.publicKey?.toString?.() ?? solProvider?.publicKey?.toString?.();
-      if (!pubKey) {
-        pushNotification(
-          "Solana wallet did not return a public key — staying in Sandbox Vault Mode.",
-          "shield",
-          "amber"
-        );
-        return;
-      }
-
-      setWalletAccountId(pubKey);
-      setWalletChainType("solana");
-      setWalletProviderName("Phantom Wallet (Solana)");
-      setIsPersonalWallet(true);
-      setWalletModalOpen(false);
-      pushNotification(
-        `Connected Phantom Solana Wallet: ${pubKey.slice(0, 6)}...${pubKey.slice(-6)} — Querying live SOL & SPL balances...`,
-        "shield",
-        "emerald"
-      );
-    } catch {
-      pushNotification(
-        "Wallet connection request was rejected in Phantom — staying in Sandbox Vault Mode.",
-        "shield",
-        "amber"
-      );
-    } finally {
-      setWalletConnecting(null);
-    }
-  };
-
-  const handleDisconnectWallet = async () => {
-    setWalletMenuOpen(false);
-    try {
-      if (walletChainType === "near" && connectorRef.current) {
-        await connectorRef.current.disconnect().catch(async () => {
-          const wallet = await connectorRef.current?.wallet();
-          await wallet?.signOut();
-        });
-      } else if (walletChainType === "solana" && typeof window !== "undefined") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const solProvider = (window as any)?.phantom?.solana ?? (window as any)?.solana;
-        await solProvider?.disconnect?.().catch(() => {});
-      }
-    } catch {
-      // Ignore disconnect errors
-    }
-    const prevName = walletProviderName;
-    setWalletAccountId(null);
-    setIsPersonalWallet(false);
-    pushNotification(
-      `Disconnected ${prevName} — Reverted to Protocol Sandbox Vault (jubayir69.testnet)`,
-      "shield",
-      "amber"
-    );
-  };
-
-  const walletExplorerHref = walletAccountId
-    ? walletChainType === "evm"
-      ? `https://etherscan.io/address/${walletAccountId}`
-      : walletChainType === "solana"
-        ? `https://solscan.io/account/${walletAccountId}`
-        : walletAccountId.endsWith(".near")
-          ? `https://nearblocks.io/address/${walletAccountId}`
-          : `https://testnet.nearblocks.io/address/${walletAccountId}`
-    : "https://testnet.nearblocks.io/address/jubayir69.testnet";
+  const walletExplorerHref = getWalletExplorerAccountUrl(
+    walletAccountId,
+    walletChainType
+  );
 
   const walletExplorerLabel =
     walletChainType === "evm"
       ? "View on Etherscan Explorer"
       : walletChainType === "solana"
         ? "View on Solscan Explorer"
-        : "View on NEARBlocks Explorer";
+        : walletChainType === "bitcoin"
+          ? "View on Mempool Explorer"
+          : walletChainType === "sui"
+            ? "View on Suiscan Explorer"
+            : walletChainType === "ton"
+              ? "View on Tonviewer Explorer"
+              : walletChainType === "xrp"
+                ? "View on XRPL Explorer"
+                : "View on NEARBlocks Explorer";
 
   const shortWalletAddr = formatShortWalletAddress(walletAccountId, walletChainType);
 
-  const formattedWalletButtonLabel = walletAccountId
-    ? isPersonalWallet
-      ? shortWalletAddr
-      : `Sandbox: ${shortWalletAddr}`
-    : "Connect Wallet";
+  const formattedWalletButtonLabel = hasPersonalWallet
+    ? connectedWalletList.length > 1
+      ? `${connectedWalletList.length} Wallets (${connectedWalletList
+          .map((w) => CHAIN_FAMILY_META[w.chainType].shortLabel)
+          .join(" + ")})`
+      : `${shortWalletAddr} (${CHAIN_FAMILY_META[walletChainType].shortLabel})`
+    : sandboxExplicitSelected && walletAccountId
+      ? `Sandbox: ${shortWalletAddr}`
+      : "Connect Wallet";
 
-  const walletContext: ConnectedWalletState = React.useMemo(
-    () => ({
-      isPersonalWallet: Boolean(isPersonalWallet && walletAccountId),
-      address: isPersonalWallet ? walletAccountId : null,
+  const walletContext: ConnectedWalletState = React.useMemo(() => {
+    const nearConnected = connectedWalletsByChain.near;
+    const mergedTokenBalances: Record<string, number> = {};
+    for (const w of connectedWalletList) {
+      Object.assign(mergedTokenBalances, w.tokenBalances);
+    }
+    const primarySnap = activePersonalWallet;
+
+    return {
+      isPersonalWallet: hasPersonalWallet,
+      address: hasPersonalWallet ? primarySnap?.address ?? null : null,
       shortAddress: shortWalletAddr,
       chainType: walletChainType,
       providerName: walletProviderName,
       explorerAccountUrl: walletExplorerHref,
       balancesLoading: walletBalancesLoading,
-      nativeSymbol: walletBalances.nativeSymbol,
-      nativeBalance: walletBalances.nativeBalance,
-      nativeFormatted: walletBalances.nativeFormatted,
-      totalNearBalance: walletBalances.totalNearBalance,
-      spendableNearBalance: walletBalances.spendableNearBalance,
-      storageLockedNear: walletBalances.storageLockedNear,
-      walletGasReserveNear: walletBalances.walletGasReserveNear,
-      totalNearFormatted: walletBalances.totalNearFormatted,
-      spendableNearFormatted: walletBalances.spendableNearFormatted,
-      wnearBalance: walletBalances.wnearBalance,
-      usdcBalance: walletBalances.usdcBalance,
-      usdtBalance: walletBalances.usdtBalance,
-      tokenBalances: walletBalances.tokenBalances,
+      connectedWallets: connectedWalletsByChain,
+      connectedChainsCount: connectedWalletList.length,
+      connectChainWallet: handleConnectChainWallet,
+      disconnectChainWallet: handleDisconnectChainWallet,
+      disconnectAllWallets: handleDisconnectAllWallets,
+      openWalletModal: openWalletModalWithChain,
+      nativeSymbol: primarySnap?.nativeSymbol ?? "NEAR",
+      nativeBalance: primarySnap?.nativeBalance ?? 0,
+      nativeFormatted: primarySnap?.nativeFormatted ?? "0.0000 NEAR",
+      totalNearBalance:
+        nearConnected?.totalNearBalance ?? primarySnap?.totalNearBalance,
+      spendableNearBalance:
+        nearConnected?.spendableNearBalance ?? primarySnap?.spendableNearBalance,
+      storageLockedNear:
+        nearConnected?.storageLockedNear ?? primarySnap?.storageLockedNear,
+      walletGasReserveNear:
+        nearConnected?.walletGasReserveNear ?? primarySnap?.walletGasReserveNear,
+      totalNearFormatted:
+        nearConnected?.totalNearFormatted ?? primarySnap?.totalNearFormatted,
+      spendableNearFormatted:
+        nearConnected?.spendableNearFormatted ??
+        primarySnap?.spendableNearFormatted,
+      wnearBalance: nearConnected?.wnearBalance ?? primarySnap?.wnearBalance ?? 0,
+      usdcBalance: primarySnap?.usdcBalance ?? 0,
+      usdtBalance: primarySnap?.usdtBalance ?? 0,
+      tokenBalances: mergedTokenBalances,
       refreshBalances: refreshConnectedWalletBalances,
       signPersonalIntent: async (message: string) => {
-        if (!isPersonalWallet || !walletAccountId) {
+        if (!hasPersonalWallet || !primarySnap) {
           throw new Error("Connect a personal wallet before signing.");
         }
         return signMessageWithPersonalWallet({
-          address: walletAccountId,
-          chainType: walletChainType,
+          address: primarySnap.address,
+          chainType: primarySnap.chainType,
+          message,
+          nearConnector: connectorRef.current,
+        });
+      },
+      signIntentWithChainWallet: async (
+        targetChain: WalletChainType,
+        message: string
+      ) => {
+        const targetWallet =
+          connectedWalletsByChain[targetChain] ?? activePersonalWallet;
+        if (!targetWallet) {
+          throw new Error(
+            `Connect your ${CHAIN_FAMILY_META[targetChain].label} wallet before signing.`
+          );
+        }
+        return signMessageWithPersonalWallet({
+          address: targetWallet.address,
+          chainType: targetWallet.chainType,
           message,
           nearConnector: connectorRef.current,
         });
       },
       anchorNearProofViaWallet: async (poc4HMaster: string) => {
-        if (!isPersonalWallet || !walletAccountId || walletChainType !== "near") {
-          throw new Error("Connect a personal NEAR wallet to broadcast directly from your NEAR account.");
+        const nearW = connectedWalletsByChain.near;
+        if (!nearW) {
+          throw new Error(
+            "Connect a personal NEAR wallet to broadcast directly from your NEAR account."
+          );
         }
         return sendNearTransactionWithPersonalWallet({
-          address: walletAccountId,
+          address: nearW.address,
           poc4HMaster,
           nearConnector: connectorRef.current,
         });
       },
-    }),
-    [
-      isPersonalWallet,
-      walletAccountId,
-      shortWalletAddr,
-      walletChainType,
-      walletProviderName,
-      walletExplorerHref,
-      walletBalancesLoading,
-      walletBalances,
-      refreshConnectedWalletBalances,
-    ]
-  );
+    };
+  }, [
+    connectedWalletsByChain,
+    connectedWalletList,
+    activePersonalWallet,
+    hasPersonalWallet,
+    shortWalletAddr,
+    walletChainType,
+    walletProviderName,
+    walletExplorerHref,
+    walletBalancesLoading,
+    handleConnectChainWallet,
+    handleDisconnectChainWallet,
+    handleDisconnectAllWallets,
+    openWalletModalWithChain,
+    refreshConnectedWalletBalances,
+  ]);
 
   const handleCopyWalletAddress = () => {
-    if (!walletAccountId) return;
-    navigator.clipboard?.writeText(walletAccountId).catch(() => {});
+    const addrToCopy =
+      activePersonalWallet?.address ??
+      walletAccountId ??
+      overview?.treasuryAccount ??
+      "jubayir69.testnet";
+    navigator.clipboard?.writeText(addrToCopy).catch(() => {});
     setWalletCopied(true);
-    pushNotification(`Copied ${walletAccountId} to clipboard`, "shield", "emerald");
+    pushNotification(`Copied ${addrToCopy} to clipboard`, "shield", "emerald");
     if (walletCopyTimerRef.current !== null) {
       window.clearTimeout(walletCopyTimerRef.current);
     }
@@ -1219,7 +1380,7 @@ export function App() {
                         KratonOS
                       </span>
                       <Badge variant="emerald" className="shrink-0 px-1.5 py-0 text-[10px]">
-                        v2026
+                        v2026.6
                       </Badge>
                     </div>
                     <p
@@ -1298,57 +1459,104 @@ export function App() {
             </nav>
           </div>
 
-          {/* Sidebar Footer: Dual-Mode Custody Card (Connected Personal Wallet vs Protocol Sandbox Vault) */}
+          {/* Sidebar Footer: Dual-Mode Custody Card (Simultaneous Multi-Chain Hub vs Protocol Sandbox Vault) */}
           <div className="border-t border-[var(--border-color)] p-3">
             {showExpandedSidebar ? (
-              walletContext.isPersonalWallet && walletAccountId ? (
-                <div className="rounded-xl border border-emerald-500/45 bg-emerald-500/8 p-3">
+              walletContext.isPersonalWallet && connectedWalletList.length > 0 ? (
+                <div className="space-y-2 rounded-xl border border-emerald-500/45 bg-emerald-500/8 p-3">
                   <div className="flex items-center justify-between gap-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--accent-emerald)]">
-                      CONNECTED WALLET (ACTIVE CONTROL)
+                      MULTI-CHAIN WALLET HUB ({connectedWalletList.length})
                     </span>
                     <Badge variant="emerald" className="shrink-0 text-[10px]">
                       {walletBalancesLoading ? "SYNCING" : "LIVE RPC"}
                     </Badge>
                   </div>
-                  <a
-                    href={walletExplorerHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-1 inline-flex max-w-full items-center gap-1 truncate font-mono text-xs font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)]"
+
+                  <div className="space-y-2">
+                    {connectedWalletList.map((w) => {
+                      const meta = CHAIN_FAMILY_META[w.chainType];
+                      const isPrimary = w.chainType === walletChainType;
+                      return (
+                        <div
+                          key={w.chainType}
+                          className={`rounded-lg border p-2 text-[11px] ${
+                            isPrimary
+                              ? "border-emerald-500/45 bg-emerald-500/12"
+                              : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setPrimaryChainType(w.chainType)}
+                              className="inline-flex min-w-0 items-center gap-1.5 text-left font-mono font-extrabold text-[var(--text-primary)] hover:text-[var(--accent-emerald)] cursor-pointer"
+                              title="Click to set as active primary wallet"
+                            >
+                              <Badge variant={meta.badgeTone} className="px-1.5 py-0 text-[9px]">
+                                {meta.shortLabel}
+                              </Badge>
+                              <span className="truncate">{w.shortAddress}</span>
+                            </button>
+                            <div className="flex shrink-0 items-center gap-1">
+                              <a
+                                href={w.explorerAccountUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                title="Open on block explorer"
+                                className="text-[var(--accent-emerald)] hover:opacity-80"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+
+                          <div className="mt-1.5 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
+                            <span>Available (Wallet Spendable)</span>
+                            <span className="font-mono font-bold text-[var(--accent-emerald)]">
+                              {w.balancesLoading
+                                ? "Syncing..."
+                                : w.spendableNearFormatted ?? w.nativeFormatted}
+                            </span>
+                          </div>
+
+                          {w.chainType === "near" && (
+                            <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
+                              <span>Total On-Chain (incl. 0.20N Reserve)</span>
+                              <span className="font-mono font-bold text-[var(--text-primary)]">
+                                {w.balancesLoading
+                                  ? "Syncing..."
+                                  : w.totalNearFormatted ?? unifiedVaultBalance}
+                              </span>
+                            </div>
+                          )}
+
+                          {(w.usdcBalance > 0 || w.usdtBalance > 0 || w.chainType === "near" || w.chainType === "evm") && (
+                            <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
+                              <span>Stablecoins</span>
+                              <span className="font-mono font-bold text-[var(--accent-cyan)]">
+                                {w.balancesLoading
+                                  ? "Querying..."
+                                  : `USDC: ${w.usdcBalance.toFixed(2)} | USDT: ${w.usdtBalance.toFixed(2)}`}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => openWalletModalWithChain()}
+                    className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1.5 font-mono text-[10px] font-extrabold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/25 cursor-pointer"
                   >
-                    <span className="truncate">{shortWalletAddr}</span>
-                    <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
-                  </a>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                    <span>Available (Wallet Spendable)</span>
-                    <span className="font-mono font-bold text-[var(--accent-emerald)]">
-                      {walletBalancesLoading
-                        ? "Syncing RPC..."
-                        : walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
-                    </span>
-                  </div>
-                  {walletContext.chainType === "near" && (
-                    <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                      <span>Total On-Chain (incl. 0.20N Reserve)</span>
-                      <span className="font-mono font-bold text-[var(--text-primary)]">
-                        {walletBalancesLoading
-                          ? "Syncing..."
-                          : walletContext.totalNearFormatted ?? unifiedVaultBalance}
-                      </span>
-                    </div>
-                  )}
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                    <span>Stablecoins</span>
-                    <span className="font-mono font-bold text-[var(--accent-cyan)]">
-                      {walletBalancesLoading
-                        ? "Querying..."
-                        : `USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
-                    </span>
-                  </div>
+                    <Wallet className="h-3 w-3 shrink-0" />
+                    <span>+ Connect Another Chain Wallet</span>
+                  </button>
                 </div>
               ) : (
-                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
+                <div className="space-y-1.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                       SANDBOX VAULT ACCOUNT
@@ -1366,19 +1574,19 @@ export function App() {
                     <span className="truncate">{overview?.treasuryAccount ?? "jubayir69.testnet"}</span>
                     <ExternalLink className="h-3 w-3 shrink-0 text-[var(--accent-emerald)]" />
                   </a>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                    <span>Available (Spendable)</span>
+                  <div className="mt-1.5 flex items-center justify-between gap-1 text-[11px] text-[var(--text-secondary)]">
+                    <span>Available (Wallet Spendable)</span>
                     <span className="font-mono font-bold text-[var(--accent-emerald)]">
                       {unifiedVaultSpendableBalance}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
-                    <span>Total On-Chain (incl. 0.20N)</span>
+                  <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--text-secondary)]">
+                    <span>Total On-Chain (incl. 0.20N Reserve)</span>
                     <span className="font-mono font-bold text-[var(--text-primary)]">
                       {unifiedVaultBalance}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+                  <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--text-secondary)]">
                     <span>Fee Recipient</span>
                     <a
                       href={`https://nearblocks.io/address/${overview?.feeRecipient ?? "jubayir33.near"}`}
@@ -1395,7 +1603,7 @@ export function App() {
             ) : (
               <div className="flex justify-center">
                 <Badge variant="emerald" className="px-1.5 py-0.5 text-[10px]">
-                  {walletContext.isPersonalWallet ? "USER" : "LIVE"}
+                  {walletContext.isPersonalWallet ? `${connectedWalletList.length}W` : "LIVE"}
                 </Badge>
               </div>
             )}
@@ -1523,12 +1731,12 @@ export function App() {
                 </Button>
 
                 {walletAccountId && walletMenuOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--border-color)] bg-[var(--panel-solid)] p-3.5 shadow-2xl animate-fade-in">
+                  <div className="absolute right-0 top-full z-50 mt-2 w-88 max-w-[calc(100vw-2rem)] rounded-xl border border-[var(--border-color)] bg-[var(--panel-solid)] p-3.5 shadow-2xl animate-fade-in">
                     <div className="flex items-start justify-between gap-2 border-b border-[var(--border-color)] pb-2.5">
                       <div className="min-w-0 flex-1">
                         <span className="block text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                           {walletContext.isPersonalWallet
-                            ? `${walletProviderName} · ACTIVE CONTROL`
+                            ? `MULTI-CHAIN WALLET HUB (${connectedWalletList.length} CONNECTED)`
                             : "PROTOCOL SANDBOX VAULT"}
                         </span>
                         <span className="mt-0.5 block break-all font-mono text-xs font-extrabold text-[var(--accent-emerald)]">
@@ -1542,34 +1750,60 @@ export function App() {
                       </Badge>
                     </div>
 
-                    {walletContext.isPersonalWallet && (
-                      <div className="mt-2.5 rounded-lg border border-emerald-500/35 bg-emerald-500/8 px-3 py-2 font-mono text-[11px]">
-                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
-                          <span>Available (Wallet Spendable):</span>
-                          <span className="font-bold text-[var(--accent-emerald)]">
-                            {walletBalancesLoading
-                              ? "Syncing..."
-                              : walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
-                          </span>
-                        </div>
-                        {walletContext.chainType === "near" && (
-                          <div className="mt-1 flex items-center justify-between text-[var(--text-secondary)]">
-                            <span>Total On-Chain (incl. 0.20N Reserve):</span>
-                            <span className="font-bold text-[var(--text-primary)]">
-                              {walletBalancesLoading
-                                ? "Syncing..."
-                                : walletContext.totalNearFormatted ?? unifiedVaultBalance}
-                            </span>
-                          </div>
-                        )}
-                        <div className="mt-1 flex items-center justify-between text-[var(--text-secondary)]">
-                          <span>Stablecoins:</span>
-                          <span className="font-bold text-[var(--accent-cyan)]">
-                            {walletBalancesLoading
-                              ? "Syncing..."
-                              : `USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
-                          </span>
-                        </div>
+                    {walletContext.isPersonalWallet && connectedWalletList.length > 0 && (
+                      <div className="mt-2.5 max-h-60 space-y-2 overflow-y-auto pr-0.5 font-mono text-[11px]">
+                        {connectedWalletList.map((w) => {
+                          const meta = CHAIN_FAMILY_META[w.chainType];
+                          const isPrimary = w.chainType === walletChainType;
+                          return (
+                            <div
+                              key={w.chainType}
+                              className={`rounded-lg border px-2.5 py-2 ${
+                                isPrimary
+                                  ? "border-emerald-500/45 bg-emerald-500/10"
+                                  : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setPrimaryChainType(w.chainType)}
+                                  className="inline-flex min-w-0 items-center gap-1.5 text-left font-bold text-[var(--text-primary)] hover:text-[var(--accent-emerald)] cursor-pointer"
+                                >
+                                  <Badge variant={meta.badgeTone} className="px-1.5 py-0 text-[9px]">
+                                    {meta.shortLabel}
+                                  </Badge>
+                                  <span className="truncate">{w.shortAddress}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDisconnectChainWallet(w.chainType)}
+                                  className="rounded border border-rose-500/35 bg-rose-500/12 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 hover:bg-rose-500/20 cursor-pointer"
+                                >
+                                  Disconnect
+                                </button>
+                              </div>
+                              <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
+                                <span>Available Spendable:</span>
+                                <span className="font-bold text-[var(--accent-emerald)]">
+                                  {w.balancesLoading
+                                    ? "Syncing..."
+                                    : w.spendableNearFormatted ?? w.nativeFormatted}
+                                </span>
+                              </div>
+                              {w.chainType === "near" && (
+                                <div className="mt-0.5 flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
+                                  <span>Total On-Chain (incl. 0.20N):</span>
+                                  <span className="font-bold text-[var(--text-primary)]">
+                                    {w.balancesLoading
+                                      ? "Syncing..."
+                                      : w.totalNearFormatted ?? unifiedVaultBalance}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
@@ -1580,7 +1814,7 @@ export function App() {
                           onClick={() => void refreshConnectedWalletBalances()}
                           className="flex w-full items-center justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] cursor-pointer"
                         >
-                          <span>Refresh On-Chain Balances</span>
+                          <span>Refresh All Chain Balances</span>
                           <RefreshCw
                             className={`h-3.5 w-3.5 text-[var(--accent-emerald)] ${
                               walletBalancesLoading ? "animate-spin" : ""
@@ -1594,7 +1828,7 @@ export function App() {
                         onClick={handleCopyWalletAddress}
                         className="flex w-full items-center justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--accent-emerald)] cursor-pointer"
                       >
-                        <span>{walletCopied ? "Address Copied!" : "Copy Account Address"}</span>
+                        <span>{walletCopied ? "Address Copied!" : "Copy Active Address"}</span>
                         {walletCopied ? (
                           <CheckCircle2 className="h-3.5 w-3.5 text-[var(--accent-emerald)]" />
                         ) : (
@@ -1615,22 +1849,23 @@ export function App() {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setWalletMenuOpen(false);
-                          setWalletModalOpen(true);
-                        }}
-                        className="flex w-full items-center justify-between rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-2 font-mono text-xs font-semibold text-[var(--text-primary)] transition-colors hover:border-[var(--accent-cyan)] cursor-pointer"
+                        onClick={() => openWalletModalWithChain()}
+                        className="flex w-full items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/12 px-3 py-2 font-mono text-xs font-bold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/20 cursor-pointer"
                       >
-                        <span>Switch Wallet / Network</span>
-                        <Wallet className="h-3.5 w-3.5 text-[var(--accent-cyan)]" />
+                        <span>+ Connect / Manage Chain Wallets</span>
+                        <Wallet className="h-3.5 w-3.5 text-[var(--accent-emerald)]" />
                       </button>
 
                       <button
                         type="button"
-                        onClick={handleDisconnectWallet}
+                        onClick={() => void handleDisconnectAllWallets()}
                         className="mt-1 flex w-full items-center justify-between rounded-lg border border-rose-500/40 bg-rose-500/12 px-3 py-2 font-mono text-xs font-extrabold text-rose-500 transition-colors hover:bg-rose-500/20 cursor-pointer"
                       >
-                        <span>Disconnect Wallet</span>
+                        <span>
+                          {connectedWalletList.length > 1
+                            ? "Disconnect All Wallets"
+                            : "Disconnect Wallet"}
+                        </span>
                         <LogOut className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -1640,48 +1875,53 @@ export function App() {
             </div>
           </header>
 
-          {/* Dual-Mode Custody Banner (Mode A: Sandbox Vault vs Mode B: Connected Personal Wallet Control) */}
-          {walletContext.isPersonalWallet && walletAccountId ? (
+          {/* Dual-Mode Custody Banner (Mode A: Sandbox Vault vs Mode B: Simultaneous Multi-Chain Personal Wallets) */}
+          {walletContext.isPersonalWallet && connectedWalletList.length > 0 ? (
             <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-500/35 bg-emerald-500/10 px-3.5 py-2 font-mono text-[11px] leading-relaxed text-[var(--text-secondary)] sm:px-6">
-              <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Badge variant="emerald" className="shrink-0 text-[10px]">
-                  PERSONAL WALLET ACTIVE
+                  PERSONAL WALLET HUB ({connectedWalletList.length})
                 </Badge>
-                <span className="min-w-0 break-words">
-                  <span className="font-semibold text-[var(--text-primary)]">
-                    PERSONAL WALLET CONTROL
-                  </span>{" "}
-                  (
-                  <strong className="break-all font-extrabold text-[var(--accent-emerald)]">
-                    {walletAccountId}
-                  </strong>
-                  ) —{" "}
-                  <span className="text-[var(--text-primary)]">
-                    Live On-Chain RPC Balances, Strict Balance Locks &amp; Direct Wallet Popup Signing Active.
-                  </span>{" "}
-                  <span className="inline-block font-bold text-[var(--accent-cyan)]">
-                    [
-                    {walletBalancesLoading
-                      ? "Syncing RPC..."
-                      : `Spendable: ${walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}${
-                          walletContext.chainType === "near" && walletContext.totalNearFormatted
-                            ? ` (Total: ${walletContext.totalNearFormatted})`
-                            : ""
-                        } | USDC: ${walletContext.usdcBalance.toFixed(2)} | USDT: ${walletContext.usdtBalance.toFixed(2)}`}
-                    ]
-                  </span>
-                </span>
+                {connectedWalletList.map((w) => {
+                  const meta = CHAIN_FAMILY_META[w.chainType];
+                  return (
+                    <span
+                      key={w.chainType}
+                      className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-[var(--text-primary)]"
+                    >
+                      <span className="text-[var(--accent-emerald)]">{meta.shortLabel}:</span>
+                      <span>{w.shortAddress}</span>
+                      <span className="text-[var(--accent-cyan)]">
+                        (
+                        {w.balancesLoading
+                          ? "Syncing..."
+                          : w.spendableNearFormatted ?? w.nativeFormatted}
+                        )
+                      </span>
+                    </span>
+                  );
+                })}
               </div>
-              <button
-                type="button"
-                onClick={() => void refreshConnectedWalletBalances()}
-                className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/25 cursor-pointer"
-              >
-                <RefreshCw
-                  className={`h-3 w-3 ${walletBalancesLoading ? "animate-spin" : ""}`}
-                />
-                <span>Refresh RPC</span>
-              </button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => openWalletModalWithChain()}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/15 px-2 py-0.5 text-[10px] font-bold text-[var(--accent-cyan)] hover:bg-sky-500/25 cursor-pointer"
+                >
+                  <Wallet className="h-3 w-3" />
+                  <span>+ Add Chain Wallet</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void refreshConnectedWalletBalances()}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/25 cursor-pointer"
+                >
+                  <RefreshCw
+                    className={`h-3 w-3 ${walletBalancesLoading ? "animate-spin" : ""}`}
+                  />
+                  <span>Refresh RPC</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-2.5 border-b border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3.5 py-2 font-mono text-[11px] leading-relaxed text-[var(--text-secondary)] sm:px-6">
@@ -1856,30 +2096,34 @@ export function App() {
         </div>
       </div>
 
-      {/* In-App Multi-Chain Wallet Connection Modal (NEAR + Direct In-Page Rabby/EVM + Direct In-Page Phantom Solana) */}
+      {/* In-App Multi-Chain Simultaneous Wallet Hub Modal (NEAR + EVM + Solana + Bitcoin + Sui + TON + XRP) */}
       {walletModalOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Connect Multi-Chain Wallet"
+          aria-label="Connect Multi-Chain Wallet Hub"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-xs animate-fade-in"
           onClick={() => setWalletModalOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-[var(--border-color)] bg-[var(--panel-solid)] p-5 shadow-2xl"
+            className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border-color)] bg-[var(--panel-solid)] p-5 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border-color)] pb-3.5">
               <div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="emerald">PERSONAL WALLET CONTROL</Badge>
-                  <Badge variant="sky">DIRECT IN-PAGE</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="emerald">MULTI-CHAIN WALLET HUB</Badge>
+                  <Badge variant="sky">
+                    {connectedWalletList.length > 0
+                      ? `${connectedWalletList.length} ACTIVE`
+                      : "SIMULTANEOUS"}
+                  </Badge>
                 </div>
                 <h3 className="mt-1.5 font-display text-base font-extrabold text-[var(--text-primary)]">
-                  Connect Personal Wallet or Judge Sandbox
+                  Connect Simultaneous Multi-Chain Wallets
                 </h3>
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                  Connecting a personal wallet switches 100% of balances, balance validation, and signing to your wallet.
+                  Connect NEAR, EVM, Solana, Bitcoin, Sui, TON, and XRP wallets simultaneously without disconnecting previously connected chains.
                 </p>
               </div>
               <button
@@ -1892,83 +2136,106 @@ export function App() {
               </button>
             </div>
 
-            <div className="mt-4 space-y-2.5">
-              {/* Option 1: NEAR Protocol Selector (Meteor / HOT / Nightly / MyNearWallet) */}
-              <button
-                type="button"
-                disabled={walletConnecting !== null}
-                onClick={() => void handleConnectNearSelector()}
-                className="flex w-full items-center justify-between rounded-xl border border-emerald-500/35 bg-emerald-500/10 p-3.5 text-left transition-all hover:border-emerald-500 hover:bg-emerald-500/15 cursor-pointer"
-              >
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-sm font-bold text-[var(--text-primary)]">
-                      NEAR Protocol Wallets
-                    </span>
-                    <Badge variant="emerald" className="text-[10px]">
-                      PERSONAL NEAR
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                    Meteor Wallet · HOT Wallet · Nightly · MyNearWallet (@hot-labs/near-connect)
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-500/20 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)]">
-                  {walletConnecting === "near" ? "Opening..." : "Connect"}
-                </span>
-              </button>
+            <div className="mt-4 space-y-2">
+              {ALL_WALLET_CHAINS.map((chain) => {
+                const meta = CHAIN_FAMILY_META[chain];
+                const connected = connectedWalletsByChain[chain];
+                const isTargetHighlight = walletModalHighlightedChain === chain;
+                const isConnectingThis = walletConnecting === chain;
 
-              {/* Option 2: Direct In-Page Rabby / MetaMask / EVM Provider */}
-              <button
-                type="button"
-                disabled={walletConnecting !== null}
-                onClick={() => void handleConnectEvmInPage("Rabby / EVM Wallet")}
-                className="flex w-full items-center justify-between rounded-xl border border-sky-500/35 bg-sky-500/10 p-3.5 text-left transition-all hover:border-sky-400 hover:bg-sky-500/15 cursor-pointer"
-              >
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-sm font-bold text-[var(--text-primary)]">
-                      Rabby Wallet · MetaMask · EVM
-                    </span>
-                    <Badge variant="sky" className="text-[10px]">
-                      PERSONAL EIP-1193
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                    Direct window.ethereum handshake + real eth_getBalance &amp; ERC-20 USDC/USDT verification
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-lg border border-sky-500/40 bg-sky-500/20 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-cyan)]">
-                  {walletConnecting === "evm" ? "Connecting..." : "Connect"}
-                </span>
-              </button>
+                return (
+                  <div
+                    key={chain}
+                    className={`flex flex-wrap items-center justify-between gap-2.5 rounded-xl border p-3 transition-all ${
+                      connected
+                        ? "border-emerald-500/50 bg-emerald-500/12"
+                        : isTargetHighlight
+                          ? "border-sky-400/70 bg-sky-500/15 ring-1 ring-sky-400/50"
+                          : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:border-emerald-500/40"
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1 pr-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-display text-sm font-bold text-[var(--text-primary)]">
+                          {meta.label}
+                        </span>
+                        <Badge variant={meta.badgeTone} className="text-[10px]">
+                          {meta.nativeSymbol}
+                        </Badge>
+                        {isTargetHighlight && !connected && (
+                          <Badge variant="sky" className="text-[10px]">
+                            REQUIRED FOR SELECTED TOKEN
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="mt-0.5 text-[11px] text-[var(--text-secondary)]">
+                        {meta.recommendedWallets}
+                      </p>
+                      {connected && (
+                        <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[11px] font-bold text-[var(--accent-emerald)]">
+                          <span>
+                            Connected: {connected.shortAddress} (
+                            {connected.balancesLoading
+                              ? "Syncing..."
+                              : connected.spendableNearFormatted ??
+                                connected.nativeFormatted}
+                            )
+                          </span>
+                        </div>
+                      )}
+                    </div>
 
-              {/* Option 3: Direct In-Page Phantom Wallet (Solana) */}
-              <button
-                type="button"
-                disabled={walletConnecting !== null}
-                onClick={() => void handleConnectPhantomSolanaInPage()}
-                className="flex w-full items-center justify-between rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5 text-left transition-all hover:border-[var(--accent-emerald)] cursor-pointer"
-              >
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-sm font-bold text-[var(--text-primary)]">
-                      Phantom Wallet (Solana)
-                    </span>
-                    <Badge variant="emerald" className="text-[10px]">
-                      PERSONAL SOLANA
-                    </Badge>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {connected ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPrimaryChainType(chain);
+                              setWalletModalOpen(false);
+                            }}
+                            className="rounded-lg border border-emerald-500/45 bg-emerald-500/20 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                          >
+                            {walletChainType === chain ? "Active" : "Use"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDisconnectChainWallet(chain)}
+                            className="rounded-lg border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 font-mono text-[11px] font-bold text-rose-400 hover:bg-rose-500/25 cursor-pointer"
+                          >
+                            Disconnect
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={walletConnecting !== null}
+                          onClick={() => void handleConnectChainWallet(chain)}
+                          className="rounded-lg border border-emerald-500/45 bg-emerald-500/20 px-3 py-1.5 font-mono text-[11px] font-extrabold text-[var(--accent-emerald)] transition-colors hover:bg-emerald-500/30 cursor-pointer"
+                        >
+                          {isConnectingThis ? "Connecting..." : "Connect"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                    Direct window.phantom.solana handshake + real Solana RPC balance &amp; signMessage verification
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-lg border border-[var(--border-color)] bg-[var(--panel-solid)] px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--text-primary)]">
-                  {walletConnecting === "solana" ? "Connecting..." : "Connect"}
-                </span>
-              </button>
+                );
+              })}
 
-              {/* Option 4: Explicitly Labeled 1-Tap Judge Sandbox (jubayir69.testnet) */}
+              {connectedWalletList.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleDisconnectAllWallets();
+                    setWalletModalOpen(false);
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-rose-500/45 bg-rose-500/12 px-3.5 py-2.5 font-mono text-xs font-extrabold text-rose-400 transition-colors hover:bg-rose-500/20 cursor-pointer"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Disconnect All Personal Wallets ({connectedWalletList.length})</span>
+                </button>
+              )}
+
+              {/* Explicitly Labeled 1-Tap Judge Sandbox (jubayir69.testnet) */}
               <button
                 type="button"
                 onClick={handleConnectNearVaultDirect}
@@ -1995,8 +2262,9 @@ export function App() {
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => {
           const isWarnOrErr =
-            t.text.startsWith("⚠️") ||
-            t.text.startsWith("❌") ||
+            t.text.startsWith("[LOCKED]") ||
+            t.text.startsWith("[ERROR]") ||
+            t.text.startsWith("[WARNING]") ||
             t.text.includes("Execution LOCKED") ||
             t.text.includes("Error:");
           return (

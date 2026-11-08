@@ -419,9 +419,10 @@ export function escalate_sha256_to_sputnik_bounty(
   }
 
   // Tier 1: AUTO_APPROVE
-  // amountUsd <= config.max_single_tx_usd AND projectedDailySpendUsd <= config.daily_spend_limit_usd AND agentReputationScore >= 700 AND counterpartyRiskDecision === 'allow'
+  // amountUsd <= tier_1_auto_approve_max_usd ($50.00) AND projectedDailySpendUsd <= config.daily_spend_limit_usd AND agentReputationScore >= 700 AND counterpartyRiskDecision === 'allow'
+  const tier1MaxUsd = config.governance_tiers?.tier_1_auto_approve_max_usd ?? 50.0;
   if (
-    operation.amountUsd <= config.max_single_tx_usd &&
+    operation.amountUsd <= tier1MaxUsd &&
     projectedDailySpendUsd <= config.daily_spend_limit_usd &&
     safeRep >= 700 &&
     operation.counterpartyRiskDecision === "allow"
@@ -430,13 +431,16 @@ export function escalate_sha256_to_sputnik_bounty(
       tier: "AUTO_APPROVE",
       decision: "allow",
       operationSha256,
-      reason: `Tier 1 Auto-Approved: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.max_single_tx_usd.toFixed(2)}), high reputation (${safeRep}/1000 >= 700), and counterparty risk 'allow'.`,
+      reason: `Tier 1 Auto-Approved: Spend ($${operation.amountUsd.toFixed(2)} <= $${tier1MaxUsd.toFixed(2)} Tier-1 cap), high reputation (${safeRep}/1000 >= 700), and counterparty risk 'allow'.`,
       requiresCouncilApproval: false,
     };
   }
 
-  // Tier 2: ONE_COUNCIL_FAST_TRACK (e.g., counterparty decision === 'warn' or moderate reputation 400..699 within limit)
-  const tier2Reason = `Tier 2 Single-Council Fast-Track: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.max_single_tx_usd.toFixed(2)}) with counterparty='${operation.counterpartyRiskDecision}' and reputation=${safeRep}/1000.`;
+  // Tier 2: ONE_COUNCIL_FAST_TRACK ($50.01 - $150.00 single-tx, or counterparty decision === 'warn' / moderate reputation 400..699 within $150 limit)
+  const tier2Reason =
+    operation.amountUsd > tier1MaxUsd
+      ? `Tier 2 Single-Council Fast-Track: Spend ($${operation.amountUsd.toFixed(2)} in $${(tier1MaxUsd + 0.01).toFixed(2)}-$${config.max_single_tx_usd.toFixed(2)} Tier-2 band) requires 1-Council co-signature.`
+      : `Tier 2 Single-Council Fast-Track: Spend ($${operation.amountUsd.toFixed(2)} <= $${config.max_single_tx_usd.toFixed(2)}) with counterparty='${operation.counterpartyRiskDecision}' and reputation=${safeRep}/1000.`;
   return {
     tier: "ONE_COUNCIL_FAST_TRACK",
     decision: "warn",

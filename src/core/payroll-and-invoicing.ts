@@ -21,7 +21,7 @@ export const NEP141_STORAGE_DEPOSIT_YOCTO = "1250000000000000000000"; // 0.00125
 export const MAX_BATCH_CHUNK_SIZE = 10;
 export const MAX_RETRY_ATTEMPTS = 3;
 export const DEFAULT_VERIFIED_NEAR_TESTNET_TX_HASH =
-  "7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt";
+  "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
 
 export interface ExactOutputInvoiceInput {
   invoiceId?: string;
@@ -275,7 +275,7 @@ export function execute_ceil_exact_output_invoice(
 
   return {
     invoiceId,
-    shareableInvoiceUrl: `https://kratonos.near.page/invoice/${invoiceId}?recipient=${encodeURIComponent(
+    shareableInvoiceUrl: `https://kraton-os-taupe.vercel.app/api/payroll/export-statement?invoice=${invoiceId}&recipient=${encodeURIComponent(
       input.freelancerAccountId
     )}&net=${requestedFormatted}&gross=${grossFormatted}&origin=${encodeURIComponent(
       originChainShort
@@ -696,16 +696,16 @@ export function generateVisualAuditStatementHtml(params: {
       const safeInvoiceRef = escapeHtml(o.invoiceRef);
       const safeRecipientId = escapeHtml(o.recipientId);
       const safeStatus = escapeHtml(o.status);
-      const safeShieldHashes = escapeHtml(o.confidentialShardShieldUnshieldHashes.slice(0, 26));
+      const safeShieldHashes = escapeHtml(o.confidentialShardShieldUnshieldHashes);
       const recipientExplorerUrl = o.recipientId.trim().toLowerCase().endsWith(".near")
         ? `https://nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`
         : `https://testnet.nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`;
       const statusCellHtml = isSettled
-        ? `<a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;letter-spacing:0.06em;text-decoration:none;">SETTLED (ON-CHAIN TX &#8599;)</a>`
+        ? `<a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;letter-spacing:0.06em;text-decoration:none;">SETTLED (BATCH ANCHOR TX &#8599;)</a>`
         : `<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${safeStatus}</span>`;
       const proofCellHtml = isSettled
-        ? `<a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeShieldHashes}... (Tx ${safeShortTxHash}... &#8599;)</a>`
-        : `${safeShieldHashes}...`;
+        ? `<span style="word-break:break-all;">${safeShieldHashes}</span> <a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:600;white-space:nowrap;">(Batch Anchor Tx ${safeShortTxHash}... &#8599;)</a>`
+        : `<span style="word-break:break-all;">${safeShieldHashes}</span>`;
       return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:600;color:#111827;">#${o.rowNumber} · ${safeInvoiceRef}</td>
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${safeRecipientId} &#8599;</a></td>
@@ -714,7 +714,7 @@ export function generateVisualAuditStatementHtml(params: {
         <td style="padding:10px 12px;">
           ${statusCellHtml}
         </td>
-        <td style="padding:10px 12px;font-family:monospace;font-size:11px;color:#4b5563;">${proofCellHtml}</td>
+        <td style="padding:10px 12px;font-family:monospace;font-size:10.5px;color:#4b5563;word-break:break-all;max-width:340px;">${proofCellHtml}</td>
       </tr>`;
     })
     .join("\n");
