@@ -88,15 +88,17 @@ async function runServerSmokeTest(): Promise<void> {
   console.log(" KRATONOS PHASE 6 VERIFICATION: FULL-STACK SERVER & REACT SUPER-DAPP SMOKE TEST");
   console.log("================================================================================\n");
 
-  // 1. Test Static UI Assets (HTML, CSS, JS)
+  // 1. Test Static UI Assets (HTML, /docs, CSS, JS)
   console.log("[1/4] Probing Compiled React + Tailwind + shadcn/ui Assets...");
-  const [htmlRes, cssRes, jsRes] = await Promise.all([
+  const [htmlRes, docsRes, cssRes, jsRes] = await Promise.all([
     invokeServerEndpoint("GET", "/"),
+    invokeServerEndpoint("GET", "/docs"),
     invokeServerEndpoint("GET", "/styles.css"),
     invokeServerEndpoint("GET", "/app.js"),
   ]);
 
   assert.equal(htmlRes.statusCode, 200, "GET / must return HTTP 200");
+  assert.equal(docsRes.statusCode, 200, "GET /docs must return HTTP 200");
   assert.equal(cssRes.statusCode, 200, "GET /styles.css must return HTTP 200");
   assert.equal(jsRes.statusCode, 200, "GET /app.js must return HTTP 200");
 
@@ -291,8 +293,8 @@ async function runServerSmokeTest(): Promise<void> {
     "GET /api/overview must always include a verified latestLiveProofReceipt (never null on cold start)"
   );
 
-  // Verify 3-Tier Earned-Trust Governance on POST /api/security/evaluate ($45 AUTO_APPROVE vs $85 ONE_COUNCIL_FAST_TRACK)
-  const [safeTier1Res, fastTrackTier2Res] = await Promise.all([
+  // Verify 3-Tier Earned-Trust Governance on POST /api/security/evaluate ($45 AUTO_APPROVE vs $85 ONE_COUNCIL_FAST_TRACK vs $250 SPUTNIK_DAO_PROPOSAL)
+  const [safeTier1Res, fastTrackTier2Res, daoTier3Res] = await Promise.all([
     invokeServerEndpoint("POST", "/api/security/evaluate", {
       receiverId: "alice-dev.testnet",
       amountUsd: 45,
@@ -300,6 +302,10 @@ async function runServerSmokeTest(): Promise<void> {
     invokeServerEndpoint("POST", "/api/security/evaluate", {
       receiverId: "alice-dev.testnet",
       amountUsd: 85,
+    }),
+    invokeServerEndpoint("POST", "/api/security/evaluate", {
+      receiverId: "alice-dev.testnet",
+      amountUsd: 250,
     }),
   ]);
   const safeTier1Json = JSON.parse(safeTier1Res.bodyText) as {
@@ -310,10 +316,15 @@ async function runServerSmokeTest(): Promise<void> {
     riskVerdict: { decision: string };
     governanceEscalation: { tier: string };
   };
+  const daoTier3Json = JSON.parse(daoTier3Res.bodyText) as {
+    riskVerdict: { decision: string };
+    governanceEscalation: { tier: string };
+  };
   assert.equal(safeTier1Json.riskVerdict.decision, "allow", "$45 safe receiver must return decision === allow");
   assert.equal(safeTier1Json.governanceEscalation.tier, "AUTO_APPROVE", "$45 safe receiver must return tier === AUTO_APPROVE");
   assert.equal(fastTrackTier2Json.riskVerdict.decision, "warn", "$85 receiver must return decision === warn (Tier 2)");
   assert.equal(fastTrackTier2Json.governanceEscalation.tier, "ONE_COUNCIL_FAST_TRACK", "$85 receiver must return tier === ONE_COUNCIL_FAST_TRACK");
+  assert.equal(daoTier3Json.governanceEscalation.tier, "SPUTNIK_DAO_PROPOSAL", "$250 receiver must escalate to tier === SPUTNIK_DAO_PROPOSAL");
   assert.ok(llmsRes.bodyText.includes("# KratonOS"));
   assert.ok(llmsRes.bodyText.includes("https://nearhackathon.com/HACKATHON.md"));
   assert.ok(
@@ -487,8 +498,19 @@ async function runServerSmokeTest(): Promise<void> {
     "https://testnet.nearblocks.io/address/jubayir69.testnet"
   );
 
-  // 3H. Test POST /api/wallet/balances across NEAR, EVM & Solana
-  const [nearBalRes, evmBalRes, solBalRes] = await Promise.all([
+  // 3H. Test POST /api/wallet/balances (Mode B Testnet-Only Probes + Mainnet-Mismatch Guards per Rule Q-010)
+  const [
+    nearBalRes,
+    evmBalRes,
+    solBalRes,
+    suiBalRes,
+    btcBalRes,
+    nearMainnetGuardRes,
+    evmMainnetGuardRes,
+    btcMainnetGuardRes,
+    suiMainnetGuardRes,
+    tonMainnetGuardRes,
+  ] = await Promise.all([
     invokeServerEndpoint("POST", "/api/wallet/balances", {
       address: "jubayir69.testnet",
       chainType: "near",
@@ -496,20 +518,61 @@ async function runServerSmokeTest(): Promise<void> {
     invokeServerEndpoint("POST", "/api/wallet/balances", {
       address: "0x000000000000000000000000000000000000dEaD",
       chainType: "evm",
+      chainIdHex: "0xaa36a7",
     }),
     invokeServerEndpoint("POST", "/api/wallet/balances", {
       address: "11111111111111111111111111111111",
       chainType: "solana",
     }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "0x0000000000000000000000000000000000000000000000000000000000000002",
+      chainType: "sui",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx",
+      chainType: "bitcoin",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "jubayir33.near",
+      chainType: "near",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "0x000000000000000000000000000000000000dEaD",
+      chainType: "evm",
+      chainIdHex: "0x1",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
+      chainType: "bitcoin",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "0x0000000000000000000000000000000000000000000000000000000000000002",
+      chainType: "sui",
+      chainIdHex: "sui:mainnet",
+    }),
+    invokeServerEndpoint("POST", "/api/wallet/balances", {
+      address: "EQDtFpEwcFAEcRe5mLVh2N6C0x-_hJEM7W61_JLnSF74p4q2",
+      chainType: "ton",
+    }),
   ]);
   assert.equal(nearBalRes.statusCode, 200, "POST /api/wallet/balances (NEAR) must return HTTP 200");
   assert.equal(evmBalRes.statusCode, 200, "POST /api/wallet/balances (EVM) must return HTTP 200");
   assert.equal(solBalRes.statusCode, 200, "POST /api/wallet/balances (Solana) must return HTTP 200");
+  assert.equal(suiBalRes.statusCode, 200, "POST /api/wallet/balances (Sui) must return HTTP 200");
+  assert.equal(btcBalRes.statusCode, 200, "POST /api/wallet/balances (Bitcoin) must return HTTP 200");
+  assert.equal(nearMainnetGuardRes.statusCode, 200, "NEAR Mainnet mismatch probe must return HTTP 200");
+  assert.equal(evmMainnetGuardRes.statusCode, 200, "EVM Mainnet mismatch probe must return HTTP 200");
+  assert.equal(btcMainnetGuardRes.statusCode, 200, "Bitcoin Mainnet mismatch probe must return HTTP 200");
+  assert.equal(suiMainnetGuardRes.statusCode, 200, "Sui Mainnet mismatch probe must return HTTP 200");
+  assert.equal(tonMainnetGuardRes.statusCode, 200, "TON Mainnet mismatch probe must return HTTP 200");
 
   interface WalletBalancesResponsePayload {
     status: string;
     chainType: string;
     address: string;
+    detectedNetwork?: string;
+    isMainnetMismatch?: boolean;
+    networkMismatchReason?: string;
     nativeSymbol: string;
     nativeBalance: number;
     wnearBalance: number;
@@ -522,10 +585,20 @@ async function runServerSmokeTest(): Promise<void> {
   const nearBalJson = JSON.parse(nearBalRes.bodyText) as WalletBalancesResponsePayload;
   const evmBalJson = JSON.parse(evmBalRes.bodyText) as WalletBalancesResponsePayload;
   const solBalJson = JSON.parse(solBalRes.bodyText) as WalletBalancesResponsePayload;
+  const suiBalJson = JSON.parse(suiBalRes.bodyText) as WalletBalancesResponsePayload;
+  const btcBalJson = JSON.parse(btcBalRes.bodyText) as WalletBalancesResponsePayload;
+
+  const nearMainnetJson = JSON.parse(nearMainnetGuardRes.bodyText) as WalletBalancesResponsePayload;
+  const evmMainnetJson = JSON.parse(evmMainnetGuardRes.bodyText) as WalletBalancesResponsePayload;
+  const btcMainnetJson = JSON.parse(btcMainnetGuardRes.bodyText) as WalletBalancesResponsePayload;
+  const suiMainnetJson = JSON.parse(suiMainnetGuardRes.bodyText) as WalletBalancesResponsePayload;
+  const tonMainnetJson = JSON.parse(tonMainnetGuardRes.bodyText) as WalletBalancesResponsePayload;
 
   assert.equal(nearBalJson.status, "OK");
   assert.equal(nearBalJson.chainType, "near");
   assert.equal(nearBalJson.nativeSymbol, "NEAR");
+  assert.equal(nearBalJson.isMainnetMismatch, false, "jubayir69.testnet must have isMainnetMismatch === false");
+  assert.equal(nearBalJson.detectedNetwork, "NEAR Testnet");
   assert.ok(typeof nearBalJson.nativeBalance === "number" && nearBalJson.nativeBalance >= 0);
   assert.ok(typeof nearBalJson.usdcBalance === "number" && nearBalJson.usdcBalance >= 0);
   assert.ok(typeof nearBalJson.usdtBalance === "number" && nearBalJson.usdtBalance >= 0);
@@ -534,6 +607,7 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(evmBalJson.status, "OK");
   assert.equal(evmBalJson.chainType, "evm");
   assert.equal(evmBalJson.nativeSymbol, "ETH");
+  assert.equal(evmBalJson.isMainnetMismatch, false, "EVM Sepolia (0xaa36a7) must have isMainnetMismatch === false");
   assert.ok(typeof evmBalJson.nativeBalance === "number" && evmBalJson.nativeBalance >= 0);
   assert.ok(typeof evmBalJson.usdcBalance === "number" && evmBalJson.usdcBalance >= 0);
   assert.ok(typeof evmBalJson.usdtBalance === "number" && evmBalJson.usdtBalance >= 0);
@@ -542,8 +616,63 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(solBalJson.status, "OK");
   assert.equal(solBalJson.chainType, "solana");
   assert.equal(solBalJson.nativeSymbol, "SOL");
+  assert.equal(solBalJson.isMainnetMismatch, false);
+  assert.ok(
+    solBalJson.detectedNetwork === "Solana Testnet" || solBalJson.detectedNetwork === "Solana Devnet",
+    `Solana balance query must use Testnet/Devnet only, got ${String(solBalJson.detectedNetwork)}`
+  );
   assert.ok(typeof solBalJson.nativeBalance === "number" && solBalJson.nativeBalance >= 0);
   assert.equal(typeof solBalJson.liveRpcVerified, "boolean");
+
+  assert.equal(suiBalJson.status, "OK");
+  assert.equal(suiBalJson.chainType, "sui");
+  assert.equal(suiBalJson.nativeSymbol, "SUI");
+  assert.equal(suiBalJson.isMainnetMismatch, false);
+  assert.equal(suiBalJson.detectedNetwork, "Sui Testnet");
+  assert.ok(typeof suiBalJson.nativeBalance === "number" && suiBalJson.nativeBalance >= 0);
+  assert.equal(typeof suiBalJson.liveRpcVerified, "boolean");
+
+  assert.equal(btcBalJson.status, "OK");
+  assert.equal(btcBalJson.chainType, "bitcoin");
+  assert.equal(btcBalJson.nativeSymbol, "BTC");
+  assert.equal(btcBalJson.isMainnetMismatch, false);
+  assert.equal(btcBalJson.detectedNetwork, "Bitcoin Testnet");
+  assert.ok(typeof btcBalJson.nativeBalance === "number" && btcBalJson.nativeBalance >= 0);
+  assert.equal(typeof btcBalJson.liveRpcVerified, "boolean");
+
+  // Verify Mainnet-Mismatch Guards (Rule Q-010: Never expose Mainnet balances & prompt switch to Testnet mode)
+  assert.equal(nearMainnetJson.isMainnetMismatch, true, ".near Mainnet account must trigger isMainnetMismatch === true");
+  assert.equal(nearMainnetJson.nativeBalance, 0, ".near Mainnet account must return 0 balance without querying Mainnet");
+  assert.ok(
+    nearMainnetJson.networkMismatchReason?.includes("Testnet mode"),
+    ".near Mainnet mismatch must prompt switching to Testnet mode"
+  );
+
+  assert.equal(evmMainnetJson.isMainnetMismatch, true, "EVM 0x1 Mainnet must trigger isMainnetMismatch === true");
+  assert.ok(
+    evmMainnetJson.networkMismatchReason?.includes("Testnet mode"),
+    "EVM Mainnet mismatch must prompt switching to Testnet mode"
+  );
+
+  assert.equal(btcMainnetJson.isMainnetMismatch, true, "bc1... Mainnet Bitcoin must trigger isMainnetMismatch === true");
+  assert.equal(btcMainnetJson.nativeBalance, 0, "bc1... Mainnet Bitcoin must return 0 without querying Mainnet");
+  assert.ok(
+    btcMainnetJson.networkMismatchReason?.includes("Bitcoin Testnet mode"),
+    "Bitcoin Mainnet mismatch must prompt switching to Bitcoin Testnet mode"
+  );
+
+  assert.equal(suiMainnetJson.isMainnetMismatch, true, "Sui Mainnet must trigger isMainnetMismatch === true");
+  assert.ok(
+    suiMainnetJson.networkMismatchReason?.includes("Sui Testnet mode"),
+    "Sui Mainnet mismatch must prompt switching Slush / Sui Wallet to Sui Testnet mode"
+  );
+
+  assert.equal(tonMainnetJson.isMainnetMismatch, true, "EQ... Mainnet TON must trigger isMainnetMismatch === true");
+  assert.equal(tonMainnetJson.nativeBalance, 0, "EQ... Mainnet TON must return 0 without querying Mainnet");
+  assert.ok(
+    tonMainnetJson.networkMismatchReason?.includes("Testnet mode"),
+    "TON Mainnet mismatch must prompt switching to Testnet mode"
+  );
 
   // 3I. Test Sub-Cent 8-Decimal Precision (PEPE/USDT) & Market Revenue Split Alignment ($2.50)
   const [teePepeRes, marketExecRes] = await Promise.all([
@@ -580,11 +709,31 @@ async function runServerSmokeTest(): Promise<void> {
   const marketExecJson = JSON.parse(marketExecRes.bodyText) as {
     negotiation: { finalAgreedPriceUsd: number };
     revenueSplit: { grossRevenueUsd: number; netRevenueUsd: number };
+    swarmRound: {
+      clearedVolumeUnits: number;
+      totalSwarmSavingsUsd: number;
+      buyerAllocations: Array<{ allocatedUnits: number; netSavingsUsd: number }>;
+    };
   };
   assert.equal(
     marketExecJson.revenueSplit.grossRevenueUsd,
     marketExecJson.negotiation.finalAgreedPriceUsd,
     "POST /api/market/execute revenueSplit.grossRevenueUsd must equal negotiation.finalAgreedPriceUsd ($2.50)"
+  );
+  assert.equal(
+    marketExecJson.swarmRound.buyerAllocations.length,
+    20,
+    "Swarm coordinator must return all 20 buyer allocation rows"
+  );
+  const sumUnits = marketExecJson.swarmRound.buyerAllocations.reduce(
+    (acc, r) => acc + r.allocatedUnits,
+    0
+  );
+  assert.equal(sumUnits, 510, "20-row Swarm buyer allocations must sum to 510 units");
+  assert.equal(
+    marketExecJson.swarmRound.totalSwarmSavingsUsd,
+    357,
+    "20-row Swarm totalSwarmSavingsUsd must equal $357.00"
   );
 
   console.log(
@@ -606,7 +755,7 @@ async function runServerSmokeTest(): Promise<void> {
     `  ✓ Anti-Hallucination Oracle   : AYAN/USDT -> ${ayanQuote.status} (priceUsd=${String(ayanQuote.priceUsd)}) | AVEX/USDT -> Did you mean ${avexQuote.suggestion} ($${avexQuote.suggestionPriceUsd?.toFixed(2)})?`
   );
   console.log(
-    `  ✓ POST /api/wallet/balances   : HTTP 200 | NEAR=${nearBalJson.nativeBalance.toFixed(4)} NEAR (rpc=${String(nearBalJson.liveRpcVerified)}) | EVM=${evmBalJson.nativeBalance.toFixed(4)} ETH (rpc=${String(evmBalJson.liveRpcVerified)}) | SOL=${solBalJson.nativeBalance.toFixed(4)} SOL`
+    `  ✓ POST /api/wallet/balances   : HTTP 200 | NEAR=${nearBalJson.nativeBalance.toFixed(4)} NEAR | EVM=${evmBalJson.nativeBalance.toFixed(4)} ETH | SOL=${solBalJson.nativeBalance.toFixed(4)} SOL | SUI=${suiBalJson.nativeBalance.toFixed(4)} SUI | BTC=${btcBalJson.nativeBalance.toFixed(6)} BTC`
   );
   console.log(
     `  ✓ POST /api/onchain/commit-proof: HTTP ${proofRes.statusCode} | TxHash=${proofJson.txHash.slice(0, 16)}... | Ed25519=${String(proofJson.ed25519Verified)} | ${proofJson.explorerTxUrl}\n`

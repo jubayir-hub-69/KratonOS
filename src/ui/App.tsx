@@ -57,6 +57,7 @@ import {
   fetchLiveConnectedWalletBalances,
   formatShortWalletAddress,
   getWalletExplorerAccountUrl,
+  requestBrowserWalletTestnetSwitch,
   sendNearTransactionWithPersonalWallet,
   signMessageWithPersonalWallet,
   type ConnectedChainWallet,
@@ -427,10 +428,18 @@ export function App() {
             [chainType]: {
               ...current,
               ...snap,
+              explorerAccountUrl: getWalletExplorerAccountUrl(
+                address,
+                chainType,
+                snap.detectedNetwork
+              ),
               balancesLoading: false,
             },
           };
         });
+        if (snap.isMainnetMismatch && snap.networkMismatchReason) {
+          pushNotification(snap.networkMismatchReason, "shield", "amber");
+        }
       } catch {
         setConnectedWalletsByChain((prev) => {
           const current = prev[chainType];
@@ -445,7 +454,7 @@ export function App() {
         });
       }
     },
-    []
+    [pushNotification]
   );
 
   // Initialize @hot-labs/near-connect
@@ -549,6 +558,11 @@ export function App() {
               [w.chainType]: {
                 ...cur,
                 ...snap,
+                explorerAccountUrl: getWalletExplorerAccountUrl(
+                  w.address,
+                  w.chainType,
+                  snap.detectedNetwork
+                ),
                 balancesLoading: false,
               },
             };
@@ -795,6 +809,45 @@ export function App() {
     );
   }, [connectedWalletsByChain, pushNotification]);
 
+  const handleSwitchChainWalletToTestnet = useCallback(
+    async (chainType: WalletChainType) => {
+      const currentWallet = connectedWalletsByChain[chainType];
+      const meta = CHAIN_FAMILY_META[chainType];
+      const res = await requestBrowserWalletTestnetSwitch(chainType);
+      if (res.switched) {
+        const nextAddress = res.newAddress ?? currentWallet?.address ?? "";
+        if (nextAddress) {
+          await registerAndSyncChainWallet(
+            chainType,
+            nextAddress,
+            currentWallet?.providerName ?? meta.label
+          );
+        } else {
+          await refreshConnectedWalletBalances();
+        }
+        pushNotification(
+          `Switched ${meta.label} wallet to Testnet mode.`,
+          "shield",
+          "emerald"
+        );
+        return;
+      }
+
+      await refreshConnectedWalletBalances();
+      pushNotification(
+        `[TESTNET MODE REQUIRED] Please switch your ${meta.label} wallet extension to Testnet mode, then click Refresh RPC.`,
+        "shield",
+        "amber"
+      );
+    },
+    [
+      connectedWalletsByChain,
+      pushNotification,
+      refreshConnectedWalletBalances,
+      registerAndSyncChainWallet,
+    ]
+  );
+
   const handleConnectNearVaultDirect = () => {
     const vaultAcc = overview?.treasuryAccount ?? "jubayir69.testnet";
     setConnectedWalletsByChain({});
@@ -809,23 +862,24 @@ export function App() {
 
   const walletExplorerHref = getWalletExplorerAccountUrl(
     walletAccountId,
-    walletChainType
+    walletChainType,
+    activePersonalWallet?.detectedNetwork
   );
 
   const walletExplorerLabel =
     walletChainType === "evm"
-      ? "View on Etherscan Explorer"
+      ? "View on Sepolia Explorer"
       : walletChainType === "solana"
-        ? "View on Solscan Explorer"
+        ? "View on Solscan Testnet"
         : walletChainType === "bitcoin"
-          ? "View on Mempool Explorer"
+          ? "View on Mempool Testnet"
           : walletChainType === "sui"
-            ? "View on Suiscan Explorer"
+            ? "View on Suiscan Testnet"
             : walletChainType === "ton"
-              ? "View on Tonviewer Explorer"
+              ? "View on Tonviewer Testnet"
               : walletChainType === "xrp"
-                ? "View on XRPL Explorer"
-                : "View on NEARBlocks Explorer";
+                ? "View on XRPL Testnet"
+                : "View on NEARBlocks Testnet";
 
   const shortWalletAddr = formatShortWalletAddress(walletAccountId, walletChainType);
 
@@ -855,11 +909,15 @@ export function App() {
       providerName: walletProviderName,
       explorerAccountUrl: walletExplorerHref,
       balancesLoading: walletBalancesLoading,
+      detectedNetwork: primarySnap?.detectedNetwork,
+      isMainnetMismatch: primarySnap?.isMainnetMismatch,
+      networkMismatchReason: primarySnap?.networkMismatchReason,
       connectedWallets: connectedWalletsByChain,
       connectedChainsCount: connectedWalletList.length,
       connectChainWallet: handleConnectChainWallet,
       disconnectChainWallet: handleDisconnectChainWallet,
       disconnectAllWallets: handleDisconnectAllWallets,
+      switchChainWalletToTestnet: handleSwitchChainWalletToTestnet,
       openWalletModal: openWalletModalWithChain,
       nativeSymbol: primarySnap?.nativeSymbol ?? "NEAR",
       nativeBalance: primarySnap?.nativeBalance ?? 0,
@@ -938,6 +996,7 @@ export function App() {
     handleConnectChainWallet,
     handleDisconnectChainWallet,
     handleDisconnectAllWallets,
+    handleSwitchChainWalletToTestnet,
     openWalletModalWithChain,
     refreshConnectedWalletBalances,
   ]);
@@ -1469,7 +1528,7 @@ export function App() {
                       MULTI-CHAIN WALLET HUB ({connectedWalletList.length})
                     </span>
                     <Badge variant="emerald" className="shrink-0 text-[10px]">
-                      {walletBalancesLoading ? "SYNCING" : "LIVE RPC"}
+                      {walletBalancesLoading ? "SYNCING" : "TESTNET RPC"}
                     </Badge>
                   </div>
 
@@ -1481,9 +1540,11 @@ export function App() {
                         <div
                           key={w.chainType}
                           className={`rounded-lg border p-2 text-[11px] ${
-                            isPrimary
-                              ? "border-emerald-500/45 bg-emerald-500/12"
-                              : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
+                            w.isMainnetMismatch
+                              ? "border-amber-500/55 bg-amber-500/12"
+                              : isPrimary
+                                ? "border-emerald-500/45 bg-emerald-500/12"
+                                : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
                           }`}
                         >
                           <div className="flex items-center justify-between gap-1">
@@ -1503,7 +1564,7 @@ export function App() {
                                 href={w.explorerAccountUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                title="Open on block explorer"
+                                title="Open on Testnet block explorer"
                                 className="text-[var(--accent-emerald)] hover:opacity-80"
                               >
                                 <ExternalLink className="h-3 w-3" />
@@ -1511,8 +1572,43 @@ export function App() {
                             </div>
                           </div>
 
-                          <div className="mt-1.5 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
-                            <span>Available (Wallet Spendable)</span>
+                          {w.detectedNetwork && (
+                            <div className="mt-1 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
+                              <span>Network</span>
+                              <span
+                                className={`font-mono font-bold ${
+                                  w.isMainnetMismatch
+                                    ? "text-amber-400"
+                                    : "text-[var(--accent-cyan)]"
+                                }`}
+                              >
+                                {w.detectedNetwork}
+                              </span>
+                            </div>
+                          )}
+
+                          {w.isMainnetMismatch && (
+                            <div className="mt-1.5 space-y-1.5 rounded border border-amber-500/45 bg-amber-500/15 p-1.5 text-[10px] font-semibold text-amber-300">
+                              <span className="block leading-snug">
+                                {w.networkMismatchReason ??
+                                  "[TESTNET MODE REQUIRED] Please switch your wallet to Testnet mode."}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleSwitchChainWalletToTestnet(w.chainType)
+                                }
+                                className="w-full rounded border border-amber-400/55 bg-amber-500/20 px-2 py-1 font-mono text-[10px] font-extrabold text-amber-200 hover:bg-amber-500/30 cursor-pointer"
+                              >
+                                {w.chainType === "evm"
+                                  ? "Switch to Sepolia Testnet Mode"
+                                  : "Switch to Testnet Mode"}
+                              </button>
+                            </div>
+                          )}
+
+                          <div className="mt-1 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
+                            <span>Testnet Spendable</span>
                             <span className="font-mono font-bold text-[var(--accent-emerald)]">
                               {w.balancesLoading
                                 ? "Syncing..."
@@ -1520,7 +1616,7 @@ export function App() {
                             </span>
                           </div>
 
-                          {w.chainType === "near" && (
+                          {w.chainType === "near" && !w.isMainnetMismatch && (
                             <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
                               <span>Total On-Chain (incl. 0.20N Reserve)</span>
                               <span className="font-mono font-bold text-[var(--text-primary)]">
@@ -1533,7 +1629,7 @@ export function App() {
 
                           {(w.usdcBalance > 0 || w.usdtBalance > 0 || w.chainType === "near" || w.chainType === "evm") && (
                             <div className="mt-0.5 flex items-center justify-between gap-1 text-[10px] text-[var(--text-secondary)]">
-                              <span>Stablecoins</span>
+                              <span>Testnet Stables</span>
                               <span className="font-mono font-bold text-[var(--accent-cyan)]">
                                 {w.balancesLoading
                                   ? "Querying..."
@@ -1751,7 +1847,7 @@ export function App() {
                     </div>
 
                     {walletContext.isPersonalWallet && connectedWalletList.length > 0 && (
-                      <div className="mt-2.5 max-h-60 space-y-2 overflow-y-auto pr-0.5 font-mono text-[11px]">
+                      <div className="mt-2.5 max-h-64 space-y-2 overflow-y-auto pr-0.5 font-mono text-[11px]">
                         {connectedWalletList.map((w) => {
                           const meta = CHAIN_FAMILY_META[w.chainType];
                           const isPrimary = w.chainType === walletChainType;
@@ -1759,9 +1855,11 @@ export function App() {
                             <div
                               key={w.chainType}
                               className={`rounded-lg border px-2.5 py-2 ${
-                                isPrimary
-                                  ? "border-emerald-500/45 bg-emerald-500/10"
-                                  : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
+                                w.isMainnetMismatch
+                                  ? "border-amber-500/55 bg-amber-500/12"
+                                  : isPrimary
+                                    ? "border-emerald-500/45 bg-emerald-500/10"
+                                    : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
                               }`}
                             >
                               <div className="flex items-center justify-between gap-1.5">
@@ -1783,15 +1881,48 @@ export function App() {
                                   Disconnect
                                 </button>
                               </div>
+                              {w.detectedNetwork && (
+                                <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
+                                  <span>Network:</span>
+                                  <span
+                                    className={`font-bold ${
+                                      w.isMainnetMismatch
+                                        ? "text-amber-400"
+                                        : "text-[var(--accent-cyan)]"
+                                    }`}
+                                  >
+                                    {w.detectedNetwork}
+                                  </span>
+                                </div>
+                              )}
+                              {w.isMainnetMismatch && (
+                                <div className="mt-1.5 space-y-1 rounded border border-amber-500/45 bg-amber-500/15 p-1.5 text-[10px] text-amber-300">
+                                  <span className="block leading-snug">
+                                    {w.networkMismatchReason ??
+                                      "[TESTNET MODE REQUIRED] Please switch wallet to Testnet mode."}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      void handleSwitchChainWalletToTestnet(w.chainType)
+                                    }
+                                    className="w-full rounded border border-amber-400/55 bg-amber-500/20 px-2 py-0.5 text-[10px] font-extrabold text-amber-200 hover:bg-amber-500/30 cursor-pointer"
+                                  >
+                                    {w.chainType === "evm"
+                                      ? "Switch to Sepolia Testnet Mode"
+                                      : "Switch to Testnet Mode"}
+                                  </button>
+                                </div>
+                              )}
                               <div className="mt-1 flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
-                                <span>Available Spendable:</span>
+                                <span>Testnet Spendable:</span>
                                 <span className="font-bold text-[var(--accent-emerald)]">
                                   {w.balancesLoading
                                     ? "Syncing..."
                                     : w.spendableNearFormatted ?? w.nativeFormatted}
                                 </span>
                               </div>
-                              {w.chainType === "near" && (
+                              {w.chainType === "near" && !w.isMainnetMismatch && (
                                 <div className="mt-0.5 flex items-center justify-between text-[10px] text-[var(--text-secondary)]">
                                   <span>Total On-Chain (incl. 0.20N):</span>
                                   <span className="font-bold text-[var(--text-primary)]">
@@ -1880,24 +2011,57 @@ export function App() {
             <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-emerald-500/35 bg-emerald-500/10 px-3.5 py-2 font-mono text-[11px] leading-relaxed text-[var(--text-secondary)] sm:px-6">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Badge variant="emerald" className="shrink-0 text-[10px]">
-                  PERSONAL WALLET HUB ({connectedWalletList.length})
+                  PERSONAL WALLET HUB ({connectedWalletList.length} TESTNET)
                 </Badge>
                 {connectedWalletList.map((w) => {
                   const meta = CHAIN_FAMILY_META[w.chainType];
                   return (
                     <span
                       key={w.chainType}
-                      className="inline-flex items-center gap-1.5 rounded-md border border-emerald-500/35 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-[var(--text-primary)]"
+                      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                        w.isMainnetMismatch
+                          ? "border-amber-500/55 bg-amber-500/15 text-amber-200"
+                          : "border-emerald-500/35 bg-emerald-500/10 text-[var(--text-primary)]"
+                      }`}
                     >
-                      <span className="text-[var(--accent-emerald)]">{meta.shortLabel}:</span>
+                      <span
+                        className={
+                          w.isMainnetMismatch
+                            ? "text-amber-300"
+                            : "text-[var(--accent-emerald)]"
+                        }
+                      >
+                        {meta.shortLabel}:
+                      </span>
                       <span>{w.shortAddress}</span>
-                      <span className="text-[var(--accent-cyan)]">
+                      <span
+                        className={
+                          w.isMainnetMismatch
+                            ? "text-amber-300"
+                            : "text-[var(--accent-cyan)]"
+                        }
+                      >
                         (
                         {w.balancesLoading
                           ? "Syncing..."
-                          : w.spendableNearFormatted ?? w.nativeFormatted}
+                          : w.isMainnetMismatch
+                            ? "MAINNET — SWITCH TO TESTNET"
+                            : w.spendableNearFormatted ?? w.nativeFormatted}
                         )
                       </span>
+                      {w.isMainnetMismatch && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void handleSwitchChainWalletToTestnet(w.chainType)
+                          }
+                          className="ml-1 rounded border border-amber-400/60 bg-amber-500/25 px-1.5 py-0 text-[9px] font-extrabold text-amber-100 hover:bg-amber-500/35 cursor-pointer"
+                        >
+                          {w.chainType === "evm"
+                            ? "Switch to Sepolia"
+                            : "Switch Testnet"}
+                        </button>
+                      )}
                     </span>
                   );
                 })}
@@ -2120,10 +2284,10 @@ export function App() {
                   </Badge>
                 </div>
                 <h3 className="mt-1.5 font-display text-base font-extrabold text-[var(--text-primary)]">
-                  Connect Simultaneous Multi-Chain Wallets
+                  Connect Simultaneous Multi-Chain Testnet Wallets
                 </h3>
                 <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
-                  Connect NEAR, EVM, Solana, Bitcoin, Sui, TON, and XRP wallets simultaneously without disconnecting previously connected chains.
+                  Connect NEAR (.testnet), EVM (Sepolia / Arbitrum Sepolia / Base Sepolia), Solana (Testnet/Devnet), Bitcoin (Testnet tb1...), Sui (Testnet via Slush), TON (Testnet), and XRP (Testnet) wallets simultaneously. Mainnet balances are never queried or exposed (Rule Q-010).
                 </p>
               </div>
               <button
@@ -2147,11 +2311,13 @@ export function App() {
                   <div
                     key={chain}
                     className={`flex flex-wrap items-center justify-between gap-2.5 rounded-xl border p-3 transition-all ${
-                      connected
-                        ? "border-emerald-500/50 bg-emerald-500/12"
-                        : isTargetHighlight
-                          ? "border-sky-400/70 bg-sky-500/15 ring-1 ring-sky-400/50"
-                          : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:border-emerald-500/40"
+                      connected?.isMainnetMismatch
+                        ? "border-amber-500/55 bg-amber-500/12"
+                        : connected
+                          ? "border-emerald-500/50 bg-emerald-500/12"
+                          : isTargetHighlight
+                            ? "border-sky-400/70 bg-sky-500/15 ring-1 ring-sky-400/50"
+                            : "border-[var(--border-color)] bg-[var(--bg-card-subtle)] hover:border-emerald-500/40"
                     }`}
                   >
                     <div className="min-w-0 flex-1 pr-1">
@@ -2172,15 +2338,42 @@ export function App() {
                         {meta.recommendedWallets}
                       </p>
                       {connected && (
-                        <div className="mt-1 flex flex-wrap items-center gap-2 font-mono text-[11px] font-bold text-[var(--accent-emerald)]">
-                          <span>
-                            Connected: {connected.shortAddress} (
-                            {connected.balancesLoading
-                              ? "Syncing..."
-                              : connected.spendableNearFormatted ??
-                                connected.nativeFormatted}
-                            )
-                          </span>
+                        <div className="mt-1 space-y-1">
+                          <div
+                            className={`flex flex-wrap items-center gap-2 font-mono text-[11px] font-bold ${
+                              connected.isMainnetMismatch
+                                ? "text-amber-300"
+                                : "text-[var(--accent-emerald)]"
+                            }`}
+                          >
+                            <span>
+                              Connected: {connected.shortAddress} (
+                              {connected.balancesLoading
+                                ? "Syncing..."
+                                : connected.spendableNearFormatted ??
+                                  connected.nativeFormatted}
+                              )
+                            </span>
+                          </div>
+                          {connected.isMainnetMismatch && (
+                            <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-amber-300">
+                              <span>
+                                {connected.networkMismatchReason ??
+                                  "[TESTNET MODE REQUIRED] Please switch wallet to Testnet mode."}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void handleSwitchChainWalletToTestnet(chain)
+                                }
+                                className="rounded border border-amber-400/60 bg-amber-500/20 px-2 py-0.5 font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+                              >
+                                {chain === "evm"
+                                  ? "Switch to Sepolia Testnet Mode"
+                                  : "Switch to Testnet Mode"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2262,6 +2455,7 @@ export function App() {
       <div className="toasts" aria-live="polite">
         {toasts.map((t) => {
           const isWarnOrErr =
+            t.text.startsWith("[TESTNET MODE REQUIRED]") ||
             t.text.startsWith("[LOCKED]") ||
             t.text.startsWith("[ERROR]") ||
             t.text.startsWith("[WARNING]") ||

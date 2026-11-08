@@ -348,14 +348,14 @@ const API_SPECS: ApiEndpointSpec[] = [
     method: "POST",
     path: "/api/wallet/balances",
     summary:
-      "Queries real live on-chain native (NEAR, ETH, SOL) and stablecoin (USDC, USDT) balances via RPC for any connected NEAR, EVM (0x...), or Solana wallet address (reporting exact 0.00 when empty).",
-    auth: "Public Multi-Chain RPC Read",
+      "Queries real live Testnet-only native (NEAR, ETH, SOL, BTC, SUI, TON, XRP) and stablecoin (USDC, USDT) balances via Testnet RPCs (Rule Q-010) for any connected NEAR (.testnet), EVM (Sepolia / Arbitrum Sepolia / Base Sepolia), Solana (Testnet/Devnet), Bitcoin (Testnet tb1...), Sui (Testnet via Slush), TON (Testnet), or XRP (Testnet) wallet, returning isMainnetMismatch: true if a Mainnet account/network is detected.",
+    auth: "Public Multi-Chain Testnet RPC Read",
     curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/wallet/balances \\\n  -H "Content-Type: application/json" \\\n  -d '{"address":"jubayir69.testnet","chainType":"near"}'`,
     tsExample: `const res = await fetch("/api/wallet/balances", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ address: "jubayir69.testnet", chainType: "near" })\n});`,
     params: [
-      { name: "address", type: "string", required: true, desc: "Connected NEAR account ID, EVM 0x address, or Solana Base58 address." },
-      { name: "chainType", type: "string", required: false, desc: "Wallet network family: near | evm | solana (defaults to near)." },
-      { name: "chainIdHex", type: "string", required: false, desc: "Optional EVM chainId hex (0x1 Mainnet, 0x2105 Base, 0xa4b1 Arbitrum, 0xaa36a7 Sepolia)." },
+      { name: "address", type: "string", required: true, desc: "Connected NEAR (.testnet), EVM 0x, Solana Base58, Bitcoin Testnet (tb1...), Sui 0x, TON Testnet, or XRP Testnet wallet address." },
+      { name: "chainType", type: "string", required: false, desc: "Wallet network family: near | evm | solana | bitcoin | sui | ton | xrp (defaults to near)." },
+      { name: "chainIdHex", type: "string", required: false, desc: "Optional network/chainId identifier (e.g. 0xaa36a7 Sepolia, 0x66eee Arbitrum Sepolia, 0x14a34 Base Sepolia, sui:testnet)." },
     ],
     sampleBody: {
       address: "jubayir69.testnet",
@@ -517,9 +517,9 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
           </thead>
           <tbody className="divide-y divide-[var(--border-color)]">
             <tr>
-              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Dual-Mode Wallet Custody</td>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Dual-Mode Wallet Custody (Q-010 &amp; Q-017)</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                <strong>Mode B (Connected Personal Wallet)</strong>: Connecting <code className="font-mono text-[var(--accent-emerald)]">NEAR Wallet</code>, <code className="font-mono text-[var(--accent-emerald)]">Rabby / MetaMask (EVM)</code>, or <code className="font-mono text-[var(--accent-emerald)]">Phantom (Solana)</code> queries real on-chain balances (<code className="font-mono">POST /api/wallet/balances</code>, <code className="font-mono">0.00</code> when empty), enforces strict <code className="font-mono">inputAmount &gt; availableBalance</code> locks, and requires real wallet popup signatures (<code className="font-mono">personal_sign</code> / <code className="font-mono">signMessage</code> / NEAR Tx).
+                <strong>Mode B (Connected Multi-Chain Testnet Wallet Hub, <code className="font-mono">Q-010</code>)</strong>: Simultaneous connections across 7 chain families (<code className="font-mono text-[var(--accent-emerald)]">NEAR .testnet</code>, <code className="font-mono text-[var(--accent-emerald)]">EVM Sepolia / Arbitrum Sepolia / Base Sepolia</code>, <code className="font-mono text-[var(--accent-emerald)]">Solana Testnet/Devnet</code>, <code className="font-mono text-[var(--accent-emerald)]">Bitcoin Testnet tb1...</code>, <code className="font-mono text-[var(--accent-emerald)]">Sui Testnet via Slush</code>, <code className="font-mono text-[var(--accent-emerald)]">TON Testnet</code>, <code className="font-mono text-[var(--accent-emerald)]">XRPL Testnet</code>). Queries strictly Testnet RPCs (<code className="font-mono">POST /api/wallet/balances</code>), blocks Mainnet sessions with <code className="font-mono">[TESTNET MODE REQUIRED]</code>, enforces <code className="font-mono">inputAmount &gt; availableTestnetBalance</code> locks, requires real wallet popup signatures, and anchors proofs on NEAR Testnet (<code className="font-mono">txHash</code>).
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 <strong>Mode A (Judge Sandbox Default, <code className="font-mono">Q-017</code>)</strong>: When no browser wallet is connected, KratonOS runs against the clearly badged <code className="font-mono font-bold text-[var(--accent-cyan)]">Protocol Sandbox Vault (jubayir69.testnet)</code> so headless AI judges (<code className="font-mono">Claude Code</code> / <code className="font-mono">Codex</code>) can verify every workflow without extension popups.
@@ -589,7 +589,7 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
                   rel="noreferrer"
                   className="font-mono font-bold text-[var(--accent-emerald)] hover:underline"
                 >
-                  jubayir-hub-69/KratonOS ↗
+                  jubayir-hub-69/KratonOS
                 </a>{" "}
                 by{" "}
                 <a
@@ -610,7 +610,7 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
                   rel="noreferrer"
                   className="font-mono font-bold text-[var(--accent-cyan)] hover:underline"
                 >
-                  Arrive (jubayir-hub-69/arrive-near) ↗
+                  Arrive (jubayir-hub-69/arrive-near)
                 </a>{" "}
                 — Independent NEAR Hackathon project built from scratch in a separate repository with zero overlapping business logic or duplicate smart contracts.
               </td>
@@ -1212,10 +1212,10 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     </span>
                   </div>
                   <h3 className="font-display mt-2 text-sm font-bold text-[var(--text-primary)]">
-                    Simultaneous Multi-Chain Personal Wallet Hub
+                    Simultaneous Multi-Chain Testnet Wallet Hub (Rule Q-010)
                   </h3>
                   <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    Connect <code className="font-mono">NEAR Wallet</code> (<code className="font-mono">Meteor / HOT</code>), <code className="font-mono">Rabby / MetaMask</code>, <code className="font-mono">Phantom</code>, <code className="font-mono">UniSat</code>, <code className="font-mono">Sui Wallet</code>, <code className="font-mono">Tonkeeper</code>, and <code className="font-mono">Crossmark</code> simultaneously without disconnecting previously connected chains. Selecting any <code className="font-mono">Pay Token</code> routes balance verification and signing to its matching origin-chain wallet while auto-filling <code className="font-mono">Receive Token</code> with your connected destination-chain wallet.
+                    Connect <code className="font-mono">NEAR Wallet</code> (<code className="font-mono">Meteor / HOT .testnet</code>), <code className="font-mono">Rabby / MetaMask</code> (<code className="font-mono">Sepolia / Arbitrum Sepolia / Base Sepolia</code>), <code className="font-mono">Phantom</code>, <code className="font-mono">UniSat</code> (<code className="font-mono">tb1...</code>), <code className="font-mono">Slush / Sui Wallet</code> (<code className="font-mono">@mysten/wallet-standard</code>), <code className="font-mono">Tonkeeper</code>, and <code className="font-mono">Crossmark</code> simultaneously. Mainnet balances are never queried; if a wallet is on Mainnet, KratonOS prompts <code className="font-mono">Please switch to Testnet mode</code> before execution.
                   </p>
                   <div className="mt-2.5 space-y-1.5 rounded-lg border border-emerald-500/30 bg-[var(--bg-card)] p-2.5 font-mono text-[11px] leading-snug text-[var(--text-secondary)]">
                     <div>
@@ -3277,11 +3277,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
               <div className="space-y-4">
                 {[
                   {
-                    ver: "v2026.6 — Dual-Mode Wallet Custody (Mode A Sandbox vs Mode B Personal Wallet) & Live RPC Balance Guard",
+                    ver: "v2026.6 — Dual-Mode Testnet Wallet Hub (Mode A Sandbox vs Mode B 7-Chain Testnet Hub) & Mainnet-Mismatch Guard",
                     items: [
-                      "Implemented Dual-Mode Wallet Execution Architecture separating Mode A (Disconnected / 1-Tap Judge Sandbox Vault jubayir69.testnet) from Mode B (Connected Personal Wallet Control via NEAR Wallet, Rabby / MetaMask EVM, or Phantom Solana).",
-                      "Added POST /api/wallet/balances querying real live on-chain native (NEAR, ETH, SOL) and stablecoin (USDC, USDT) balances across NEAR, Ethereum, Base, Arbitrum, Sepolia, and Solana RPCs (reporting exact 0.00 when empty).",
-                      "Enforced strict inputAmount > availableWalletBalance execution locks and real browser wallet popup signing (personal_sign / signMessage / NEAR Tx) across Swaps, Confidential Limit Orders, Batch Payroll, RHEA LP Sweeps, and On-Chain PoC-4 Proof Anchoring.",
+                      "Implemented Dual-Mode Wallet Execution Architecture separating Mode A (Disconnected / 1-Tap Judge Sandbox Vault jubayir69.testnet per Rule Q-017) from Mode B (Simultaneous 7-Chain Testnet Personal Wallet Control across NEAR, EVM Sepolia, Solana, Bitcoin Testnet, Sui / Slush, TON, and XRP per Rule Q-010).",
+                      "Added POST /api/wallet/balances querying strictly live Testnet native and stablecoin balances across all 7 chain families (reporting exact 0.00 when empty and returning isMainnetMismatch: true with a 'Please switch to Testnet mode' guard if a Mainnet account/network is detected).",
+                      "Enforced strict inputAmount > availableTestnetBalance execution locks and real browser wallet popup signing (personal_sign / signMessage / sui:signPersonalMessage / NEAR Tx) with on-chain NEAR Testnet proof receipts (txHash).",
                     ],
                   },
                   {

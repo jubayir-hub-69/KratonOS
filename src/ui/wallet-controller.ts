@@ -80,8 +80,8 @@ export const CHAIN_FAMILY_META: Record<WalletChainType, ChainFamilyMetadata> = {
     label: "Sui Network",
     shortLabel: "Sui",
     nativeSymbol: "SUI",
-    recommendedWallets: "Sui Wallet / Slush",
-    extensionHint: "window.suiWallet / window.slush",
+    recommendedWallets: "Slush / Sui Wallet / Nightly",
+    extensionHint: "@mysten/wallet-standard (Slush, Sui Wallet, Nightly, Surf)",
     badgeTone: "sky",
   },
   ton: {
@@ -113,6 +113,7 @@ export function getTokenChainFamily(
     idUpper === "USDC-NEAR" ||
     idUpper === "USDT-NEAR" ||
     idUpper === "WNEAR-NEAR" ||
+    idUpper === "NEAR-NEAR" ||
     idUpper === "NEAR"
   ) {
     return "near";
@@ -164,31 +165,210 @@ export function getTokenChainFamily(
   return "near";
 }
 
+export const SUPPORTED_EVM_TESTNET_CHAIN_IDS = new Set([
+  "0xaa36a7", // Ethereum Sepolia (11155111)
+  "0x66eee",  // Arbitrum Sepolia (421614)
+  "0x14a34",  // Base Sepolia (84532)
+]);
+
+export function isBitcoinTestnetAddress(address: string): boolean {
+  const clean = (address || "").trim();
+  return (
+    clean.startsWith("tb1") ||
+    clean.startsWith("m") ||
+    clean.startsWith("n") ||
+    clean.startsWith("2")
+  );
+}
+
+export function evaluateWalletNetworkMismatch(params: {
+  chainType: WalletChainType;
+  address: string;
+  evmChainIdHex?: string;
+  suiActiveChain?: string;
+  xrpNetworkType?: string;
+}): { isMainnetMismatch: boolean; reason?: string } {
+  const { chainType, address, evmChainIdHex, suiActiveChain, xrpNetworkType } = params;
+  const cleanAddr = (address || "").trim();
+
+  if (chainType === "near") {
+    if (cleanAddr.toLowerCase().endsWith(".near")) {
+      return {
+        isMainnetMismatch: true,
+        reason: `[TESTNET MODE REQUIRED] Connected NEAR account (${cleanAddr}) is on Mainnet. Please switch your wallet to Testnet mode (.testnet) to continue.`,
+      };
+    }
+    return { isMainnetMismatch: false };
+  }
+
+  if (chainType === "evm") {
+    const cid = (evmChainIdHex || "").trim().toLowerCase();
+    if (cid && !SUPPORTED_EVM_TESTNET_CHAIN_IDS.has(cid)) {
+      return {
+        isMainnetMismatch: true,
+        reason:
+          "[TESTNET MODE REQUIRED] Your EVM wallet is currently on Mainnet. Please switch to Testnet mode (Sepolia / Arbitrum Sepolia / Base Sepolia) to execute.",
+      };
+    }
+    return { isMainnetMismatch: false };
+  }
+
+  if (chainType === "bitcoin") {
+    if (cleanAddr && !isBitcoinTestnetAddress(cleanAddr)) {
+      return {
+        isMainnetMismatch: true,
+        reason: `[TESTNET MODE REQUIRED] Your Bitcoin wallet is on Mainnet (${cleanAddr}). Please switch UniSat/Xverse to Bitcoin Testnet mode (tb1...).`,
+      };
+    }
+    return { isMainnetMismatch: false };
+  }
+
+  if (chainType === "sui") {
+    const sc = (suiActiveChain || "").trim().toLowerCase();
+    if (sc === "sui:mainnet" || sc === "mainnet") {
+      return {
+        isMainnetMismatch: true,
+        reason:
+          "[TESTNET MODE REQUIRED] Please switch Slush / Sui Wallet to Sui Testnet mode.",
+      };
+    }
+    return { isMainnetMismatch: false };
+  }
+
+  if (chainType === "ton") {
+    if (cleanAddr.startsWith("EQ") || cleanAddr.startsWith("UQ")) {
+      return {
+        isMainnetMismatch: true,
+        reason: `[TESTNET MODE REQUIRED] Connected TON address (${cleanAddr}) is on Mainnet. Please switch wallet to Testnet mode (0Q... / kQ...).`,
+      };
+    }
+    return { isMainnetMismatch: false };
+  }
+
+  if (chainType === "xrp") {
+    const xn = (xrpNetworkType || "").trim().toLowerCase();
+    if (xn.includes("main") || xn.includes("live")) {
+      return {
+        isMainnetMismatch: true,
+        reason:
+          "[TESTNET MODE REQUIRED] Connected XRPL wallet is on Mainnet. Please switch wallet to Testnet mode.",
+      };
+    }
+    return { isMainnetMismatch: false };
+  }
+
+  return { isMainnetMismatch: false };
+}
+
+export async function requestBrowserWalletTestnetSwitch(
+  chainType: WalletChainType
+): Promise<{ switched: boolean; newAddress?: string }> {
+  if (typeof window === "undefined") {
+    return { switched: false };
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const win = window as any;
+
+  if (chainType === "evm") {
+    const ethProvider = win.ethereum;
+    if (!ethProvider || typeof ethProvider.request !== "function") {
+      return { switched: false };
+    }
+    try {
+      await ethProvider.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0xaa36a7" }],
+      });
+      return { switched: true };
+    } catch (switchErr) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const errCode = (switchErr as any)?.code;
+      if (errCode === 4902) {
+        try {
+          await ethProvider.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0xaa36a7",
+                chainName: "Sepolia Testnet",
+                nativeCurrency: {
+                  name: "Sepolia ETH",
+                  symbol: "ETH",
+                  decimals: 18,
+                },
+                rpcUrls: ["https://ethereum-sepolia-rpc.publicnode.com"],
+                blockExplorerUrls: ["https://sepolia.etherscan.io"],
+              },
+            ],
+          });
+          return { switched: true };
+        } catch {
+          return { switched: false };
+        }
+      }
+      return { switched: false };
+    }
+  }
+
+  if (chainType === "bitcoin" && win.unisat) {
+    try {
+      if (typeof win.unisat.switchNetwork === "function") {
+        await win.unisat.switchNetwork("testnet");
+      } else if (typeof win.unisat.switchChain === "function") {
+        await win.unisat.switchChain("BITCOIN_TESTNET");
+      }
+      const accounts =
+        typeof win.unisat.requestAccounts === "function"
+          ? await win.unisat.requestAccounts()
+          : typeof win.unisat.getAccounts === "function"
+            ? await win.unisat.getAccounts()
+            : [];
+      const addr = Array.isArray(accounts) && accounts[0] ? String(accounts[0]) : "";
+      if (addr && isBitcoinTestnetAddress(addr)) {
+        return { switched: true, newAddress: addr };
+      }
+    } catch {
+      return { switched: false };
+    }
+  }
+
+  return { switched: false };
+}
+
 export function getWalletExplorerAccountUrl(
   address: string | null,
-  chainType: WalletChainType
+  chainType: WalletChainType,
+  detectedNetwork?: string
 ): string {
   if (!address) {
     return "https://testnet.nearblocks.io/address/jubayir69.testnet";
   }
+  const netLower = (detectedNetwork ?? "").toLowerCase();
   switch (chainType) {
     case "evm":
-      return `https://etherscan.io/address/${address}`;
+      if (netLower.includes("base sepolia")) {
+        return `https://sepolia.basescan.org/address/${address}`;
+      }
+      if (netLower.includes("arbitrum sepolia")) {
+        return `https://sepolia.arbiscan.io/address/${address}`;
+      }
+      return `https://sepolia.etherscan.io/address/${address}`;
     case "solana":
-      return `https://solscan.io/account/${address}`;
+      if (netLower.includes("devnet")) {
+        return `https://solscan.io/account/${address}?cluster=devnet`;
+      }
+      return `https://solscan.io/account/${address}?cluster=testnet`;
     case "bitcoin":
-      return `https://mempool.space/address/${address}`;
+      return `https://mempool.space/testnet/address/${address}`;
     case "sui":
-      return `https://suiscan.xyz/mainnet/account/${address}`;
+      return `https://suiscan.xyz/testnet/account/${address}`;
     case "ton":
-      return `https://tonviewer.com/${address}`;
+      return `https://testnet.tonviewer.com/${address}`;
     case "xrp":
-      return `https://livenet.xrpl.org/accounts/${address}`;
+      return `https://testnet.xrpl.org/accounts/${address}`;
     case "near":
     default:
-      return address.endsWith(".near")
-        ? `https://nearblocks.io/address/${address}`
-        : `https://testnet.nearblocks.io/address/${address}`;
+      return `https://testnet.nearblocks.io/address/${address}`;
   }
 }
 
@@ -196,6 +376,9 @@ export interface LiveWalletBalanceSnapshot {
   nativeSymbol: WalletNativeSymbol;
   nativeBalance: number;
   nativeFormatted: string;
+  detectedNetwork?: string;
+  isMainnetMismatch?: boolean;
+  networkMismatchReason?: string;
   totalNearBalance?: number;
   spendableNearBalance?: number;
   storageLockedNear?: number;
@@ -230,6 +413,7 @@ export interface ConnectedWalletState extends LiveWalletBalanceSnapshot {
   connectChainWallet: (chainType: WalletChainType) => Promise<void>;
   disconnectChainWallet: (chainType: WalletChainType) => Promise<void>;
   disconnectAllWallets: () => Promise<void>;
+  switchChainWalletToTestnet?: (chainType: WalletChainType) => Promise<void>;
   openWalletModal: (preferredChain?: WalletChainType) => void;
   refreshBalances: () => Promise<void>;
   signPersonalIntent: (message: string) => Promise<{
@@ -258,6 +442,15 @@ export class WalletSignatureRejectedError extends Error {
   ) {
     super(message);
     this.name = "WalletSignatureRejectedError";
+  }
+}
+
+export class WalletMainnetMismatchError extends Error {
+  constructor(
+    message = "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode."
+  ) {
+    super(message);
+    this.name = "WalletMainnetMismatchError";
   }
 }
 
@@ -423,6 +616,149 @@ export function getAvailablePayTokenBalance(
   return 0;
 }
 
+// ============================================================================
+// @mysten/wallet-standard Registry for Modern Sui Wallets (Slush, Sui Wallet, Nightly, Surf, Ethos, Martian)
+// ============================================================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const registeredStandardWallets = new Map<string, any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let activeSuiStandardWalletRef: { wallet: any; account: any } | null = null;
+let walletStandardInitialized = false;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function registerStandardWalletInstance(wallet: any): void {
+  if (!wallet || typeof wallet !== "object") return;
+  const name = typeof wallet.name === "string" && wallet.name.trim() ? wallet.name.trim() : "";
+  if (!name) return;
+  registeredStandardWallets.set(name, wallet);
+}
+
+export function initWalletStandardRegistry(): void {
+  if (typeof window === "undefined") return;
+
+  const registerApi = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    register: (...wallets: any[]) => {
+      for (const w of wallets) {
+        registerStandardWalletInstance(w);
+      }
+      return () => {};
+    },
+  };
+
+  if (!walletStandardInitialized) {
+    walletStandardInitialized = true;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      window.addEventListener("wallet-standard:register-wallet", (event: any) => {
+        try {
+          if (typeof event?.detail === "function") {
+            event.detail(registerApi);
+          } else if (typeof event?.detail?.register === "function") {
+            event.detail.register(registerApi);
+          }
+        } catch {
+          // Ignore malformed wallet event
+        }
+      });
+    } catch {
+      // Ignore event listener error
+    }
+  }
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent("wallet-standard:app-ready", {
+        detail: registerApi,
+      })
+    );
+  } catch {
+    // Ignore custom event dispatch error
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const navWallets = (window.navigator as any)?.wallets;
+    if (Array.isArray(navWallets)) {
+      for (const item of navWallets) {
+        if (typeof item === "function") {
+          item(registerApi);
+        } else {
+          registerStandardWalletInstance(item);
+        }
+      }
+    } else if (navWallets && typeof navWallets.get === "function") {
+      const list = navWallets.get();
+      if (Array.isArray(list)) {
+        for (const w of list) {
+          registerStandardWalletInstance(w);
+        }
+      }
+    }
+  } catch {
+    // Ignore navigator.wallets probing error
+  }
+}
+
+if (typeof window !== "undefined") {
+  initWalletStandardRegistry();
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isSuiStandardWallet(wallet: any): boolean {
+  if (!wallet || typeof wallet !== "object") return false;
+  const features = wallet.features ?? {};
+  const hasConnect = Boolean(features["standard:connect"]);
+  if (!hasConnect) return false;
+
+  const chains: string[] = Array.isArray(wallet.chains) ? wallet.chains : [];
+  const hasSuiChain = chains.some(
+    (c) => typeof c === "string" && c.toLowerCase().startsWith("sui:")
+  );
+  const hasSuiFeature = Boolean(
+    features["sui:signPersonalMessage"] ||
+      features["sui:signMessage"] ||
+      features["sui:signTransaction"] ||
+      features["sui:signTransactionBlock"] ||
+      features["sui:signAndExecuteTransaction"] ||
+      features["sui:signAndExecuteTransactionBlock"]
+  );
+  const nameLower = String(wallet.name ?? "").toLowerCase();
+  const isKnownSuiWalletName =
+    nameLower.includes("slush") ||
+    nameLower.includes("sui") ||
+    nameLower.includes("suiet") ||
+    nameLower.includes("nightly") ||
+    nameLower.includes("surf") ||
+    nameLower.includes("ethos") ||
+    nameLower.includes("martian") ||
+    nameLower.includes("stashed");
+
+  return hasSuiChain || hasSuiFeature || isKnownSuiWalletName;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getRegisteredSuiStandardWallet(): any | null {
+  initWalletStandardRegistry();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const candidates: any[] = [];
+  for (const w of registeredStandardWallets.values()) {
+    if (isSuiStandardWallet(w)) {
+      candidates.push(w);
+    }
+  }
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => {
+    const aName = String(a?.name ?? "").toLowerCase();
+    const bName = String(b?.name ?? "").toLowerCase();
+    const aScore = aName.includes("slush") ? 3 : aName.includes("sui") ? 2 : 1;
+    const bScore = bName.includes("slush") ? 3 : bName.includes("sui") ? 2 : 1;
+    return bScore - aScore;
+  });
+  return candidates[0];
+}
+
 /**
  * Connects directly to an installed browser wallet extension for non-NEAR chains
  * (`evm`, `solana`, `bitcoin`, `sui`, `ton`, `xrp`).
@@ -454,6 +790,17 @@ export async function connectInPageBrowserWallet(
         : null;
     if (!address) {
       throw new Error("EVM wallet did not return an authorized account.");
+    }
+    try {
+      const currentChain = await ethProvider.request({ method: "eth_chainId" });
+      if (
+        typeof currentChain === "string" &&
+        !SUPPORTED_EVM_TESTNET_CHAIN_IDS.has(currentChain.toLowerCase())
+      ) {
+        await requestBrowserWalletTestnetSwitch("evm");
+      }
+    } catch {
+      // Non-fatal: mismatch flag will surface in Wallet Hub if user declined Sepolia switch
     }
     const providerName = ethProvider.isRabby
       ? "Rabby Wallet (EVM)"
@@ -491,9 +838,15 @@ export async function connectInPageBrowserWallet(
   if (chainType === "bitcoin") {
     if (win.unisat && typeof win.unisat.requestAccounts === "function") {
       const accounts = await win.unisat.requestAccounts();
-      const addr = Array.isArray(accounts) && accounts[0] ? String(accounts[0]) : "";
+      let addr = Array.isArray(accounts) && accounts[0] ? String(accounts[0]) : "";
       if (!addr) {
         throw new Error("UniSat Wallet did not return a Bitcoin address.");
+      }
+      if (!isBitcoinTestnetAddress(addr)) {
+        const switched = await requestBrowserWalletTestnetSwitch("bitcoin");
+        if (switched.switched && switched.newAddress) {
+          addr = switched.newAddress;
+        }
       }
       return { address: addr, providerName: "UniSat Wallet (Bitcoin)" };
     }
@@ -516,19 +869,49 @@ export async function connectInPageBrowserWallet(
   }
 
   if (chainType === "sui") {
-    const suiProvider = win.suiWallet ?? win.slush ?? win.sui;
+    // 1. Check @mysten/wallet-standard registry first (Slush, Sui Wallet, Nightly, Surf, Ethos, Martian)
+    const stdSuiWallet = getRegisteredSuiStandardWallet();
+    if (stdSuiWallet) {
+      const connectFeature = stdSuiWallet.features?.["standard:connect"];
+      if (connectFeature && typeof connectFeature.connect === "function") {
+        const res = await connectFeature.connect();
+        const account =
+          (Array.isArray(res?.accounts) && res.accounts[0]) ||
+          (Array.isArray(stdSuiWallet.accounts) && stdSuiWallet.accounts[0]);
+        const addr = account?.address ? String(account.address) : "";
+        if (!addr) {
+          throw new Error(
+            `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return an authorized Sui account.`
+          );
+        }
+        activeSuiStandardWalletRef = { wallet: stdSuiWallet, account };
+        const rawName = String(stdSuiWallet.name || "Slush Wallet").trim();
+        const providerName = rawName.toLowerCase().includes("sui")
+          ? rawName
+          : `${rawName} (Sui)`;
+        return { address: addr, providerName };
+      }
+    }
+
+    // 2. Fallback to legacy window.slush / window.suiWallet / window.sui / window.nightly?.sui
+    const suiProvider =
+      win.slush ?? win.suiWallet ?? win.sui ?? win.suiet ?? win.nightly?.sui;
     if (!suiProvider) {
       throw new Error(
-        `Wallet extension not detected in browser — install ${meta.recommendedWallets} or connect an installed wallet.`
+        `Wallet extension not detected in browser — install ${meta.recommendedWallets} or unlock your Slush / Sui extension.`
       );
     }
     if (typeof suiProvider.requestPermissions === "function") {
       await suiProvider.requestPermissions();
+    } else if (typeof suiProvider.connect === "function") {
+      await suiProvider.connect();
     }
     const accounts =
       typeof suiProvider.getAccounts === "function"
         ? await suiProvider.getAccounts()
-        : [];
+        : Array.isArray(suiProvider.accounts)
+          ? suiProvider.accounts
+          : [];
     const first =
       Array.isArray(accounts) && accounts[0]
         ? typeof accounts[0] === "string"
@@ -536,9 +919,9 @@ export async function connectInPageBrowserWallet(
           : accounts[0]?.address
         : "";
     if (!first) {
-      throw new Error("Sui Wallet did not return an account address.");
+      throw new Error("Slush / Sui Wallet did not return an account address.");
     }
-    return { address: String(first), providerName: "Sui Wallet" };
+    return { address: String(first), providerName: "Slush / Sui Wallet" };
   }
 
   if (chainType === "ton") {
@@ -584,8 +967,116 @@ export async function connectInPageBrowserWallet(
 }
 
 /**
- * Queries real on-chain native + USDC + USDT balances for the user's connected wallet.
- * Never returns fake or hardcoded non-zero numbers; if a wallet holds 0, returns exact 0.
+ * Helper to query Sui RPC (`suix_getBalance` for `0x2::sui::SUI` + `suix_getAllBalances` for USDC/USDT)
+ * across both Sui Testnet (`https://fullnode.testnet.sui.io:443`) and Sui Mainnet (`https://fullnode.mainnet.sui.io:443`).
+ */
+async function querySuiRpcBalances(
+  rpcUrl: string,
+  address: string
+): Promise<{ sui: number; usdc: number; usdt: number; ok: boolean }> {
+  try {
+    const [balRes, allBalRes] = await Promise.all([
+      fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "suix_getBalance",
+          params: [address, "0x2::sui::SUI"],
+        }),
+      }).catch(() => null),
+      fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "suix_getAllBalances",
+          params: [address],
+        }),
+      }).catch(() => null),
+    ]);
+
+    let suiFromSingle = 0;
+    let okSingle = false;
+    if (balRes && balRes.ok) {
+      const j1 = (await balRes.json()) as {
+        result?: { totalBalance?: string };
+      };
+      if (j1?.result?.totalBalance !== undefined) {
+        okSingle = true;
+        const rawMist = BigInt(j1.result.totalBalance || "0");
+        if (rawMist > 0n) {
+          suiFromSingle = Number(rawMist) / 1e9;
+        }
+      }
+    }
+
+    let suiFromAll = 0;
+    let usdc = 0;
+    let usdt = 0;
+    let okAll = false;
+    if (allBalRes && allBalRes.ok) {
+      const j2 = (await allBalRes.json()) as {
+        result?: Array<{ coinType?: string; totalBalance?: string }>;
+      };
+      if (Array.isArray(j2?.result)) {
+        okAll = true;
+        for (const entry of j2.result) {
+          const cType = String(entry?.coinType ?? "").toLowerCase();
+          const raw = BigInt(entry?.totalBalance ?? "0");
+          if (raw <= 0n) continue;
+          if (cType === "0x2::sui::sui" || cType.endsWith("::sui::sui")) {
+            suiFromAll += Number(raw) / 1e9;
+          } else if (cType.includes("usdc")) {
+            usdc += Number(raw) / 1e6;
+          } else if (cType.includes("usdt")) {
+            usdt += Number(raw) / 1e6;
+          }
+        }
+      }
+    }
+
+    return {
+      sui: Number(Math.max(suiFromSingle, suiFromAll).toFixed(6)),
+      usdc: Number(usdc.toFixed(6)),
+      usdt: Number(usdt.toFixed(6)),
+      ok: okSingle || okAll,
+    };
+  } catch {
+    return { sui: 0, usdc: 0, usdt: 0, ok: false };
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function detectSuiExplicitMainnetState(stdWallet: any, account: any): string | undefined {
+  const activeChain = String(
+    stdWallet?.activeChain ?? stdWallet?.network ?? account?.network ?? ""
+  )
+    .trim()
+    .toLowerCase();
+  if (activeChain === "sui:mainnet" || activeChain === "mainnet") {
+    return "sui:mainnet";
+  }
+  const accChains: string[] = Array.isArray(account?.chains)
+    ? account.chains.map((c: unknown) => String(c).toLowerCase())
+    : [];
+  if (
+    accChains.length > 0 &&
+    accChains.includes("sui:mainnet") &&
+    !accChains.includes("sui:testnet") &&
+    !accChains.includes("sui:devnet")
+  ) {
+    return "sui:mainnet";
+  }
+  return undefined;
+}
+
+/**
+ * Queries real on-chain TESTNET native + USDC + USDT balances for the user's connected wallet
+ * across ALL 7 chains (`near`, `evm`, `solana`, `bitcoin`, `sui`, `ton`, `xrp`) per Hackathon Rule Q-010.
+ * Never queries or exposes Mainnet user balances; flags `isMainnetMismatch: true` if a wallet is on Mainnet.
  */
 export async function fetchLiveConnectedWalletBalances(params: {
   address: string;
@@ -596,12 +1087,14 @@ export async function fetchLiveConnectedWalletBalances(params: {
     CHAIN_FAMILY_META[chainType]?.nativeSymbol ?? "NEAR";
 
   let inPageEthChainId: string | undefined;
-  let inPageEthNative: number | null = null;
+  let inPageSuiActiveChain: string | undefined;
+  let inPageXrpNetworkType: string | undefined;
+  let inPageNative: number | null = null;
   let inPageUsdc: number | null = null;
   let inPageUsdt: number | null = null;
-  let inPageBtcNative: number | null = null;
+  let inPageDetectedNetwork: string | undefined;
 
-  // 1. Direct In-Page Browser Wallet Provider Query for EVM (window.ethereum) or Bitcoin (window.unisat)
+  // 1. Direct In-Page Browser / Testnet-Only RPC Query & Mainnet-Mismatch Detection
   if (chainType === "evm" && typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ethProvider = (window as any).ethereum;
@@ -610,189 +1103,280 @@ export async function fetchLiveConnectedWalletBalances(params: {
         const cid = await ethProvider.request({ method: "eth_chainId" });
         if (typeof cid === "string") {
           inPageEthChainId = cid.toLowerCase();
+          if (inPageEthChainId === "0xaa36a7") inPageDetectedNetwork = "Sepolia Testnet";
+          else if (inPageEthChainId === "0x14a34") inPageDetectedNetwork = "Base Sepolia";
+          else if (inPageEthChainId === "0x66eee") inPageDetectedNetwork = "Arbitrum Sepolia";
+          else inPageDetectedNetwork = "EVM Mainnet (Switch to Sepolia)";
         }
       } catch {
-        // Ignore chainId error and fall back to server multi-RPC
+        // Ignore chainId error and fall back to server Testnet RPCs
       }
 
-      try {
-        const balHex = await ethProvider.request({
-          method: "eth_getBalance",
-          params: [address, "latest"],
-        });
-        inPageEthNative = parseHexToScaledNumber(balHex, 18);
-      } catch {
-        // Fallback to server RPC below
-      }
-
-      // Query ERC-20 balanceOf(address) (0x70a08231) directly on the connected EVM chain
-      if (/^0x[0-9a-fA-F]{40}$/.test(address)) {
-        const padded = address.slice(2).toLowerCase().padStart(64, "0");
-        const callData = `0x70a08231${padded}`;
-        let usdcContract = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // Ethereum Mainnet USDC
-        let usdtContract: string | null = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // Ethereum Mainnet USDT
-
-        if (inPageEthChainId === "0xaa36a7") {
-          // Sepolia USDC
-          usdcContract = "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
-          usdtContract = null;
-        } else if (inPageEthChainId === "0x2105") {
-          // Base Mainnet USDC
-          usdcContract = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
-          usdtContract = null;
-        } else if (inPageEthChainId === "0xa4b1") {
-          // Arbitrum One USDC & USDT
-          usdcContract = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831";
-          usdtContract = "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9";
-        }
-
+      // Strictly query window.ethereum balances ONLY when active chain is a supported EVM Testnet
+      if (inPageEthChainId && SUPPORTED_EVM_TESTNET_CHAIN_IDS.has(inPageEthChainId)) {
         try {
-          const usdcHex = await ethProvider.request({
-            method: "eth_call",
-            params: [{ to: usdcContract, data: callData }, "latest"],
+          const balHex = await ethProvider.request({
+            method: "eth_getBalance",
+            params: [address, "latest"],
           });
-          inPageUsdc = parseHexToScaledNumber(usdcHex, 6);
+          inPageNative = parseHexToScaledNumber(balHex, 18);
         } catch {
-          inPageUsdc = null;
+          // Fallback to server Testnet RPC below
         }
 
-        if (usdtContract) {
+        if (/^0x[0-9a-fA-F]{40}$/.test(address)) {
+          const padded = address.slice(2).toLowerCase().padStart(64, "0");
+          const callData = `0x70a08231${padded}`;
+          const usdcContract =
+            inPageEthChainId === "0x14a34"
+              ? "0x036CbD53842c5426634e7929541eC2318f3dCF7e"
+              : inPageEthChainId === "0x66eee"
+                ? "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+                : "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238";
+
           try {
-            const usdtHex = await ethProvider.request({
+            const usdcHex = await ethProvider.request({
               method: "eth_call",
-              params: [{ to: usdtContract, data: callData }, "latest"],
+              params: [{ to: usdcContract, data: callData }, "latest"],
             });
-            inPageUsdt = parseHexToScaledNumber(usdtHex, 6);
+            inPageUsdc = parseHexToScaledNumber(usdcHex, 6);
           } catch {
-            inPageUsdt = null;
+            inPageUsdc = null;
           }
         }
       }
     }
+  } else if (chainType === "sui") {
+    const stdWallet =
+      activeSuiStandardWalletRef?.wallet ?? getRegisteredSuiStandardWallet();
+    const stdAccount = activeSuiStandardWalletRef?.account ?? stdWallet?.accounts?.[0];
+    inPageSuiActiveChain = detectSuiExplicitMainnetState(stdWallet, stdAccount);
+
+    // Query STRICTLY Sui Testnet RPC (https://fullnode.testnet.sui.io:443) — never Mainnet
+    const testnetSui = await querySuiRpcBalances(
+      "https://fullnode.testnet.sui.io:443",
+      address
+    );
+    if (testnetSui.ok) {
+      inPageNative = testnetSui.sui;
+      inPageUsdc = testnetSui.usdc;
+      inPageUsdt = testnetSui.usdt;
+      inPageDetectedNetwork = inPageSuiActiveChain
+        ? "Sui Mainnet (Switch to Testnet)"
+        : "Sui Testnet";
+    }
   } else if (chainType === "bitcoin" && typeof window !== "undefined") {
+    if (isBitcoinTestnetAddress(address)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const unisat = (window as any).unisat;
+      if (unisat && typeof unisat.getBalance === "function") {
+        try {
+          const b = await unisat.getBalance();
+          const totalSats = Number(b?.total ?? b?.confirmed ?? 0);
+          if (Number.isFinite(totalSats) && totalSats >= 0) {
+            inPageNative = Number((totalSats / 1e8).toFixed(8));
+          }
+        } catch {
+          inPageNative = null;
+        }
+      }
+      inPageDetectedNetwork = "Bitcoin Testnet";
+    } else {
+      inPageNative = 0;
+      inPageDetectedNetwork = "Bitcoin Mainnet (Switch Required)";
+    }
+  } else if (chainType === "xrp" && typeof window !== "undefined") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const unisat = (window as any).unisat;
-    if (unisat && typeof unisat.getBalance === "function") {
+    const win = window as any;
+    const cmNet = String(win.crossmark?.session?.network?.type ?? "");
+    if (cmNet) {
+      inPageXrpNetworkType = cmNet;
+    } else if (win.gemWallet && typeof win.gemWallet.getNetwork === "function") {
       try {
-        const b = await unisat.getBalance();
-        const totalSats = Number(b?.total ?? b?.confirmed ?? 0);
-        if (Number.isFinite(totalSats) && totalSats >= 0) {
-          inPageBtcNative = Number((totalSats / 1e8).toFixed(8));
-        }
+        const netResp = await win.gemWallet.getNetwork();
+        inPageXrpNetworkType = String(netResp?.result?.network ?? "");
       } catch {
-        inPageBtcNative = null;
+        // Ignore network probe error
       }
     }
   }
 
-  // 2. Server-Side Multi-RPC Balance Verification (Ethereum/Base/Arbitrum/Sepolia, NEAR RPC, Solana RPC)
-  if (chainType === "near" || chainType === "evm" || chainType === "solana") {
-    try {
-      const res = await fetch("/api/wallet/balances", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          address,
-          chainType,
-          chainIdHex: inPageEthChainId,
-        }),
-      });
-      if (res.ok) {
-        const json = (await res.json()) as {
-          nativeSymbol?: WalletNativeSymbol;
-          nativeBalance?: number;
-          totalNearBalance?: number;
-          spendableNearBalance?: number;
-          storageLockedNear?: number;
-          walletGasReserveNear?: number;
-          totalNearFormatted?: string;
-          spendableNearFormatted?: string;
-          wnearBalance?: number;
-          usdcBalance?: number;
-          usdtBalance?: number;
-          tokenBalances?: Record<string, number>;
-        };
+  const clientMismatch = evaluateWalletNetworkMismatch({
+    chainType,
+    address,
+    evmChainIdHex: inPageEthChainId,
+    suiActiveChain: inPageSuiActiveChain,
+    xrpNetworkType: inPageXrpNetworkType,
+  });
 
-        const resolvedNative =
-          inPageEthNative !== null
-            ? Math.max(inPageEthNative, Number(json.nativeBalance ?? 0))
-            : Number(json.spendableNearBalance ?? json.nativeBalance ?? 0);
-        const resolvedTotalNear =
-          chainType === "near"
-            ? Number(json.totalNearBalance ?? resolvedNative)
-            : undefined;
-        const resolvedSpendableNear =
-          chainType === "near"
-            ? Number(json.spendableNearBalance ?? resolvedNative)
-            : undefined;
-        const resolvedWnear = Number(json.wnearBalance ?? 0);
-        const resolvedUsdc =
-          inPageUsdc !== null
-            ? Math.max(inPageUsdc, Number(json.usdcBalance ?? 0))
-            : Number(json.usdcBalance ?? 0);
-        const resolvedUsdt =
-          inPageUsdt !== null
-            ? Math.max(inPageUsdt, Number(json.usdtBalance ?? 0))
-            : Number(json.usdtBalance ?? 0);
-
-        const mergedMap: Record<string, number> = {
-          ...(json.tokenBalances ?? {}),
-          [nativeSymbol]: resolvedNative,
-          USDC: resolvedUsdc,
-          "USDC-NEAR": chainType === "near" ? resolvedUsdc : 0,
-          "USDC-BASE":
-            chainType === "evm"
-              ? (json.tokenBalances?.["USDC-BASE"] ?? resolvedUsdc)
-              : 0,
-          USDT: resolvedUsdt,
-          "USDT-NEAR": chainType === "near" ? resolvedUsdt : 0,
-          "USDT-ARBITRUM":
-            chainType === "evm"
-              ? (json.tokenBalances?.["USDT-ARBITRUM"] ?? resolvedUsdt)
-              : 0,
-        };
-        if (chainType === "evm") {
-          mergedMap["ETH-ETHEREUM"] = resolvedNative;
-        } else if (chainType === "near") {
-          mergedMap.NEAR = resolvedSpendableNear ?? resolvedNative;
-          mergedMap.wNEAR = Number(
-            ((resolvedSpendableNear ?? resolvedNative) + resolvedWnear).toFixed(4)
-          );
-          mergedMap["wNEAR-NEAR"] = Number(
-            ((resolvedSpendableNear ?? resolvedNative) + resolvedWnear).toFixed(4)
-          );
-        } else if (chainType === "solana") {
-          mergedMap["SOL-SOLANA"] = resolvedNative;
-        }
-
-        return {
-          nativeSymbol,
-          nativeBalance: resolvedNative,
-          nativeFormatted: `${formatTokenAmountDisplay(resolvedNative, nativeSymbol)} ${nativeSymbol}`,
-          totalNearBalance: resolvedTotalNear,
-          spendableNearBalance: resolvedSpendableNear,
-          storageLockedNear: json.storageLockedNear,
-          walletGasReserveNear: json.walletGasReserveNear,
-          totalNearFormatted:
-            resolvedTotalNear !== undefined
-              ? `${resolvedTotalNear.toFixed(4)} NEAR`
-              : json.totalNearFormatted,
-          spendableNearFormatted:
-            resolvedSpendableNear !== undefined
-              ? `${resolvedSpendableNear.toFixed(4)} NEAR`
-              : json.spendableNearFormatted,
-          wnearBalance: resolvedWnear,
-          usdcBalance: resolvedUsdc,
-          usdtBalance: resolvedUsdt,
-          tokenBalances: mergedMap,
-        };
-      }
-    } catch {
-      // Fall back to direct in-page numbers (0 if unavailable)
-    }
+  // Short-circuit strict address-level Mainnet mismatches (NEAR .near, Bitcoin bc1/1/3, TON EQ/UQ) so Mainnet RPCs are never touched
+  if (
+    clientMismatch.isMainnetMismatch &&
+    (chainType === "near" || chainType === "bitcoin" || chainType === "ton")
+  ) {
+    return {
+      nativeSymbol,
+      nativeBalance: 0,
+      nativeFormatted: `0.0000 ${nativeSymbol}`,
+      detectedNetwork:
+        chainType === "near"
+          ? "NEAR Mainnet (Switch Required)"
+          : chainType === "bitcoin"
+            ? "Bitcoin Mainnet (Switch Required)"
+            : "TON Mainnet (Switch Required)",
+      isMainnetMismatch: true,
+      networkMismatchReason: clientMismatch.reason,
+      ...(chainType === "near"
+        ? {
+            totalNearBalance: 0,
+            spendableNearBalance: 0,
+            totalNearFormatted: "0.0000 NEAR",
+            spendableNearFormatted: "0.0000 NEAR",
+          }
+        : {}),
+      wnearBalance: 0,
+      usdcBalance: 0,
+      usdtBalance: 0,
+      tokenBalances: {
+        [nativeSymbol]: 0,
+        USDC: 0,
+        USDT: 0,
+      },
+    };
   }
 
-  const fallbackNative = inPageEthNative ?? inPageBtcNative ?? 0;
+  // 2. Server-Side Testnet-Only RPC Balance Verification Across All 7 Chains
+  try {
+    const res = await fetch("/api/wallet/balances", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        address,
+        chainType,
+        chainIdHex: inPageEthChainId,
+      }),
+    });
+    if (res.ok) {
+      const json = (await res.json()) as {
+        nativeSymbol?: WalletNativeSymbol;
+        nativeBalance?: number;
+        detectedNetwork?: string;
+        isMainnetMismatch?: boolean;
+        networkMismatchReason?: string;
+        totalNearBalance?: number;
+        spendableNearBalance?: number;
+        storageLockedNear?: number;
+        walletGasReserveNear?: number;
+        totalNearFormatted?: string;
+        spendableNearFormatted?: string;
+        wnearBalance?: number;
+        usdcBalance?: number;
+        usdtBalance?: number;
+        tokenBalances?: Record<string, number>;
+      };
+
+      const apiNative = Number(json.spendableNearBalance ?? json.nativeBalance ?? 0);
+      const resolvedNative =
+        inPageNative !== null ? Math.max(inPageNative, apiNative) : apiNative;
+      const resolvedTotalNear =
+        chainType === "near"
+          ? Number(json.totalNearBalance ?? resolvedNative)
+          : undefined;
+      const resolvedSpendableNear =
+        chainType === "near"
+          ? Number(json.spendableNearBalance ?? resolvedNative)
+          : undefined;
+      const resolvedWnear = Number(json.wnearBalance ?? 0);
+      const resolvedUsdc =
+        inPageUsdc !== null
+          ? Math.max(inPageUsdc, Number(json.usdcBalance ?? 0))
+          : Number(json.usdcBalance ?? 0);
+      const resolvedUsdt =
+        inPageUsdt !== null
+          ? Math.max(inPageUsdt, Number(json.usdtBalance ?? 0))
+          : Number(json.usdtBalance ?? 0);
+      const isMainnetMismatch = Boolean(
+        clientMismatch.isMainnetMismatch || json.isMainnetMismatch
+      );
+      const networkMismatchReason =
+        clientMismatch.reason ?? json.networkMismatchReason;
+      const detectedNetwork = inPageDetectedNetwork ?? json.detectedNetwork;
+
+      const mergedMap: Record<string, number> = {
+        ...(json.tokenBalances ?? {}),
+        [nativeSymbol]: resolvedNative,
+        USDC: resolvedUsdc,
+        "USDC-NEAR": chainType === "near" ? resolvedUsdc : 0,
+        "USDC-BASE":
+          chainType === "evm"
+            ? Math.max(resolvedUsdc, Number(json.tokenBalances?.["USDC-BASE"] ?? 0))
+            : 0,
+        USDT: resolvedUsdt,
+        "USDT-NEAR": chainType === "near" ? resolvedUsdt : 0,
+        "USDT-ARBITRUM":
+          chainType === "evm"
+            ? Math.max(resolvedUsdt, Number(json.tokenBalances?.["USDT-ARBITRUM"] ?? 0))
+            : 0,
+      };
+      if (chainType === "evm") {
+        mergedMap.ETH = resolvedNative;
+        mergedMap["ETH-ETHEREUM"] = resolvedNative;
+      } else if (chainType === "near") {
+        const combinedNearAndWnear = Number(
+          ((resolvedSpendableNear ?? resolvedNative) + resolvedWnear).toFixed(4)
+        );
+        mergedMap.NEAR = resolvedSpendableNear ?? resolvedNative;
+        mergedMap["NEAR-NEAR"] = combinedNearAndWnear;
+        mergedMap.wNEAR = combinedNearAndWnear;
+        mergedMap["wNEAR-NEAR"] = combinedNearAndWnear;
+      } else if (chainType === "solana") {
+        mergedMap.SOL = resolvedNative;
+        mergedMap["SOL-SOLANA"] = resolvedNative;
+      } else if (chainType === "bitcoin") {
+        mergedMap.BTC = resolvedNative;
+        mergedMap.WBTC = resolvedNative;
+        mergedMap["BTC-BITCOIN"] = resolvedNative;
+      } else if (chainType === "sui") {
+        mergedMap.SUI = resolvedNative;
+        mergedMap["SUI-SUI"] = resolvedNative;
+      } else if (chainType === "ton") {
+        mergedMap.TON = resolvedNative;
+        mergedMap["TON-TON"] = resolvedNative;
+      } else if (chainType === "xrp") {
+        mergedMap.XRP = resolvedNative;
+        mergedMap["XRP-RIPPLE"] = resolvedNative;
+      }
+
+      return {
+        nativeSymbol,
+        nativeBalance: resolvedNative,
+        nativeFormatted: `${formatTokenAmountDisplay(resolvedNative, nativeSymbol)} ${nativeSymbol}`,
+        detectedNetwork,
+        isMainnetMismatch,
+        networkMismatchReason,
+        totalNearBalance: resolvedTotalNear,
+        spendableNearBalance: resolvedSpendableNear,
+        storageLockedNear: json.storageLockedNear,
+        walletGasReserveNear: json.walletGasReserveNear,
+        totalNearFormatted:
+          resolvedTotalNear !== undefined
+            ? `${resolvedTotalNear.toFixed(4)} NEAR`
+            : json.totalNearFormatted,
+        spendableNearFormatted:
+          resolvedSpendableNear !== undefined
+            ? `${resolvedSpendableNear.toFixed(4)} NEAR`
+            : json.spendableNearFormatted,
+        wnearBalance: resolvedWnear,
+        usdcBalance: resolvedUsdc,
+        usdtBalance: resolvedUsdt,
+        tokenBalances: mergedMap,
+      };
+    }
+  } catch {
+    // Fall back to direct in-page Testnet numbers (0 if unavailable)
+  }
+
+  const fallbackNative = inPageNative ?? 0;
   const fallbackUsdc = inPageUsdc ?? 0;
   const fallbackUsdt = inPageUsdt ?? 0;
 
@@ -800,6 +1384,9 @@ export async function fetchLiveConnectedWalletBalances(params: {
     nativeSymbol,
     nativeBalance: fallbackNative,
     nativeFormatted: `${formatTokenAmountDisplay(fallbackNative, nativeSymbol)} ${nativeSymbol}`,
+    detectedNetwork: inPageDetectedNetwork,
+    isMainnetMismatch: clientMismatch.isMainnetMismatch,
+    networkMismatchReason: clientMismatch.reason,
     wnearBalance: 0,
     usdcBalance: fallbackUsdc,
     usdtBalance: fallbackUsdt,
@@ -807,15 +1394,20 @@ export async function fetchLiveConnectedWalletBalances(params: {
       [nativeSymbol]: fallbackNative,
       ...(chainType === "evm" ? { "ETH-ETHEREUM": fallbackNative } : {}),
       ...(chainType === "near"
-        ? { wNEAR: fallbackNative, "wNEAR-NEAR": fallbackNative }
+        ? {
+            NEAR: fallbackNative,
+            "NEAR-NEAR": fallbackNative,
+            wNEAR: fallbackNative,
+            "wNEAR-NEAR": fallbackNative,
+          }
         : {}),
       ...(chainType === "solana" ? { "SOL-SOLANA": fallbackNative } : {}),
       ...(chainType === "bitcoin"
         ? { WBTC: fallbackNative, "BTC-BITCOIN": fallbackNative }
         : {}),
-      ...(chainType === "sui" ? { "SUI-SUI": fallbackNative } : {}),
-      ...(chainType === "ton" ? { "TON-TON": fallbackNative } : {}),
-      ...(chainType === "xrp" ? { "XRP-RIPPLE": fallbackNative } : {}),
+      ...(chainType === "sui" ? { SUI: fallbackNative, "SUI-SUI": fallbackNative } : {}),
+      ...(chainType === "ton" ? { TON: fallbackNative, "TON-TON": fallbackNative } : {}),
+      ...(chainType === "xrp" ? { XRP: fallbackNative, "XRP-RIPPLE": fallbackNative } : {}),
       USDC: fallbackUsdc,
       "USDC-NEAR": chainType === "near" ? fallbackUsdc : 0,
       "USDC-BASE": chainType === "evm" ? fallbackUsdc : 0,
@@ -867,6 +1459,27 @@ export async function signMessageWithPersonalWallet(params: {
         "EVM wallet extension (Rabby / MetaMask) is not available in window.ethereum."
       );
     }
+    let cidHex = "";
+    try {
+      const cid = await ethProvider.request({ method: "eth_chainId" });
+      if (typeof cid === "string") cidHex = cid.toLowerCase();
+    } catch {
+      // Continue
+    }
+    if (cidHex && !SUPPORTED_EVM_TESTNET_CHAIN_IDS.has(cidHex)) {
+      await requestBrowserWalletTestnetSwitch("evm");
+      try {
+        const cidAfter = await ethProvider.request({ method: "eth_chainId" });
+        if (typeof cidAfter === "string") cidHex = cidAfter.toLowerCase();
+      } catch {
+        // Continue
+      }
+      if (cidHex && !SUPPORTED_EVM_TESTNET_CHAIN_IDS.has(cidHex)) {
+        throw new WalletMainnetMismatchError(
+          "[TESTNET MODE REQUIRED] Your EVM wallet is currently on Mainnet. Please switch to Testnet mode (Sepolia / Arbitrum Sepolia / Base Sepolia) to execute."
+        );
+      }
+    }
     try {
       const hexMessage = utf8ToHex(message);
       const sig = await ethProvider.request({
@@ -882,6 +1495,7 @@ export async function signMessageWithPersonalWallet(params: {
         chainType: "evm",
       };
     } catch (err) {
+      if (err instanceof WalletMainnetMismatchError) throw err;
       if (err instanceof WalletSignatureRejectedError || isUserRejectionError(err)) {
         throw new WalletSignatureRejectedError();
       }
@@ -926,6 +1540,11 @@ export async function signMessageWithPersonalWallet(params: {
   }
 
   if (chainType === "bitcoin") {
+    if (!isBitcoinTestnetAddress(address)) {
+      throw new WalletMainnetMismatchError(
+        `[TESTNET MODE REQUIRED] Your Bitcoin wallet is on Mainnet (${address}). Please switch UniSat/Xverse to Bitcoin Testnet mode (tb1...).`
+      );
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const win = typeof window !== "undefined" ? (window as any) : {};
     if (win.unisat && typeof win.unisat.signMessage === "function") {
@@ -952,16 +1571,78 @@ export async function signMessageWithPersonalWallet(params: {
   }
 
   if (chainType === "sui") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const win = typeof window !== "undefined" ? (window as any) : {};
-    const suiProvider = win.suiWallet ?? win.slush ?? win.sui;
-    const signFn =
-      suiProvider?.signPersonalMessage ?? suiProvider?.signMessage;
-    if (!suiProvider || typeof signFn !== "function") {
-      throw new Error("Sui Wallet signing provider is not available in browser.");
-    }
     try {
       const bytes = new TextEncoder().encode(message);
+      const stdWallet =
+        activeSuiStandardWalletRef?.wallet ?? getRegisteredSuiStandardWallet();
+      if (stdWallet) {
+        const account =
+          activeSuiStandardWalletRef?.account ??
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          stdWallet.accounts?.find((a: any) =>
+            String(a?.address ?? "").toLowerCase() === address.toLowerCase()
+          ) ??
+          stdWallet.accounts?.[0] ?? { address };
+
+        if (detectSuiExplicitMainnetState(stdWallet, account)) {
+          throw new WalletMainnetMismatchError(
+            "[TESTNET MODE REQUIRED] Please switch Slush / Sui Wallet to Sui Testnet mode."
+          );
+        }
+
+        const signPersonalFeature = stdWallet.features?.["sui:signPersonalMessage"];
+        if (
+          signPersonalFeature &&
+          typeof signPersonalFeature.signPersonalMessage === "function"
+        ) {
+          const signed = await signPersonalFeature.signPersonalMessage({
+            message: bytes,
+            account,
+            chain: "sui:testnet",
+          });
+          const sig = signed?.signature ?? signed?.bytes ?? "";
+          if (!sig) throw new WalletSignatureRejectedError();
+          return {
+            signature: String(sig),
+            signerAddress: address,
+            chainType: "sui",
+          };
+        }
+
+        const signMessageFeature = stdWallet.features?.["sui:signMessage"];
+        if (signMessageFeature && typeof signMessageFeature.signMessage === "function") {
+          const signed = await signMessageFeature.signMessage({
+            message: bytes,
+            account,
+            chain: "sui:testnet",
+          });
+          const sig = signed?.signature ?? signed?.messageBytes ?? "";
+          if (!sig) throw new WalletSignatureRejectedError();
+          return {
+            signature: String(sig),
+            signerAddress: address,
+            chainType: "sui",
+          };
+        }
+      }
+
+      // Legacy fallback for window.slush / window.suiWallet / window.sui
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const win = typeof window !== "undefined" ? (window as any) : {};
+      const suiProvider =
+        win.slush ?? win.suiWallet ?? win.sui ?? win.suiet ?? win.nightly?.sui;
+      if (String(suiProvider?.network ?? "").toLowerCase() === "mainnet") {
+        throw new WalletMainnetMismatchError(
+          "[TESTNET MODE REQUIRED] Please switch Slush / Sui Wallet to Sui Testnet mode."
+        );
+      }
+      const signFn =
+        suiProvider?.signPersonalMessage ?? suiProvider?.signMessage;
+      if (!suiProvider || typeof signFn !== "function") {
+        throw new Error(
+          "Slush / Sui Wallet signing provider is not available in browser."
+        );
+      }
       const res = await signFn.call(suiProvider, {
         message: bytes,
         account: { address },
@@ -974,6 +1655,7 @@ export async function signMessageWithPersonalWallet(params: {
         chainType: "sui",
       };
     } catch (err) {
+      if (err instanceof WalletMainnetMismatchError) throw err;
       if (err instanceof WalletSignatureRejectedError || isUserRejectionError(err)) {
         throw new WalletSignatureRejectedError();
       }
@@ -982,6 +1664,11 @@ export async function signMessageWithPersonalWallet(params: {
   }
 
   if (chainType === "ton") {
+    if (address.startsWith("EQ") || address.startsWith("UQ")) {
+      throw new WalletMainnetMismatchError(
+        `[TESTNET MODE REQUIRED] Connected TON address (${address}) is on Mainnet. Please switch wallet to Testnet mode (0Q... / kQ...).`
+      );
+    }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const win = typeof window !== "undefined" ? (window as any) : {};
     const tonProvider = win.tonkeeper?.ton ?? win.ton;
@@ -1008,6 +1695,12 @@ export async function signMessageWithPersonalWallet(params: {
   if (chainType === "xrp") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const win = typeof window !== "undefined" ? (window as any) : {};
+    const cmNet = String(win.crossmark?.session?.network?.type ?? "").toLowerCase();
+    if (cmNet.includes("main") || cmNet.includes("live")) {
+      throw new WalletMainnetMismatchError(
+        "[TESTNET MODE REQUIRED] Connected XRPL wallet is on Mainnet. Please switch wallet to Testnet mode."
+      );
+    }
     try {
       if (win.crossmark && typeof win.crossmark.signMessageAsync === "function") {
         const resp = await win.crossmark.signMessageAsync(utf8ToHex(message).slice(2));
@@ -1038,7 +1731,12 @@ export async function signMessageWithPersonalWallet(params: {
     throw new Error("XRPL Wallet (Crossmark / GemWallet) is not available in browser.");
   }
 
-  // NEAR Personal Wallet via @hot-labs/near-connect
+  // NEAR Personal Wallet via @hot-labs/near-connect (Strictly .testnet or testnet implicit hex)
+  if (address.toLowerCase().endsWith(".near")) {
+    throw new WalletMainnetMismatchError(
+      `[TESTNET MODE REQUIRED] Connected NEAR account (${address}) is on Mainnet. Please switch your wallet to Testnet mode (.testnet) to continue.`
+    );
+  }
   if (!nearConnector) {
     throw new Error(
       "NEAR wallet connector session not initialized. Please reconnect your NEAR wallet."
@@ -1064,7 +1762,7 @@ export async function signMessageWithPersonalWallet(params: {
       };
     }
 
-    // Fallback for NEAR wallets without NEP-413 signMessage: trigger real 0-yocto self-transfer popup
+    // Fallback for NEAR Testnet wallets without NEP-413 signMessage: trigger real 0-yocto self-transfer popup on Testnet
     const txOutcome = await wallet.signAndSendTransaction({
       signerId: address,
       receiverId: address,
@@ -1085,6 +1783,7 @@ export async function signMessageWithPersonalWallet(params: {
       chainType: "near",
     };
   } catch (err) {
+    if (err instanceof WalletMainnetMismatchError) throw err;
     if (err instanceof WalletSignatureRejectedError || isUserRejectionError(err)) {
       throw new WalletSignatureRejectedError();
     }
@@ -1093,8 +1792,8 @@ export async function signMessageWithPersonalWallet(params: {
 }
 
 /**
- * Triggers a REAL on-chain NEAR transaction directly from the user's connected NEAR wallet
- * (`wallet.signAndSendTransaction`) so the transaction hash and gas fee come from their NEAR account.
+ * Triggers a REAL on-chain NEAR TESTNET transaction directly from the user's connected NEAR wallet
+ * (`wallet.signAndSendTransaction`) so the transaction hash and gas fee come from their NEAR Testnet account.
  */
 export async function sendNearTransactionWithPersonalWallet(params: {
   address: string;
@@ -1106,6 +1805,11 @@ export async function sendNearTransactionWithPersonalWallet(params: {
   explorerTxUrl: string;
 }> {
   const { address, nearConnector } = params;
+  if (address.toLowerCase().endsWith(".near")) {
+    throw new WalletMainnetMismatchError(
+      `[TESTNET MODE REQUIRED] Connected NEAR account (${address}) is on Mainnet. Please switch your wallet to Testnet mode (.testnet) to continue.`
+    );
+  }
   if (!nearConnector) {
     throw new Error(
       "NEAR wallet connector session not initialized. Please reconnect your NEAR wallet."
@@ -1133,16 +1837,13 @@ export async function sendNearTransactionWithPersonalWallet(params: {
     if (!txHash) {
       throw new WalletSignatureRejectedError();
     }
-    const isMainnet = address.endsWith(".near");
-    const explorerTxUrl = isMainnet
-      ? `https://nearblocks.io/txns/${txHash}`
-      : `https://testnet.nearblocks.io/txns/${txHash}`;
     return {
       txHash,
       signerId: address,
-      explorerTxUrl,
+      explorerTxUrl: `https://testnet.nearblocks.io/txns/${txHash}`,
     };
   } catch (err) {
+    if (err instanceof WalletMainnetMismatchError) throw err;
     if (err instanceof WalletSignatureRejectedError || isUserRejectionError(err)) {
       throw new WalletSignatureRejectedError();
     }

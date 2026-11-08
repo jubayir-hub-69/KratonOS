@@ -39,6 +39,7 @@ import {
   getAvailablePayTokenBalance,
   getAvailablePayTokenBalanceForChainWallet,
   getTokenChainFamily,
+  WalletMainnetMismatchError,
   WalletSignatureRejectedError,
   type ConnectedWalletState,
 } from "./wallet-controller";
@@ -118,6 +119,13 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
     try {
       // MODE B (Personal Wallet Connected):
       if (walletContext?.isPersonalWallet && walletContext.address) {
+        if (walletContext.isMainnetMismatch) {
+          setProofError(
+            walletContext.networkMismatchReason ??
+              "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode."
+          );
+          return;
+        }
         // Case B1: Personal NEAR Wallet -> trigger REAL transaction directly from connected NEAR account
         if (walletContext.chainType === "near") {
           const nearTx = await walletContext.anchorNearProofViaWallet(targetHMaster);
@@ -188,9 +196,11 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         onProofCommitted?.(data);
       }
     } catch (err) {
-      if (err instanceof WalletSignatureRejectedError) {
+      if (err instanceof WalletMainnetMismatchError) {
+        setProofError(err.message);
+      } else if (err instanceof WalletSignatureRejectedError) {
         setProofError(
-          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Signature request was rejected in your connected wallet."
         );
       } else {
         setProofError(
@@ -535,6 +545,34 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               </button>
             </div>
 
+            {walletContext?.isPersonalWallet && walletContext.isMainnetMismatch && (
+              <div
+                role="alert"
+                className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-amber-500/55 bg-amber-500/15 p-3 font-mono text-xs font-bold text-amber-300 animate-fade-in"
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+                  <span>
+                    {walletContext.networkMismatchReason ??
+                      "[TESTNET MODE REQUIRED] Please switch your wallet to Testnet mode."}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    void walletContext.switchChainWalletToTestnet?.(
+                      walletContext.chainType
+                    )
+                  }
+                  className="shrink-0 rounded-lg border border-amber-400/60 bg-amber-500/20 px-3 py-1.5 font-mono text-[11px] font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+                >
+                  {walletContext.chainType === "evm"
+                    ? "Switch to Sepolia Testnet Mode"
+                    : "Switch to Testnet Mode"}
+                </button>
+              </div>
+            )}
+
             {proofError && (
               <div
                 role="alert"
@@ -613,7 +651,8 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                         rel="noreferrer"
                         className="inline-flex shrink-0 items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/20"
                       >
-                        <span>NEARBlocks ↗</span>
+                        <span>NEARBlocks</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
                   ))}
@@ -628,7 +667,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   rel="noreferrer"
                   className="font-bold text-[var(--accent-emerald)] underline"
                 >
-                  testnet.nearblocks.io/address/jubayir69.testnet ↗
+                  testnet.nearblocks.io/address/jubayir69.testnet
                 </a>{" "}
                 to inspect live account history.
               </div>
@@ -664,7 +703,8 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 rounded border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-cyan)] hover:bg-sky-500/25"
                     >
-                      <span>Offline Keyless Sandbox — View Vault on NEARBlocks ↗</span>
+                      <span>Offline Keyless Sandbox — View Vault on NEARBlocks</span>
+                      <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
                   )}
                 </div>
@@ -835,6 +875,9 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     winningVenue: string;
     recipient: string;
     signedAtIso: string;
+    anchorTxHash?: string;
+    anchorBlockHeight?: number;
+    explorerTxUrl?: string;
   } | null>(null);
   const [signingLimitOrder, setSigningLimitOrder] = React.useState(false);
   const [limitSignError, setLimitSignError] = React.useState<string | null>(null);
@@ -845,6 +888,9 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     qtyWnear: string;
     limitPriceUsdc: string;
     signedAtIso: string;
+    anchorTxHash?: string;
+    anchorBlockHeight?: number;
+    explorerTxUrl?: string;
   } | null>(null);
 
   // Clear previous swap signature receipt/error when swap parameters change
@@ -885,6 +931,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     return [
       { id: "USDC-NEAR", symbol: "USDC", label: "USDC (NEAR)", priceUsd: 1.0, decimals: 6 },
       { id: "USDT-NEAR", symbol: "USDT", label: "USDT (NEAR)", priceUsd: 1.0, decimals: 6 },
+      { id: "NEAR-NEAR", symbol: "NEAR", label: "NEAR (NEAR Protocol)", priceUsd: nearUsd, decimals: 24 },
       { id: "wNEAR-NEAR", symbol: "wNEAR", label: "wNEAR (NEAR)", priceUsd: nearUsd, decimals: 24 },
       { id: "ETH-ETHEREUM", symbol: "ETH", label: "ETH (Ethereum)", priceUsd: ethUsd, decimals: 18 },
       { id: "USDC-BASE", symbol: "USDC", label: "USDC (Base)", priceUsd: 1.0, decimals: 6 },
@@ -1192,9 +1239,13 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   const originBalancesLoading = Boolean(
     originChainWallet?.balancesLoading ?? walletContext?.balancesLoading
   );
+  const originWalletMainnetMismatch = Boolean(
+    isPersonalConnected && originChainWallet?.isMainnetMismatch
+  );
   const insufficientSwapBalance =
     isPersonalConnected &&
     hasOriginChainWallet &&
+    !originWalletMainnetMismatch &&
     !originBalancesLoading &&
     parsedAmountIn > userAvailablePayTokenBalance;
 
@@ -1208,8 +1259,14 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     "wNEAR"
   );
   const parsedLimitQtyWnear = Math.max(0, Number(limitQtyWnear) || 0);
+  const limitTargetWallet =
+    walletContext?.connectedWallets?.near ?? walletContext;
+  const limitWalletMainnetMismatch = Boolean(
+    isPersonalConnected && limitTargetWallet?.isMainnetMismatch
+  );
   const insufficientLimitBalance =
     isPersonalConnected &&
+    !limitWalletMainnetMismatch &&
     !walletContext?.balancesLoading &&
     parsedLimitQtyWnear > availableWnearBalance;
 
@@ -1219,10 +1276,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       await walletContext.connectChainWallet(originChainFamily);
       return;
     }
+    if (originChainWallet.isMainnetMismatch) {
+      setSwapSignError(
+        originChainWallet.networkMismatchReason ??
+          `[TESTNET MODE REQUIRED] Connected ${originChainMeta.shortLabel} wallet (${originChainWallet.shortAddress}) is on Mainnet. Please switch your wallet to Testnet mode to execute.`
+      );
+      return;
+    }
     if (isIdenticalPair || parsedAmountIn <= 0) return;
     if (parsedAmountIn > userAvailablePayTokenBalance) {
       setSwapSignError(
-        `[ERROR] Insufficient Balance in Connected ${originChainMeta.shortLabel} Wallet (${originChainWallet.shortAddress}): Your wallet holds ${formattedUserPayBalance} ${originToken.symbol}, but this swap requires ${amountIn} ${originToken.symbol}.`
+        `[LOCKED] Insufficient Testnet Balance in Connected ${originChainMeta.shortLabel} Wallet (${originChainWallet.shortAddress}): Your Testnet wallet holds ${formattedUserPayBalance} ${originToken.symbol}, but this swap requires ${amountIn} ${originToken.symbol}.`
       );
       return;
     }
@@ -1257,6 +1321,37 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         originChainFamily,
         messageToSign
       );
+      let anchorTxHash: string | undefined;
+      let anchorBlockHeight: number | undefined;
+      let explorerTxUrl: string | undefined;
+      try {
+        const anchorRes = await fetch("/api/onchain/commit-proof", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            poc4HMaster: overview?.poc4MasterHash,
+            connectedWalletAddress: sig.signerAddress,
+            connectedWalletChain: sig.chainType,
+            personalSignature: sig.signature,
+          }),
+        });
+        if (anchorRes.ok) {
+          const anchorJson = await anchorRes.json();
+          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+            anchorTxHash = anchorJson.txHash;
+            anchorBlockHeight =
+              typeof anchorJson.blockHeight === "number"
+                ? anchorJson.blockHeight
+                : undefined;
+            explorerTxUrl =
+              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+                ? anchorJson.explorerTxUrl
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+          }
+        }
+      } catch {
+        // Non-blocking anchor fallback if offline
+      }
       const signedAtIso = new Date().toISOString();
       setSignedSwapReceipt({
         signerAddress: sig.signerAddress,
@@ -1269,15 +1364,20 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         winningVenue: liveComputedRoute.winningVenue,
         recipient: recipient.trim() || sig.signerAddress,
         signedAtIso,
+        anchorTxHash,
+        anchorBlockHeight,
+        explorerTxUrl,
       });
       onNotify?.(
-        `Swap Intent Cryptographically Signed by ${originChainWallet.shortAddress} (${originChainWallet.providerName}): ${amountIn} ${originToken.symbol} -> ${expectedOut} ${destinationToken.symbol}`,
+        `Swap Intent Signed & Anchored On-Chain (${anchorTxHash ? anchorTxHash.slice(0, 12) + "..." : sig.chainType.toUpperCase()}) by ${originChainWallet.shortAddress}: ${amountIn} ${originToken.symbol} -> ${expectedOut} ${destinationToken.symbol}`,
         "swap"
       );
     } catch (err) {
-      if (err instanceof WalletSignatureRejectedError) {
+      if (err instanceof WalletMainnetMismatchError) {
+        setSwapSignError(err.message);
+      } else if (err instanceof WalletSignatureRejectedError) {
         setSwapSignError(
-          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Signature request was rejected in your connected wallet."
         );
       } else {
         setSwapSignError(
@@ -1291,10 +1391,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
 
   const handleSubmitPersonalLimitOrder = async () => {
     if (!walletContext?.isPersonalWallet || !walletContext.address) return;
+    if (limitWalletMainnetMismatch) {
+      setLimitSignError(
+        limitTargetWallet?.networkMismatchReason ??
+          "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode to submit limit orders."
+      );
+      return;
+    }
     if (parsedLimitQtyWnear <= 0) return;
     if (parsedLimitQtyWnear > availableWnearBalance) {
       setLimitSignError(
-        `[ERROR] Insufficient Balance in Connected Wallet (${walletContext.shortAddress}): Your wallet holds ${formattedAvailableWnear} wNEAR, but this limit order requires ${limitQtyWnear} wNEAR.`
+        `[LOCKED] Insufficient Testnet Balance in Connected Wallet (${walletContext.shortAddress}): Your Testnet wallet holds ${formattedAvailableWnear} wNEAR, but this limit order requires ${limitQtyWnear} wNEAR.`
       );
       return;
     }
@@ -1311,14 +1418,48 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         limit_price_usdc_per_wnear: limitPrice,
         timestamp: new Date().toISOString(),
       };
+      const targetLimitChain = walletContext.connectedWallets?.near
+        ? "near"
+        : walletContext.chainType;
       const sig = await walletContext.signIntentWithChainWallet(
-        "near",
+        targetLimitChain,
         [
           "KratonOS Confidential GTC Limit Order (/v0/orders) Authorization",
           JSON.stringify(orderPayload, null, 2),
         ].join("\n")
       );
       await fetchQuote(false);
+      let anchorTxHash: string | undefined;
+      let anchorBlockHeight: number | undefined;
+      let explorerTxUrl: string | undefined;
+      try {
+        const anchorRes = await fetch("/api/onchain/commit-proof", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            poc4HMaster: overview?.poc4MasterHash,
+            connectedWalletAddress: sig.signerAddress,
+            connectedWalletChain: sig.chainType,
+            personalSignature: sig.signature,
+          }),
+        });
+        if (anchorRes.ok) {
+          const anchorJson = await anchorRes.json();
+          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+            anchorTxHash = anchorJson.txHash;
+            anchorBlockHeight =
+              typeof anchorJson.blockHeight === "number"
+                ? anchorJson.blockHeight
+                : undefined;
+            explorerTxUrl =
+              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+                ? anchorJson.explorerTxUrl
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+          }
+        }
+      } catch {
+        // Non-blocking anchor fallback if offline
+      }
       setSignedLimitReceipt({
         signerAddress: sig.signerAddress,
         chainType: sig.chainType,
@@ -1326,15 +1467,20 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         qtyWnear: limitQtyWnear,
         limitPriceUsdc: limitPrice,
         signedAtIso: new Date().toISOString(),
+        anchorTxHash,
+        anchorBlockHeight,
+        explorerTxUrl,
       });
       onNotify?.(
-        `Confidential GTC Limit Order Signed by ${walletContext.shortAddress} (${limitQtyWnear} wNEAR @ $${limitPrice} USDC)`,
+        `Confidential GTC Limit Order Signed & Anchored On-Chain (${anchorTxHash ? anchorTxHash.slice(0, 12) + "..." : sig.chainType.toUpperCase()}) by ${walletContext.shortAddress}`,
         "swap"
       );
     } catch (err) {
-      if (err instanceof WalletSignatureRejectedError) {
+      if (err instanceof WalletMainnetMismatchError) {
+        setLimitSignError(err.message);
+      } else if (err instanceof WalletSignatureRejectedError) {
         setLimitSignError(
-          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Signature request was rejected in your connected wallet."
         );
       } else {
         setLimitSignError(
@@ -1685,17 +1831,58 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       </span>
                     </button>
                   </div>
+                ) : originWalletMainnetMismatch ? (
+                  /* CASE 2B: Mode B — Origin Chain Wallet Connected on Mainnet -> Enforce Testnet Switch */
+                  <div className="space-y-2.5 pt-1">
+                    <div
+                      role="alert"
+                      className="rounded-xl border border-amber-500/60 bg-amber-500/15 p-3.5 text-xs font-bold leading-relaxed text-amber-300 animate-fade-in"
+                    >
+                      {originChainWallet?.networkMismatchReason ??
+                        `[TESTNET MODE REQUIRED] Connected ${originChainMeta.shortLabel} wallet (${originChainWallet?.shortAddress}) is on Mainnet. Please switch your wallet to Testnet mode to execute.`}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void walletContext?.switchChainWalletToTestnet?.(
+                          originChainFamily
+                        )
+                      }
+                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-amber-400/80 bg-amber-500/20 px-4 py-3 text-center font-mono text-xs font-extrabold text-amber-200 shadow-lg shadow-amber-500/10 transition-all hover:bg-amber-500/30 cursor-pointer"
+                    >
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <span>
+                        {originChainFamily === "evm"
+                          ? "Switch to Sepolia Testnet Mode"
+                          : `Switch ${originChainMeta.shortLabel} Wallet to Testnet Mode`}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() => void fetchQuote(true)}
+                      className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] px-3 py-2 font-mono text-[11px] font-bold text-[var(--text-secondary)] hover:border-[var(--accent-cyan)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      <span>
+                        {loading
+                          ? "FETCHING READ-ONLY QUOTE..."
+                          : "Preview Live Cross-Chain Quote Rate (Read-Only)"}
+                      </span>
+                    </button>
+                  </div>
                 ) : insufficientSwapBalance ? (
-                  /* CASE 3: Mode B — Origin Chain Wallet Connected, Insufficient Balance */
+                  /* CASE 3: Mode B — Origin Chain Wallet Connected on Testnet, Insufficient Testnet Balance */
                   <div className="space-y-2.5 pt-1">
                     <div
                       role="alert"
                       className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
                     >
-                      [ERROR] Insufficient Balance in Connected {originChainMeta.shortLabel} Wallet (
-                      {originChainWallet?.shortAddress}): Your wallet holds{" "}
+                      [LOCKED] Insufficient Testnet Balance in Connected {originChainMeta.shortLabel} Wallet (
+                      {originChainWallet?.shortAddress}): Your Testnet wallet holds{" "}
                       {formattedUserPayBalance} {originToken.symbol}, but this swap requires{" "}
-                      {amountIn || "0"} {originToken.symbol}. Execution is blocked until your wallet has sufficient{" "}
+                      {amountIn || "0"} {originToken.symbol}. Execution is blocked until your Testnet wallet has sufficient{" "}
                       {originToken.symbol}.
                     </div>
 
@@ -1718,7 +1905,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-500/45 bg-rose-500/10 px-4 py-2.5 text-center font-mono text-xs font-extrabold text-rose-400 opacity-85 cursor-not-allowed"
                     >
                       <span>
-                        [LOCKED] Insufficient {originToken.symbol} Balance in Connected{" "}
+                        [LOCKED] Insufficient Testnet {originToken.symbol} Balance in Connected{" "}
                         {originChainMeta.shortLabel} Wallet ({formattedUserPayBalance} available,{" "}
                         {amountIn} required)
                       </span>
@@ -1779,7 +1966,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                 {signedSwapReceipt && (
                   <div className="space-y-1.5 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3.5 font-mono text-[11px] animate-fade-in">
                     <div className="flex items-center justify-between gap-2 font-bold text-[var(--accent-emerald)]">
-                      <span>[VERIFIED] SWAP INTENT SIGNED BY CONNECTED WALLET</span>
+                      <span>[VERIFIED] SWAP INTENT SIGNED &amp; ANCHORED ON-CHAIN</span>
                       <Badge variant="emerald">
                         {signedSwapReceipt.chainType.toUpperCase()}
                       </Badge>
@@ -1793,8 +1980,31 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       {signedSwapReceipt.destinationSymbol} ({signedSwapReceipt.winningVenue})
                     </div>
                     <div className="break-all text-[var(--accent-cyan)]">
-                      <strong>Cryptographic Signature:</strong> {signedSwapReceipt.signature}
+                      <strong>Wallet Signature:</strong> {signedSwapReceipt.signature}
                     </div>
+                    {signedSwapReceipt.anchorTxHash && (
+                      <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                        <div className="break-all text-[var(--text-primary)]">
+                          <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
+                          {signedSwapReceipt.anchorTxHash}
+                          {signedSwapReceipt.anchorBlockHeight
+                            ? ` (Block #${signedSwapReceipt.anchorBlockHeight})`
+                            : ""}
+                        </div>
+                        <a
+                          href={
+                            signedSwapReceipt.explorerTxUrl ??
+                            `https://testnet.nearblocks.io/txns/${signedSwapReceipt.anchorTxHash}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                        >
+                          <span>View On-Chain Transaction on NEARBlocks Explorer</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -2083,20 +2293,46 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
 
                 {isPersonalConnected && walletContext ? (
                   <div className="flex flex-col gap-2.5 pt-1">
+                    {limitWalletMainnetMismatch && (
+                      <div
+                        role="alert"
+                        className="space-y-2 rounded-xl border border-amber-500/60 bg-amber-500/15 p-3.5 text-xs font-bold leading-relaxed text-amber-300 animate-fade-in"
+                      >
+                        <div>
+                          {limitTargetWallet?.networkMismatchReason ??
+                            "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode to submit limit orders."}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void walletContext.switchChainWalletToTestnet?.(
+                              walletContext.connectedWallets?.near
+                                ? "near"
+                                : walletContext.chainType
+                            )
+                          }
+                          className="w-full rounded-lg border border-amber-400/60 bg-amber-500/20 px-3 py-2 font-mono text-[11px] font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+                        >
+                          Switch Wallet to Testnet Mode
+                        </button>
+                      </div>
+                    )}
+
                     {insufficientLimitBalance && (
                       <div
                         role="alert"
                         className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
                       >
-                        [ERROR] Insufficient Balance in Connected Wallet ({walletContext.shortAddress}): Your wallet holds{" "}
+                        [LOCKED] Insufficient Testnet Balance in Connected Wallet ({walletContext.shortAddress}): Your Testnet wallet holds{" "}
                         {formattedAvailableWnear} wNEAR, but this limit order requires{" "}
-                        {limitQtyWnear || "0"} wNEAR. Submission is blocked until your wallet holds sufficient wNEAR / NEAR.
+                        {limitQtyWnear || "0"} wNEAR. Submission is blocked until your Testnet wallet holds sufficient wNEAR / NEAR.
                       </div>
                     )}
 
                     <button
                       type="button"
                       disabled={
+                        limitWalletMainnetMismatch ||
                         insufficientLimitBalance ||
                         parsedLimitQtyWnear <= 0 ||
                         signingLimitOrder ||
@@ -2104,13 +2340,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       }
                       onClick={() => void handleSubmitPersonalLimitOrder()}
                       className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-center font-mono text-xs font-extrabold transition-all ${
-                        insufficientLimitBalance || parsedLimitQtyWnear <= 0
-                          ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
-                          : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                        limitWalletMainnetMismatch
+                          ? "border-amber-500/50 bg-amber-500/12 text-amber-300 opacity-90 cursor-not-allowed"
+                          : insufficientLimitBalance || parsedLimitQtyWnear <= 0
+                            ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                            : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
                       }`}
                     >
-                      {insufficientLimitBalance ? (
-                        <span>[LOCKED] Blocked: Insufficient wNEAR Balance in Connected Wallet</span>
+                      {limitWalletMainnetMismatch ? (
+                        <span>[TESTNET MODE REQUIRED] Switch Wallet to Testnet Mode</span>
+                      ) : insufficientLimitBalance ? (
+                        <span>[LOCKED] Insufficient Testnet wNEAR Balance in Connected Wallet</span>
                       ) : signingLimitOrder ? (
                         <>
                           <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -2133,7 +2373,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     )}
 
                     {signedLimitReceipt && (
-                      <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-[11px] animate-fade-in">
+                      <div className="space-y-1.5 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-[11px] animate-fade-in">
                         <div className="font-bold text-[var(--accent-emerald)]">
                           [VERIFIED] CONFIDENTIAL GTC ORDER SIGNED ({signedLimitReceipt.qtyWnear} wNEAR @ $
                           {signedLimitReceipt.limitPriceUsdc})
@@ -2142,8 +2382,31 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                           <strong>Signer:</strong> {signedLimitReceipt.signerAddress}
                         </div>
                         <div className="break-all text-[var(--accent-cyan)]">
-                          <strong>Signature:</strong> {signedLimitReceipt.signature}
+                          <strong>Wallet Signature:</strong> {signedLimitReceipt.signature}
                         </div>
+                        {signedLimitReceipt.anchorTxHash && (
+                          <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                            <div className="break-all text-[var(--text-primary)]">
+                              <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
+                              {signedLimitReceipt.anchorTxHash}
+                              {signedLimitReceipt.anchorBlockHeight
+                                ? ` (Block #${signedLimitReceipt.anchorBlockHeight})`
+                                : ""}
+                            </div>
+                            <a
+                              href={
+                                signedLimitReceipt.explorerTxUrl ??
+                                `https://testnet.nearblocks.io/txns/${signedLimitReceipt.anchorTxHash}`
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                            >
+                              <span>View On-Chain Transaction on NEARBlocks Explorer</span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2264,10 +2527,29 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
   const [loading, setLoading] = React.useState(false);
   const [litSignalStep, setLitSignalStep] = React.useState(4);
   const shieldTimerRef = React.useRef<number | null>(null);
+  const [signingVerdict, setSigningVerdict] = React.useState(false);
+  const [verdictSignError, setVerdictSignError] = React.useState<string | null>(null);
+  const [signedVerdictReceipt, setSignedVerdictReceipt] = React.useState<{
+    signerAddress: string;
+    chainType: string;
+    signature: string;
+    decision: string;
+    receiverId: string;
+    amountUsd: string;
+    anchorTxHash?: string;
+    anchorBlockHeight?: number;
+    explorerTxUrl?: string;
+  } | null>(null);
+
+  React.useEffect(() => {
+    setVerdictSignError(null);
+    setSignedVerdictReceipt(null);
+  }, [receiverId, amountUsd, walletContext?.address]);
 
   const auditedCustodyAccount =
     walletContext?.isPersonalWallet &&
     walletContext.chainType === "near" &&
+    !walletContext.isMainnetMismatch &&
     walletContext.address
       ? walletContext.address
       : undefined;
@@ -2360,9 +2642,7 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
     evalData?.treasuryAccount ??
     overview?.treasuryAccount ??
     "jubayir69.testnet";
-  const nearKeyExplorerHref = activeNearKeyAccount.endsWith(".near")
-    ? `https://nearblocks.io/address/${activeNearKeyAccount}#keys`
-    : `https://testnet.nearblocks.io/address/${activeNearKeyAccount}#keys`;
+  const nearKeyExplorerHref = `https://testnet.nearblocks.io/address/${activeNearKeyAccount}#keys`;
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -2599,6 +2879,187 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                     </div>
                   ))}
                 </div>
+
+                {walletContext?.isPersonalWallet && walletContext.address && (
+                  <div className="space-y-2 border-t border-[var(--border-color)] pt-3">
+                    {walletContext.isMainnetMismatch && (
+                      <div
+                        role="alert"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-500/60 bg-amber-500/15 p-3 font-mono text-xs font-bold text-amber-300 animate-fade-in"
+                      >
+                        <span>
+                          {walletContext.networkMismatchReason ??
+                            "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode."}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void walletContext.switchChainWalletToTestnet?.(
+                              walletContext.chainType
+                            )
+                          }
+                          className="rounded-lg border border-amber-400/60 bg-amber-500/20 px-2.5 py-1 text-[11px] font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+                        >
+                          {walletContext.chainType === "evm"
+                            ? "Switch to Sepolia Testnet Mode"
+                            : "Switch to Testnet Mode"}
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      disabled={signingVerdict}
+                      onClick={() => {
+                        void (async () => {
+                          if (!walletContext?.address) return;
+                          if (walletContext.isMainnetMismatch) {
+                            setVerdictSignError(
+                              walletContext.networkMismatchReason ??
+                                "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode."
+                            );
+                            return;
+                          }
+                          setSigningVerdict(true);
+                          setVerdictSignError(null);
+                          try {
+                            const payload = {
+                              action: "POLICY_SHIELD_VERDICT_ATTESTATION",
+                              signer_id: walletContext.address,
+                              receiver_id: receiverId.trim(),
+                              amount_usd: amountUsd,
+                              decision: String(verdict.decision ?? "allow"),
+                              risk_score: verdict.riskScore,
+                              poc4_h_master: overview?.poc4MasterHash,
+                              timestamp: new Date().toISOString(),
+                            };
+                            const sig = await walletContext.signPersonalIntent(
+                              [
+                                "KratonOS 4-Signal Policy Verdict Authorization",
+                                JSON.stringify(payload, null, 2),
+                              ].join("\n")
+                            );
+                            let anchorTxHash: string | undefined;
+                            let anchorBlockHeight: number | undefined;
+                            let explorerTxUrl: string | undefined;
+                            try {
+                              const anchorRes = await fetch("/api/onchain/commit-proof", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  poc4HMaster: overview?.poc4MasterHash,
+                                  connectedWalletAddress: sig.signerAddress,
+                                  connectedWalletChain: sig.chainType,
+                                  personalSignature: sig.signature,
+                                }),
+                              });
+                              if (anchorRes.ok) {
+                                const anchorJson = await anchorRes.json();
+                                if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+                                  anchorTxHash = anchorJson.txHash;
+                                  anchorBlockHeight =
+                                    typeof anchorJson.blockHeight === "number"
+                                      ? anchorJson.blockHeight
+                                      : undefined;
+                                  explorerTxUrl =
+                                    typeof anchorJson.explorerTxUrl === "string" &&
+                                    anchorJson.explorerTxUrl
+                                      ? anchorJson.explorerTxUrl
+                                      : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                                }
+                              }
+                            } catch {
+                              // Non-blocking fallback
+                            }
+                            setSignedVerdictReceipt({
+                              signerAddress: sig.signerAddress,
+                              chainType: sig.chainType,
+                              signature: sig.signature,
+                              decision: String(verdict.decision ?? "allow").toUpperCase(),
+                              receiverId: receiverId.trim(),
+                              amountUsd,
+                              anchorTxHash,
+                              anchorBlockHeight,
+                              explorerTxUrl,
+                            });
+                            onNotify?.(
+                              `Policy Verdict Signed & Anchored On-Chain (${anchorTxHash ? anchorTxHash.slice(0, 12) + "..." : sig.chainType.toUpperCase()}) by ${walletContext.shortAddress}`,
+                              "shield"
+                            );
+                          } catch (err) {
+                            if (err instanceof WalletMainnetMismatchError) {
+                              setVerdictSignError(err.message);
+                            } else if (err instanceof WalletSignatureRejectedError) {
+                              setVerdictSignError(
+                                "[ERROR] Signature request was rejected in your connected wallet."
+                              );
+                            } else {
+                              setVerdictSignError(
+                                `[ERROR] Wallet Signing Error: ${err instanceof Error ? err.message : String(err)}`
+                              );
+                            }
+                          } finally {
+                            setSigningVerdict(false);
+                          }
+                        })();
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/60 bg-emerald-500/20 px-4 py-2.5 font-mono text-xs font-extrabold text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/30 cursor-pointer"
+                    >
+                      <span>
+                        {signingVerdict
+                          ? `AWAITING WALLET SIGNATURE (${walletContext.providerName})...`
+                          : `Sign & Anchor Policy Verdict On-Chain (${walletContext.shortAddress})`}
+                      </span>
+                    </button>
+
+                    {verdictSignError && (
+                      <div
+                        role="alert"
+                        className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3 text-xs font-bold text-rose-500 animate-fade-in"
+                      >
+                        {verdictSignError}
+                      </div>
+                    )}
+
+                    {signedVerdictReceipt && (
+                      <div className="space-y-1.5 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-[11px] animate-fade-in">
+                        <div className="font-bold text-[var(--accent-emerald)]">
+                          [VERIFIED] POLICY VERDICT ({signedVerdictReceipt.decision}) SIGNED &amp; ANCHORED
+                        </div>
+                        <div className="break-all text-[var(--text-primary)]">
+                          <strong>Signer:</strong> {signedVerdictReceipt.signerAddress} (
+                          {signedVerdictReceipt.chainType.toUpperCase()})
+                        </div>
+                        <div className="break-all text-[var(--accent-cyan)]">
+                          <strong>Wallet Signature:</strong> {signedVerdictReceipt.signature}
+                        </div>
+                        {signedVerdictReceipt.anchorTxHash && (
+                          <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                            <div className="break-all text-[var(--text-primary)]">
+                              <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
+                              {signedVerdictReceipt.anchorTxHash}
+                              {signedVerdictReceipt.anchorBlockHeight
+                                ? ` (Block #${signedVerdictReceipt.anchorBlockHeight})`
+                                : ""}
+                            </div>
+                            <a
+                              href={
+                                signedVerdictReceipt.explorerTxUrl ??
+                                `https://testnet.nearblocks.io/txns/${signedVerdictReceipt.anchorTxHash}`
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                            >
+                              <span>View On-Chain Transaction on NEARBlocks Explorer</span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

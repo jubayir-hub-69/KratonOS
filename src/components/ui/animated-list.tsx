@@ -110,7 +110,7 @@ export function AnimatedListItem({ item }: { item: TelemetryFeedItem }) {
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 rounded border border-emerald-500/45 bg-emerald-500/15 px-1.5 py-0.5 font-mono text-[10px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25"
               >
-                <span>[LIVE ON-CHAIN TX ↗]</span>
+                <span>[LIVE ON-CHAIN TX]</span>
                 <ExternalLink className="h-2.5 w-2.5 shrink-0" />
               </a>
             ) : isLiveRpcOrTee ? (

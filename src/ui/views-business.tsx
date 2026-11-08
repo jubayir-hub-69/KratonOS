@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/interactive-buttons";
 import { TextAnimate } from "@/components/ui/text-animate";
 import {
+  WalletMainnetMismatchError,
   WalletSignatureRejectedError,
   type ConnectedWalletState,
 } from "./wallet-controller";
@@ -178,6 +179,9 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     totalUsdcFormatted: string;
     settledRows: number;
     timestamp: string;
+    anchorTxHash?: string;
+    anchorBlockHeight?: number;
+    explorerTxUrl?: string;
   } | null>(null);
   const csvFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -627,9 +631,13 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const userUsdcFormatted =
     walletContext?.usdcBalance != null ? walletContext.usdcBalance.toFixed(2) : "0.00";
   const requiredBatchUsdc = batch?.totalSettledUsdc ?? 264;
+  const batchWalletMainnetMismatch = Boolean(
+    walletContext?.isPersonalWallet && walletContext.isMainnetMismatch
+  );
   const insufficientBatchUsdc = Boolean(
     walletContext?.isPersonalWallet &&
       walletContext.address &&
+      !batchWalletMainnetMismatch &&
       !walletContext.balancesLoading &&
       walletContext.usdcBalance < requiredBatchUsdc
   );
@@ -646,10 +654,19 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       return;
     }
 
+    if (walletContext.isMainnetMismatch) {
+      const mismatchMsg =
+        walletContext.networkMismatchReason ??
+        "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode to execute batch payroll.";
+      setBatchSignError(mismatchMsg);
+      onNotify?.(mismatchMsg, "payroll");
+      return;
+    }
+
     if (walletContext.usdcBalance < requiredBatchUsdc) {
-      const errMsg = `[ERROR] Connected Wallet (${walletContext.shortAddress}) holds ${userUsdcFormatted} USDC; $${requiredBatchUsdc.toFixed(
+      const errMsg = `[LOCKED] Insufficient Testnet Balance in Connected Wallet (${walletContext.shortAddress}): Your Testnet wallet holds ${userUsdcFormatted} USDC; $${requiredBatchUsdc.toFixed(
         2
-      )} USDC required for on-chain settlement. Execution is blocked until your wallet holds sufficient USDC.`;
+      )} USDC required for on-chain settlement.`;
       setBatchSignError(errMsg);
       onNotify?.(errMsg, "payroll");
       return;
@@ -667,12 +684,46 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ].join("\n");
 
       const signed = await walletContext.signPersonalIntent(signPayload);
+      let anchorTxHash: string | undefined;
+      let anchorBlockHeight: number | undefined;
+      let explorerTxUrl: string | undefined;
+      try {
+        const anchorRes = await fetch("/api/onchain/commit-proof", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            poc4HMaster: overview?.poc4MasterHash ?? batch.poc4HMaster,
+            connectedWalletAddress: signed.signerAddress,
+            connectedWalletChain: signed.chainType,
+            personalSignature: signed.signature,
+          }),
+        });
+        if (anchorRes.ok) {
+          const anchorJson = await anchorRes.json();
+          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+            anchorTxHash = anchorJson.txHash;
+            anchorBlockHeight =
+              typeof anchorJson.blockHeight === "number"
+                ? anchorJson.blockHeight
+                : undefined;
+            explorerTxUrl =
+              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+                ? anchorJson.explorerTxUrl
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+          }
+        }
+      } catch {
+        // Non-blocking fallback
+      }
       setSignedBatchReceipt({
         signerAddress: signed.signerAddress,
         signature: signed.signature,
         totalUsdcFormatted: `$${requiredBatchUsdc.toFixed(2)} USDC`,
         settledRows: batch.totalSettledCount,
         timestamp: new Date().toLocaleTimeString(),
+        anchorTxHash,
+        anchorBlockHeight,
+        explorerTxUrl,
       });
       onRunPayroll({
         freelancerAccountId,
@@ -681,16 +732,19 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         customCsvContent,
       });
       onNotify?.(
-        `Signed & Authorized $${requiredBatchUsdc.toFixed(2)} USDC Batch Payroll via ${walletContext.shortAddress}`,
+        `Signed & Anchored $${requiredBatchUsdc.toFixed(2)} USDC Batch Payroll (${anchorTxHash ? anchorTxHash.slice(0, 12) + "..." : signed.chainType.toUpperCase()}) via ${walletContext.shortAddress}`,
         "payroll"
       );
     } catch (err) {
-      if (err instanceof WalletSignatureRejectedError) {
+      if (err instanceof WalletMainnetMismatchError) {
+        setBatchSignError(err.message);
+        onNotify?.(err.message, "payroll");
+      } else if (err instanceof WalletSignatureRejectedError) {
         setBatchSignError(
-          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Signature request was rejected in your connected wallet."
         );
         onNotify?.(
-          "Transaction Cancelled: Signature request was rejected in your connected wallet.",
+          "[ERROR] Signature request was rejected in your connected wallet.",
           "payroll"
         );
       } else {
@@ -1016,20 +1070,25 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                     loading ||
                     signingBatch ||
                     walletContext.balancesLoading ||
+                    batchWalletMainnetMismatch ||
                     insufficientBatchUsdc
                   }
                   onClick={() => void handleAuthorizeAndExecuteBatch()}
                   className={`inline-flex min-h-10 h-auto items-center justify-center gap-2 rounded-full border px-4 py-2 text-center font-mono text-xs font-extrabold tracking-wider whitespace-normal transition-all ${
-                    insufficientBatchUsdc
-                      ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
-                      : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                    batchWalletMainnetMismatch
+                      ? "border-amber-500/50 bg-amber-500/12 text-amber-300 opacity-90 cursor-not-allowed"
+                      : insufficientBatchUsdc
+                        ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                        : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
                   }`}
                 >
-                  {insufficientBatchUsdc ? (
+                  {batchWalletMainnetMismatch ? (
+                    <span>[TESTNET MODE REQUIRED] Switch Wallet to Testnet Mode</span>
+                  ) : insufficientBatchUsdc ? (
                     <>
                       <Lock className="h-3.5 w-3.5 shrink-0" />
                       <span>
-                        Blocked: Insufficient USDC ({userUsdcFormatted} / $
+                        [LOCKED] Insufficient Testnet USDC ({userUsdcFormatted} / $
                         {requiredBatchUsdc.toFixed(2)} USDC)
                       </span>
                     </>
@@ -1098,14 +1157,39 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          {walletContext?.isPersonalWallet && walletContext.address && batchWalletMainnetMismatch && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-amber-500/60 bg-amber-500/15 p-3.5 text-xs font-bold leading-relaxed text-amber-300 animate-fade-in"
+            >
+              <span>
+                {walletContext.networkMismatchReason ??
+                  "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode to execute batch payroll."}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  void walletContext.switchChainWalletToTestnet?.(
+                    walletContext.chainType
+                  )
+                }
+                className="rounded-lg border border-amber-400/60 bg-amber-500/20 px-3 py-1.5 font-mono text-[11px] font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+              >
+                {walletContext.chainType === "evm"
+                  ? "Switch to Sepolia Testnet Mode"
+                  : "Switch to Testnet Mode"}
+              </button>
+            </div>
+          )}
+
           {walletContext?.isPersonalWallet && walletContext.address && insufficientBatchUsdc && (
             <div
               role="alert"
               className="rounded-xl border border-rose-500/55 bg-rose-500/12 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
             >
-              [ERROR] Connected Wallet ({walletContext.shortAddress}) holds {userUsdcFormatted} USDC; $
+              [LOCKED] Insufficient Testnet Balance in Connected Wallet ({walletContext.shortAddress}): Your Testnet wallet holds {userUsdcFormatted} USDC; $
               {requiredBatchUsdc.toFixed(2)} USDC required for on-chain settlement. On-chain batch
-              execution is blocked until your connected wallet holds at least $
+              execution is blocked until your connected Testnet wallet holds at least $
               {requiredBatchUsdc.toFixed(2)} USDC.
             </div>
           )}
@@ -1120,7 +1204,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           )}
 
           {signedBatchReceipt && (
-            <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3.5 font-mono text-xs animate-fade-in">
+            <div className="space-y-1.5 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3.5 font-mono text-xs animate-fade-in">
               <div className="flex flex-wrap items-center justify-between gap-2 font-bold text-[var(--accent-emerald)]">
                 <span>
                   [VERIFIED] BATCH PAYROLL AUTHORIZED ({signedBatchReceipt.settledRows} Rows ·{" "}
@@ -1134,6 +1218,29 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <div className="break-all text-[11px] text-[var(--accent-cyan)]">
                 <strong>Wallet Signature:</strong> {signedBatchReceipt.signature}
               </div>
+              {signedBatchReceipt.anchorTxHash && (
+                <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
+                  <div className="break-all text-[var(--text-primary)]">
+                    <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
+                    {signedBatchReceipt.anchorTxHash}
+                    {signedBatchReceipt.anchorBlockHeight
+                      ? ` (Block #${signedBatchReceipt.anchorBlockHeight})`
+                      : ""}
+                  </div>
+                  <a
+                    href={
+                      signedBatchReceipt.explorerTxUrl ??
+                      `https://testnet.nearblocks.io/txns/${signedBatchReceipt.anchorTxHash}`
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                  >
+                    <span>View On-Chain Transaction on NEARBlocks Explorer</span>
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
@@ -1489,6 +1596,9 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
     signature: string;
     agreedAmountUsd: string;
     timestamp: string;
+    anchorTxHash?: string;
+    anchorBlockHeight?: number;
+    explorerTxUrl?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -1522,8 +1632,12 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
     };
   }, [quotedAmountUsd, plannedBudgetUsd]);
 
+  const marketWalletMainnetMismatch = Boolean(
+    isPersonalConnected && walletContext?.isMainnetMismatch
+  );
   const insufficientMarketUsdc = Boolean(
     isPersonalConnected &&
+      !marketWalletMainnetMismatch &&
       !walletContext?.balancesLoading &&
       neg.finalAgreedPriceUsd > userUsdcBalance
   );
@@ -1548,9 +1662,16 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
 
   const handleSignX402WithWallet = async () => {
     if (!walletContext?.isPersonalWallet || !walletContext.address) return;
+    if (walletContext.isMainnetMismatch) {
+      setX402SignError(
+        walletContext.networkMismatchReason ??
+          "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode to fund x402 escrow."
+      );
+      return;
+    }
     if (neg.finalAgreedPriceUsd > userUsdcBalance) {
       setX402SignError(
-        `[ERROR] Insufficient USDC in Connected Wallet (${walletContext.address}): Your wallet holds ${userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires ${neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until your wallet holds sufficient USDC.`
+        `[LOCKED] Insufficient Testnet Balance in Connected Wallet (${walletContext.address}): Your Testnet wallet holds ${userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires ${neg.finalAgreedPriceUsd.toFixed(2)} USDC.`
       );
       return;
     }
@@ -1566,20 +1687,55 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
         `Timestamp: ${new Date().toISOString()}`,
       ].join("\n");
       const sig = await walletContext.signPersonalIntent(payload);
+      let anchorTxHash: string | undefined;
+      let anchorBlockHeight: number | undefined;
+      let explorerTxUrl: string | undefined;
+      try {
+        const anchorRes = await fetch("/api/onchain/commit-proof", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            connectedWalletAddress: sig.signerAddress,
+            connectedWalletChain: sig.chainType,
+            personalSignature: sig.signature,
+          }),
+        });
+        if (anchorRes.ok) {
+          const anchorJson = await anchorRes.json();
+          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+            anchorTxHash = anchorJson.txHash;
+            anchorBlockHeight =
+              typeof anchorJson.blockHeight === "number"
+                ? anchorJson.blockHeight
+                : undefined;
+            explorerTxUrl =
+              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+                ? anchorJson.explorerTxUrl
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+          }
+        }
+      } catch {
+        // Non-blocking fallback
+      }
       setX402SignedReceipt({
         signerAddress: sig.signerAddress,
         signature: sig.signature,
         agreedAmountUsd: `$${neg.finalAgreedPriceUsd.toFixed(2)} USDC`,
         timestamp: new Date().toLocaleTimeString(),
+        anchorTxHash,
+        anchorBlockHeight,
+        explorerTxUrl,
       });
       onNotify?.(
-        `x402 v2 Escrow Signed by ${walletContext.shortAddress} ($${neg.finalAgreedPriceUsd.toFixed(2)} USDC)`,
+        `x402 v2 Escrow Signed & Anchored On-Chain (${anchorTxHash ? anchorTxHash.slice(0, 12) + "..." : sig.chainType.toUpperCase()}) by ${walletContext.shortAddress}`,
         "market"
       );
     } catch (err) {
-      if (err instanceof WalletSignatureRejectedError) {
+      if (err instanceof WalletMainnetMismatchError) {
+        setX402SignError(err.message);
+      } else if (err instanceof WalletSignatureRejectedError) {
         setX402SignError(
-          "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
+          "[ERROR] Signature request was rejected in your connected wallet."
         );
       } else {
         setX402SignError(
@@ -1674,21 +1830,55 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                 {walletContext.spendableNearFormatted ?? walletContext.nativeFormatted}
               </strong>
             </span>
-            <Badge variant={insufficientMarketUsdc ? "red" : "emerald"}>
-              {insufficientMarketUsdc
-                ? "x402 ESCROW BLOCKED (0.00 USDC)"
-                : "WALLET READY FOR x402 SIGNING"}
+            <Badge
+              variant={
+                marketWalletMainnetMismatch
+                  ? "amber"
+                  : insufficientMarketUsdc
+                    ? "red"
+                    : "emerald"
+              }
+            >
+              {marketWalletMainnetMismatch
+                ? "TESTNET MODE REQUIRED"
+                : insufficientMarketUsdc
+                  ? "x402 ESCROW BLOCKED (0.00 USDC)"
+                  : "WALLET READY FOR x402 SIGNING"}
             </Badge>
           </div>
+          {marketWalletMainnetMismatch && (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-amber-500/60 bg-amber-500/15 p-3.5 text-xs font-bold leading-relaxed text-amber-300 animate-fade-in"
+            >
+              <span>
+                {walletContext.networkMismatchReason ??
+                  "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode."}
+              </span>
+              <button
+                type="button"
+                onClick={() =>
+                  void walletContext.switchChainWalletToTestnet?.(
+                    walletContext.chainType
+                  )
+                }
+                className="rounded-lg border border-amber-400/60 bg-amber-500/20 px-3 py-1.5 font-mono text-[11px] font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+              >
+                {walletContext.chainType === "evm"
+                  ? "Switch to Sepolia Testnet Mode"
+                  : "Switch to Testnet Mode"}
+              </button>
+            </div>
+          )}
           {insufficientMarketUsdc && (
             <div
               role="alert"
               className="rounded-xl border border-rose-500/60 bg-rose-500/15 p-3.5 text-xs font-bold leading-relaxed text-rose-500 animate-fade-in"
             >
-              [ERROR] Insufficient USDC in Connected Wallet ({walletContext.address}): Your wallet holds{" "}
+              [LOCKED] Insufficient Testnet Balance in Connected Wallet ({walletContext.address}): Your Testnet wallet holds{" "}
               {userUsdcBalance.toFixed(2)} USDC, but hiring this agent requires{" "}
               {neg.finalAgreedPriceUsd.toFixed(2)} USDC. x402 escrow settlement is blocked until
-              your wallet holds sufficient USDC.
+              your Testnet wallet holds sufficient USDC.
             </div>
           )}
         </div>
@@ -1783,20 +1973,25 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                 <button
                   type="button"
                   disabled={
+                    marketWalletMainnetMismatch ||
                     insufficientMarketUsdc ||
                     signingX402 ||
                     walletContext.balancesLoading
                   }
                   onClick={() => void handleSignX402WithWallet()}
                   className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-center font-mono text-xs font-extrabold transition-all ${
-                    insufficientMarketUsdc
-                      ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
-                      : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                    marketWalletMainnetMismatch
+                      ? "border-amber-500/50 bg-amber-500/12 text-amber-300 opacity-90 cursor-not-allowed"
+                      : insufficientMarketUsdc
+                        ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                        : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
                   }`}
                 >
-                  {insufficientMarketUsdc ? (
+                  {marketWalletMainnetMismatch ? (
+                    <span>[TESTNET MODE REQUIRED] Switch Wallet to Testnet Mode</span>
+                  ) : insufficientMarketUsdc ? (
                     <span>
-                      [LOCKED] Blocked: Insufficient USDC Balance ({userUsdcBalance.toFixed(2)} / $
+                      [LOCKED] Insufficient Testnet USDC Balance ({userUsdcBalance.toFixed(2)} / $
                       {neg.finalAgreedPriceUsd.toFixed(2)} USDC)
                     </span>
                   ) : signingX402 ? (
@@ -1820,14 +2015,40 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   </div>
                 )}
                 {x402SignedReceipt && (
-                  <div className="space-y-1 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-xs animate-fade-in">
+                  <div className="space-y-1.5 rounded-xl border border-emerald-500/50 bg-emerald-500/12 p-3 font-mono text-xs animate-fade-in">
                     <div className="flex items-center justify-between font-bold text-[var(--accent-emerald)]">
                       <span>[VERIFIED] x402 ESCROW SIGNED ({x402SignedReceipt.agreedAmountUsd})</span>
                       <Badge variant="emerald">{x402SignedReceipt.timestamp}</Badge>
                     </div>
-                    <div className="break-all text-[11px] text-[var(--accent-cyan)]">
-                      <strong>Signature:</strong> {x402SignedReceipt.signature}
+                    <div className="break-all text-[11px] text-[var(--text-primary)]">
+                      <strong>Signer:</strong> {x402SignedReceipt.signerAddress}
                     </div>
+                    <div className="break-all text-[11px] text-[var(--accent-cyan)]">
+                      <strong>Wallet Signature:</strong> {x402SignedReceipt.signature}
+                    </div>
+                    {x402SignedReceipt.anchorTxHash && (
+                      <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
+                        <div className="break-all text-[var(--text-primary)]">
+                          <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
+                          {x402SignedReceipt.anchorTxHash}
+                          {x402SignedReceipt.anchorBlockHeight
+                            ? ` (Block #${x402SignedReceipt.anchorBlockHeight})`
+                            : ""}
+                        </div>
+                        <a
+                          href={
+                            x402SignedReceipt.explorerTxUrl ??
+                            `https://testnet.nearblocks.io/txns/${x402SignedReceipt.anchorTxHash}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                        >
+                          <span>View On-Chain Transaction on NEARBlocks Explorer</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2279,6 +2500,9 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
     timestamp: string;
     laneAccount: string;
     signature?: string;
+    anchorTxHash?: string;
+    anchorBlockHeight?: number;
+    explorerTxUrl?: string;
   } | null>(null);
   const [sweepError, setSweepError] = useState<string | null>(null);
   const [sweeping, setSweeping] = useState(false);
@@ -2320,9 +2544,17 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
 
   const handleExecuteRewardSweep = async () => {
     setSweepError(null);
-    setSweeping(true);
 
     if (walletContext?.isPersonalWallet && walletContext.address) {
+      if (walletContext.isMainnetMismatch) {
+        const mismatchMsg =
+          walletContext.networkMismatchReason ??
+            "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode to execute LP reward sweeps.";
+        setSweepError(mismatchMsg);
+        onNotify?.(mismatchMsg, "swap");
+        return;
+      }
+      setSweeping(true);
       try {
         const signPayload = [
           "KratonOS RHEA Single-Tx LP Reward Sweep Authorization",
@@ -2335,6 +2567,37 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
 
         const signed = await walletContext.signPersonalIntent(signPayload);
         onRefresh?.(derivationPath);
+        let anchorTxHash: string | undefined;
+        let anchorBlockHeight: number | undefined;
+        let explorerTxUrl: string | undefined;
+        try {
+          const anchorRes = await fetch("/api/onchain/commit-proof", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              poc4HMaster: overview?.poc4MasterHash,
+              connectedWalletAddress: signed.signerAddress,
+              connectedWalletChain: signed.chainType,
+              personalSignature: signed.signature,
+            }),
+          });
+          if (anchorRes.ok) {
+            const anchorJson = await anchorRes.json();
+            if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+              anchorTxHash = anchorJson.txHash;
+              anchorBlockHeight =
+                typeof anchorJson.blockHeight === "number"
+                  ? anchorJson.blockHeight
+                  : undefined;
+              explorerTxUrl =
+                typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+                  ? anchorJson.explorerTxUrl
+                  : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+            }
+          }
+        } catch {
+          // Non-blocking fallback
+        }
         const nowTime = new Date().toLocaleTimeString();
         setSweepReceipt({
           sweptAmountWnear: "0.0000 wNEAR (0 Unclaimed Seed Balance)",
@@ -2342,18 +2605,24 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
           timestamp: nowTime,
           laneAccount: signed.signerAddress,
           signature: signed.signature,
+          anchorTxHash,
+          anchorBlockHeight,
+          explorerTxUrl,
         });
         onNotify?.(
-          `Signed RHEA withdraw_reward({ amount: "0" }) authorization via ${walletContext.shortAddress}`,
+          `Signed & Anchored RHEA withdraw_reward({ amount: "0" }) (${anchorTxHash ? anchorTxHash.slice(0, 12) + "..." : signed.chainType.toUpperCase()}) via ${walletContext.shortAddress}`,
           "swap"
         );
       } catch (err) {
-        if (err instanceof WalletSignatureRejectedError) {
+        if (err instanceof WalletMainnetMismatchError) {
+          setSweepError(err.message);
+          onNotify?.(err.message, "swap");
+        } else if (err instanceof WalletSignatureRejectedError) {
           setSweepError(
-            "[ERROR] Transaction Cancelled: Signature request was rejected in your connected wallet."
+            "[ERROR] Signature request was rejected in your connected wallet."
           );
           onNotify?.(
-            "Transaction Cancelled: Signature request was rejected in your connected wallet.",
+            "[ERROR] Signature request was rejected in your connected wallet.",
             "swap"
           );
         } else {
@@ -2367,6 +2636,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
       return;
     }
 
+    setSweeping(true);
     onRefresh?.(derivationPath);
     window.setTimeout(() => {
       const nowTime = new Date().toLocaleTimeString();
@@ -2733,6 +3003,31 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
               </div>
 
               <div className="pt-2 space-y-2.5">
+                {walletContext?.isPersonalWallet && walletContext.isMainnetMismatch && (
+                  <div
+                    role="alert"
+                    className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-amber-500/60 bg-amber-500/15 p-3 font-mono text-xs font-bold text-amber-300 animate-fade-in"
+                  >
+                    <span>
+                      {walletContext.networkMismatchReason ??
+                        "[TESTNET MODE REQUIRED] Please switch your connected wallet to Testnet mode."}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void walletContext.switchChainWalletToTestnet?.(
+                          walletContext.chainType
+                        )
+                      }
+                      className="rounded-lg border border-amber-400/60 bg-amber-500/20 px-3 py-1.5 text-[11px] font-extrabold text-amber-100 hover:bg-amber-500/30 cursor-pointer"
+                    >
+                      {walletContext.chainType === "evm"
+                        ? "Switch to Sepolia Testnet Mode"
+                        : "Switch to Testnet Mode"}
+                    </button>
+                  </div>
+                )}
+
                 <UnseenEnterButton
                   label={
                     sweeping
@@ -2767,6 +3062,29 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                     {sweepReceipt.signature && (
                       <div className="break-all text-[11px] text-[var(--accent-cyan)]">
                         <strong>Wallet Signature:</strong> {sweepReceipt.signature}
+                      </div>
+                    )}
+                    {sweepReceipt.anchorTxHash && (
+                      <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
+                        <div className="break-all text-[var(--text-primary)]">
+                          <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
+                          {sweepReceipt.anchorTxHash}
+                          {sweepReceipt.anchorBlockHeight
+                            ? ` (Block #${sweepReceipt.anchorBlockHeight})`
+                            : ""}
+                        </div>
+                        <a
+                          href={
+                            sweepReceipt.explorerTxUrl ??
+                            `https://testnet.nearblocks.io/txns/${sweepReceipt.anchorTxHash}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                        >
+                          <span>View On-Chain Transaction on NEARBlocks Explorer</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
                       </div>
                     )}
                   </div>
