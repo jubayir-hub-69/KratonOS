@@ -1043,9 +1043,30 @@ export async function connectInPageBrowserWallet(
       }
       const connectFeature = stdSuiWallet.features?.["standard:connect"];
       if (connectFeature && typeof connectFeature.connect === "function") {
-        const connectStartMs = Date.now();
-        const res = await connectFeature.connect();
-        const elapsedMs = Date.now() - connectStartMs;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let res: any = null;
+        try {
+          res = await Promise.race([
+            connectFeature.connect(),
+            new Promise((_, reject) =>
+              setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      "SUI_CONNECT_TIMEOUT: Slush extension popup awaiting approval or blocked by domain heuristic — paste your 0x... Sui Testnet address in the box below and click Verify & Sync RPC for instant connection."
+                    )
+                  ),
+                2500
+              )
+            ),
+          ]);
+        } catch (connectErr) {
+          if (Array.isArray(stdSuiWallet.accounts) && stdSuiWallet.accounts.length > 0) {
+            res = { accounts: stdSuiWallet.accounts };
+          } else {
+            throw connectErr;
+          }
+        }
 
         // Collect all candidate accounts exposed by Slush / Sui Wallet and probe Sui Testnet RPC for non-zero balance
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1067,7 +1088,7 @@ export async function connectInPageBrowserWallet(
 
         if (rawAccounts.length === 0) {
           throw new Error(
-            `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return an authorized Sui account.`
+            `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return an authorized Sui account. Paste your 0x... Sui Testnet address in the box below and click Verify & Sync RPC.`
           );
         }
 
@@ -1103,29 +1124,6 @@ export async function connectInPageBrowserWallet(
           throw new Error(
             `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return a valid Sui address.`
           );
-        }
-
-        // If Slush resolved standard:connect silently from browser cache (< 350ms) or after Disconnect, open Slush popup for user approval
-        if (wasDisconnected || elapsedMs < 350) {
-          const signPersonalFeat = stdSuiWallet.features?.["sui:signPersonalMessage"];
-          const signMsgFeat = stdSuiWallet.features?.["sui:signMessage"];
-          const authBytes = new TextEncoder().encode(
-            `Authorize KratonOS Sui Testnet Wallet Connection\nAccount: ${normalizedAddr}`
-          );
-          if (
-            signPersonalFeat &&
-            typeof signPersonalFeat.signPersonalMessage === "function"
-          ) {
-            await signPersonalFeat.signPersonalMessage({
-              message: authBytes,
-              account: selectedAccount,
-            });
-          } else if (signMsgFeat && typeof signMsgFeat.signMessage === "function") {
-            await signMsgFeat.signMessage({
-              message: authBytes,
-              account: selectedAccount,
-            });
-          }
         }
 
         activeSuiStandardWalletRef = { wallet: stdSuiWallet, account: selectedAccount };

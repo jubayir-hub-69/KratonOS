@@ -483,6 +483,7 @@ export function sanitizeUntrustedBrief(rawBrief: string): SanitizedBriefResult {
 
 export const KNOWN_SCAM_BLOCKLIST: Record<string, string> = {
   "scam-drainer-vault.testnet": "Confirmed treasury drainer & prompt-injection exfiltration sink (Threat Intel #KR-901).",
+  "unverified-quarantine-row12.testnet": "Quarantined high-risk counterparty & prompt-injection exfiltration sink (Threat Intel #KR-901).",
   "phishing-airdrop-claim.testnet": "Known NEP-141 fake airdrop approval drainer (#KR-902).",
   "ref-financc.testnet": "Typosquatted RHEA/Ref Finance impostor contract (#KR-903).",
   "1click-defuser-fake.near": "Spoofed 1Click deposit router address (#KR-904).",

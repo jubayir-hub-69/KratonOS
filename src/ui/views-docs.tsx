@@ -114,21 +114,21 @@ const API_SPECS: ApiEndpointSpec[] = [
       status: "OK",
       treasuryAccount: "jubayir69.testnet",
       feeRecipient: "jubayir33.near",
-      balanceFormatted: "4.9980 NEAR",
-      spendableBalanceFormatted: "4.7962 NEAR",
-      totalNearBalance: 4.998,
-      spendableNearBalance: 4.7962,
+      balanceFormatted: "4.9959 NEAR",
+      spendableBalanceFormatted: "4.7941 NEAR",
+      totalNearBalance: 4.9959,
+      spendableNearBalance: 4.7941,
       storageLockedNear: 0.0018,
       walletGasReserveNear: 0.2,
       poc4MasterHash: "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
       poc4Valid: true,
       nep611Lanes: 4,
       oracle: {
-        ethUsdMedian: 2246.48,
-        nearUsdMedian: 3.74,
-        xrpUsdMedian: 1.3515,
-        solUsdMedian: 90.23,
-        btcUsdMedian: 76124.84,
+        ethUsdMedian: 2127.0,
+        nearUsdMedian: 3.55,
+        xrpUsdMedian: 1.09,
+        solUsdMedian: 86.5,
+        btcUsdMedian: 74400.0,
       },
     },
   },
@@ -158,7 +158,7 @@ const API_SPECS: ApiEndpointSpec[] = [
       liveReasoning: {
         model: "zai-org/GLM-5.1-FP8",
         usedLiveApi: true,
-        signingAddress: "0x7c8F4DC2450D3a42048973BeB38ad53E397C73D4",
+        signingAddress: "0xb98a789cdc4817275f5155593ba73ef2a957e779",
       },
     },
   },
@@ -197,15 +197,15 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Runs 4-signal counterparty scam/prompt-injection risk analysis, 3-tier Sputnik DAO V2 escalation (> $150 single-tx / > $500 daily), and NIST FIPS 204 ML-DSA-65 post-quantum signature verification.",
     auth: "PoC-4 Enclave Gate",
-    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/security/evaluate \\\n  -H "Content-Type: application/json" \\\n  -d '{"receiverId":"scam-drainer-vault.testnet","amountUsd":420}'`,
-    tsExample: `const res = await fetch("/api/security/evaluate", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ receiverId: "scam-drainer-vault.testnet", amountUsd: 420 })\n});`,
+    curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/security/evaluate \\\n  -H "Content-Type: application/json" \\\n  -d '{"receiverId":"unverified-quarantine-row12.testnet","amountUsd":420}'`,
+    tsExample: `const res = await fetch("/api/security/evaluate", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ receiverId: "unverified-quarantine-row12.testnet", amountUsd: 420 })\n});`,
     params: [
       { name: "receiverId", type: "string", required: true, desc: "Target NEAR account or foreign-chain recipient." },
       { name: "amountUsd", type: "number", required: true, desc: "USD value of the proposed transfer." },
       { name: "rawBriefOrMemo", type: "string", required: false, desc: "Untrusted invoice memo or agent brief to sanitize." },
     ],
     sampleBody: {
-      receiverId: "scam-drainer-vault.testnet",
+      receiverId: "unverified-quarantine-row12.testnet",
       amountUsd: 420,
     },
     sampleResponse: {
@@ -366,13 +366,13 @@ const API_SPECS: ApiEndpointSpec[] = [
       chainType: "near",
       address: "jubayir69.testnet",
       nativeSymbol: "NEAR",
-      nativeBalance: 4.7962,
-      totalNearBalance: 4.998,
-      spendableNearBalance: 4.7962,
+      nativeBalance: 4.7941,
+      totalNearBalance: 4.9959,
+      spendableNearBalance: 4.7941,
       storageLockedNear: 0.0018,
       walletGasReserveNear: 0.2,
-      totalNearFormatted: "4.9980 NEAR",
-      spendableNearFormatted: "4.7962 NEAR",
+      totalNearFormatted: "4.9959 NEAR",
+      spendableNearFormatted: "4.7941 NEAR",
       usdcBalance: 0,
       usdtBalance: 0,
       liveRpcVerified: true,
@@ -403,7 +403,7 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
     inputs: "config.yaml ($150 single-tx / $500 daily cap, <= 500 bps fee ceiling, whitelisted contracts)",
     outputs: "SHA-256 Policy Hash + NIST FIPS 204 ML-DSA-65 (3,309B signature) + 4-Signal Scam Verdict",
     summary:
-      "Enforces human-defined spending ceilings, blocks prompt-injected memos and drainers (scam-drainer-vault.testnet), and signs vault root upgrades with post-quantum lattice cryptography.",
+      "Enforces human-defined spending ceilings, blocks prompt-injected memos and quarantined receivers (unverified-quarantine-row12.testnet), and signs vault root upgrades with post-quantum lattice cryptography.",
   },
   {
     stage: 2,
@@ -672,8 +672,19 @@ export const DocsPortalView = React.memo(function DocsPortalView({
     jsonText: string;
   } | null>(null);
 
-  // Live Status 10s Polling State
-  const [liveStatusData, setLiveStatusData] = useState<any | null>(null);
+  // Live Status 10s Polling State (hydrated from sessionStorage cache so reloads never flip between snapshots)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [liveStatusData, setLiveStatusData] = useState<any | null>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v3");
+        if (cached) return JSON.parse(cached);
+      }
+    } catch {
+      // Ignore cache read error
+    }
+    return null;
+  });
   const [statusLastUpdated, setStatusLastUpdated] = useState<string>("");
 
   const copyTimerRef = useRef<number | null>(null);
@@ -783,6 +794,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
           const data = await res.json();
           setLiveStatusData(data);
           setStatusLastUpdated(new Date().toLocaleTimeString());
+          try {
+            window.sessionStorage?.setItem("kratonos_overview_cache_v3", JSON.stringify(data));
+          } catch {
+            // Ignore sessionStorage quota error
+          }
         }
       } catch {
         // Ignore offline poll error
@@ -1234,7 +1250,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   <div className="mt-2.5 space-y-1.5 rounded-lg border border-emerald-500/30 bg-[var(--bg-card)] p-2.5 font-mono text-[11px] leading-snug text-[var(--text-secondary)]">
                     <div>
                       <strong className="text-[var(--accent-emerald)]">Spendable vs Total On-Chain NEAR:</strong>{" "}
-                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "4.9980 NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "4.7962 NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
+                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "4.9959 NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "4.7941 NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
                     </div>
                     <div>
                       <strong className="text-[var(--accent-cyan)]">Meteor Wallet Permission Notice:</strong>{" "}
@@ -1258,16 +1274,16 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--text-secondary)]">
                   <span>
-                    ETH/USD: <strong className="text-[var(--accent-emerald)]">${Number(activeTelemetry?.oracle?.ethUsdMedian ?? 2246.48).toFixed(2)}</strong>
+                    ETH/USD: <strong className="text-[var(--accent-emerald)]">${Number(activeTelemetry?.oracle?.ethUsdMedian ?? 2127.0).toFixed(2)}</strong>
                   </span>
                   <span>
-                    NEAR/USD: <strong className="text-[var(--accent-cyan)]">${Number(activeTelemetry?.oracle?.nearUsdMedian ?? 3.74).toFixed(4)}</strong>
+                    NEAR/USD: <strong className="text-[var(--accent-cyan)]">${Number(activeTelemetry?.oracle?.nearUsdMedian ?? 3.55).toFixed(4)}</strong>
                   </span>
                   <span>
-                    BTC/USD: <strong className="text-[var(--text-primary)]">${Number(activeTelemetry?.oracle?.btcUsdMedian ?? 76124.84).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    BTC/USD: <strong className="text-[var(--text-primary)]">${Number(activeTelemetry?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                   </span>
                   <span>
-                    Block: <strong className="text-[var(--accent-emerald)]">#{activeTelemetry?.blockHeight ?? 276724260}</strong>
+                    Block: <strong className="text-[var(--accent-emerald)]">#{activeTelemetry?.blockHeight ?? 276911301}</strong>
                   </span>
                 </div>
               </div>
@@ -1600,8 +1616,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         title: "Pillar 1 Scam Shield & Sputnik DAO Escalation",
                         endpoint: "/api/security/evaluate",
                         method: "POST" as const,
-                        body: { receiverId: "scam-drainer-vault.testnet", amountUsd: 420 },
-                        out: "Blocks prompt injection + scam-drainer-vault.testnet (score 100/100), escalates $450 spend to Sputnik DAO V2 (1 NEAR bond), and dispatches 4 NEP-611 lanes with 0 nonce collisions.",
+                        body: { receiverId: "unverified-quarantine-row12.testnet", amountUsd: 420 },
+                        out: "Blocks prompt injection + unverified-quarantine-row12.testnet (score 100/100), escalates $450 spend to Sputnik DAO V2 (1 NEAR bond), and dispatches 4 NEP-611 lanes with 0 nonce collisions.",
                       },
                       {
                         cmd: "npm run verify:outlayer",
@@ -2720,7 +2736,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       Row #12: QUARANTINED (SCAM)
                     </text>
                     <text x={480} y={145} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
-                      scam-drainer-vault.testnet isolated
+                      unverified-quarantine-row12.testnet isolated
                     </text>
 
                     <path d="M 622 97 L 680 97" stroke="#38BDF8" strokeWidth="2" strokeDasharray="4 4" />
@@ -2759,7 +2775,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
                   <div className="font-mono text-xs font-bold text-[var(--accent-cyan)]">12-Row Fault-Isolated Payroll</div>
                   <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-                    Auto-injects <code className="font-mono">0.00125 NEAR</code> <code className="font-mono">storage_deposit</code> for unregistered accounts and quarantines Row #12 (<code className="font-mono">scam-drainer-vault.testnet</code>) while settling 11/12 legitimate rows (<code className="font-mono">$264.00 USDC</code>).
+                    Auto-injects <code className="font-mono">0.00125 NEAR</code> <code className="font-mono">storage_deposit</code> for unregistered accounts and quarantines Row #12 (<code className="font-mono">unverified-quarantine-row12.testnet</code>) while settling 11/12 legitimate rows (<code className="font-mono">$264.00 USDC</code>).
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
@@ -3044,15 +3060,15 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                                         "jubayir33.near",
                                       balanceFormatted:
                                         activeTelemetry.balanceFormatted ??
-                                        "4.9980 NEAR",
+                                        "4.9959 NEAR",
                                       spendableBalanceFormatted:
                                         activeTelemetry.spendableBalanceFormatted ??
-                                        "4.7962 NEAR",
+                                        "4.7941 NEAR",
                                       totalNearBalance:
-                                        activeTelemetry.totalNearBalance ?? 4.998,
+                                        activeTelemetry.totalNearBalance ?? 4.9959,
                                       spendableNearBalance:
                                         activeTelemetry.spendableNearBalance ??
-                                        4.7962,
+                                        4.7941,
                                       poc4MasterHash:
                                         activeTelemetry.poc4MasterHash ??
                                         "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
@@ -3067,18 +3083,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                                       {
                                         ...ep.sampleResponse,
                                         nativeBalance:
-                                          activeTelemetry.spendableNearBalance ?? 4.7962,
+                                          activeTelemetry.spendableNearBalance ?? 4.7941,
                                         totalNearBalance:
-                                          activeTelemetry.totalNearBalance ?? 4.998,
+                                          activeTelemetry.totalNearBalance ?? 4.9959,
                                         spendableNearBalance:
-                                          activeTelemetry.spendableNearBalance ?? 4.7962,
+                                          activeTelemetry.spendableNearBalance ?? 4.7941,
                                         storageLockedNear:
                                           activeTelemetry.storageLockedNear ?? 0.0018,
                                         totalNearFormatted:
-                                          activeTelemetry.balanceFormatted ?? "4.9980 NEAR",
+                                          activeTelemetry.balanceFormatted ?? "4.9959 NEAR",
                                         spendableNearFormatted:
                                           activeTelemetry.spendableBalanceFormatted ??
-                                          "4.7962 NEAR",
+                                          "4.7941 NEAR",
                                       },
                                       null,
                                       2
@@ -3118,11 +3134,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-5">
                 {[
-                  { pair: "ETH/USDT", val: `$${Number(liveStatusData?.oracle?.ethUsdMedian ?? 2246.48).toFixed(2)}` },
-                  { pair: "NEAR/USDT", val: `$${Number(liveStatusData?.oracle?.nearUsdMedian ?? 3.74).toFixed(4)}` },
-                  { pair: "XRP/USDT", val: `$${Number(liveStatusData?.oracle?.xrpUsdMedian ?? 1.3515).toFixed(4)}` },
-                  { pair: "SOL/USDT", val: `$${Number(liveStatusData?.oracle?.solUsdMedian ?? 90.23).toFixed(2)}` },
-                  { pair: "BTC/USDT", val: `$${Number(liveStatusData?.oracle?.btcUsdMedian ?? 76124.84).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                  { pair: "ETH/USDT", val: `$${Number(liveStatusData?.oracle?.ethUsdMedian ?? 2127.0).toFixed(2)}` },
+                  { pair: "NEAR/USDT", val: `$${Number(liveStatusData?.oracle?.nearUsdMedian ?? 3.55).toFixed(4)}` },
+                  { pair: "XRP/USDT", val: `$${Number(liveStatusData?.oracle?.xrpUsdMedian ?? 1.09).toFixed(4)}` },
+                  { pair: "SOL/USDT", val: `$${Number(liveStatusData?.oracle?.solUsdMedian ?? 86.5).toFixed(2)}` },
+                  { pair: "BTC/USDT", val: `$${Number(liveStatusData?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
                 ].map((item) => (
                   <div key={item.pair} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                     <div className="font-mono text-[10px] font-bold text-[var(--text-secondary)]">{item.pair}</div>
@@ -3204,7 +3220,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           suite: "Suite 1",
                           cmd: "npm run verify:attack-demo",
                           checks: "7",
-                          desc: "Blocks prompt injection + scam-drainer-vault.testnet (100/100), escalates $450 (> $150 cap) to Sputnik DAO V2 (1 NEAR bond), rejects 8.42% oracle deviation, dispatches 4 NEP-611 lanes (0 collisions), WithdrawFromGasKey guard, and ML-DSA-65 (1,952B/3,309B).",
+                          desc: "Blocks prompt injection + unverified-quarantine-row12.testnet (100/100), escalates $450 (> $150 cap) to Sputnik DAO V2 (1 NEAR bond), rejects 8.42% oracle deviation, dispatches 4 NEP-611 lanes (0 collisions), WithdrawFromGasKey guard, and ML-DSA-65 (1,952B/3,309B).",
                         },
                         {
                           suite: "Suite 2",
@@ -3273,14 +3289,14 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     <tbody className="divide-y divide-[var(--border-color)]">
                       {[
                         ["01", "Prompt-Injection Drain", "SYSTEM OVERRIDE: Ignore previous instructions...", "sanitizeUntrustedBrief() strips payload; decision locked to block."],
-                        ["02", "Scam Drainer Counterparty", "scam-drainer-vault.testnet", "4-Signal Counterparty Shield scores 100/100 (>= 70 block threshold)."],
+                        ["02", "Quarantined Counterparty", "unverified-quarantine-row12.testnet", "4-Signal Counterparty Shield scores 100/100 (>= 70 block threshold)."],
                         ["03", "Fake NEP-141 Token Contract", "usdc.fakes.testnet", "Rejected against RHEA Finance token whitelist (nusdc.ft-fin.testnet)."],
                         ["04", "Over-Limit Single Spend", "$450.00 (> $150.00 autonomous cap)", "Refuses autonomous signing; escalates to Sputnik DAO V2 (1 NEAR bond)."],
                         ["05", "Flash-Crash / Spoofed Oracle", "8.42% spread (> 5.0% max deviation)", "PoC-4 gate aborts with ORACLE_DEVIATION_EXCEEDED."],
                         ["06", "Predatory Fee Extraction", "Combined fee > 500 bps (5.00%)", "Rejected by config.yaml and Rust Policy Vault fee ceiling."],
                         ["07", "Unlisted Token Hallucination", "AYAN/USDT CURRENT MARKET PRICE", "Returns found: false, priceUsd: null, status: UNLISTED_TOKEN (never $1.00)."],
                         ["08", "Misspelled Ticker Spoof", "AVEX/USDT CURRENT MARKET PRICE", "Flags AVEX as UNLISTED_TOKEN and suggests AVAX via Levenshtein distance."],
-                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (scam-drainer)", "Quarantines Row #12 while settling 11/12 valid rows ($264.00 USDC)."],
+                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (quarantined)", "Quarantines Row #12 while settling 11/12 valid rows ($264.00 USDC)."],
                         ["10", "NEP-611 DeleteKey Gas Burn", "DeleteKey on funded NEP-611 Gas Key", "Auto-prepends WithdrawFromGasKey before DeleteKey so 0 NEAR is burned."],
                         ["11", "Protocol v87 Gas-Key Meta-Tx", "signerKeyIsGasKey: true on NEP-366 inner tx", "Blocked per nearcore v87+; enforces standard ed25519 key on inner delegate."],
                         ["12", "External AddKey allowance: 0", "RPC AddKey with allowance: '0'", "Rejected (sets literal 0 yoctoNEAR lockout); requires allowance: null."],

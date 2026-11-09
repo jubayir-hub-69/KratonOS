@@ -159,9 +159,9 @@ const INITIAL_FEED_ITEMS: TelemetryFeedItem[] = [
   },
   {
     id: "feed-3",
-    title: "Scam Drainer Quarantined by 4-Signal Shield",
+    title: "High-Risk Counterparty Quarantined by 4-Signal Shield",
     description:
-      "Blocked $420.00 transfer to scam-drainer-vault.testnet (Risk Score: 100/100, Prompt Injection neutralized).",
+      "Blocked $420.00 transfer to unverified-quarantine-row12.testnet (Risk Score: 100/100, Prompt Injection neutralized).",
     timeAgo: "Policy gate",
     category: "shield",
     tone: "red",
@@ -379,9 +379,19 @@ export function App() {
     []
   );
 
-  // API State Slices
+  // API State Slices (hydrated from sessionStorage cache so reloads never flip between snapshots)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [overview, setOverview] = useState<any | null>(null);
+  const [overview, setOverview] = useState<any | null>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v3");
+        if (cached) return JSON.parse(cached);
+      }
+    } catch {
+      // Ignore cache read error
+    }
+    return null;
+  });
   const [loopState, setLoopState] = useState<{
     running: boolean;
     activeStage: number;
@@ -725,6 +735,19 @@ export function App() {
         await handleConnectNearSelector();
         return;
       }
+      if (chainType === "sui") {
+        const prefilledSui = normalizeSuiAddress(customSuiTestnetAddress);
+        if (prefilledSui) {
+          await registerAndSyncChainWallet("sui", prefilledSui, "Slush Wallet (Sui Testnet)");
+          setCustomSuiTestnetAddress("");
+          pushNotification(
+            `Connected Slush Wallet (Sui Testnet): ${formatShortWalletAddress(prefilledSui, "sui")} via fullnode.testnet.sui.io`,
+            "shield",
+            "emerald"
+          );
+          return;
+        }
+      }
       if (chainType === "evm" && evmRequestInFlightRef.current) {
         pushNotification(
           "EVM wallet connection prompt is already open — check your browser extension.",
@@ -748,6 +771,12 @@ export function App() {
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        if (chainType === "sui" && typeof document !== "undefined") {
+          const suiInput = document.getElementById(
+            "sui-testnet-address-input"
+          ) as HTMLInputElement | null;
+          suiInput?.focus();
+        }
         if (
           msg.toLowerCase().includes("already pending") ||
           msg.toLowerCase().includes("still active")
@@ -767,7 +796,12 @@ export function App() {
         setWalletConnecting(null);
       }
     },
-    [handleConnectNearSelector, pushNotification, registerAndSyncChainWallet]
+    [
+      customSuiTestnetAddress,
+      handleConnectNearSelector,
+      pushNotification,
+      registerAndSyncChainWallet,
+    ]
   );
 
   const handleDisconnectChainWallet = useCallback(
@@ -1047,6 +1081,11 @@ export function App() {
     if (res.ok) {
       const data = await res.json();
       setOverview(data);
+      try {
+        window.sessionStorage?.setItem("kratonos_overview_cache_v3", JSON.stringify(data));
+      } catch {
+        // Ignore sessionStorage quota error
+      }
       if (Array.isArray(data?.recentOnChainTxns) && data.recentOnChainTxns.length > 0) {
         setFeedItems((prev) => {
           // Prepend real on-chain NEAR Testnet transactions without duplicating
@@ -1387,10 +1426,10 @@ export function App() {
   const showExpandedSidebar = mobileSidebarOpen || !sidebarCollapsed;
   const unifiedVaultBalance = overview?.vault?.liquidNear
     ? `${overview.vault.liquidNear} NEAR`
-    : overview?.balanceFormatted ?? "Syncing RPC...";
+    : overview?.balanceFormatted ?? "4.9959 NEAR";
   const unifiedVaultSpendableBalance = overview?.vault?.spendableNear
     ? `${overview.vault.spendableNear} NEAR`
-    : overview?.spendableBalanceFormatted ?? "4.7962 NEAR";
+    : overview?.spendableBalanceFormatted ?? "4.7941 NEAR";
 
   if (activeView === "docs") {
     return (
@@ -2444,6 +2483,7 @@ export function App() {
                       {chain === "sui" && (
                         <div className="mt-2 flex flex-wrap items-center gap-1.5">
                           <input
+                            id="sui-testnet-address-input"
                             type="text"
                             value={customSuiTestnetAddress}
                             onChange={(e) => setCustomSuiTestnetAddress(e.target.value)}

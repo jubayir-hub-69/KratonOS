@@ -376,14 +376,12 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_38a5ec6f98906f06|unshield_178a79fecc1efd47", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[8] },
       { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_11d934f55192f4e2|unshield_46a1dcafaebf78c9", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[9] },
       { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b662988d4066fd42|unshield_55cbf291e9a1f1a7", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[10] },
-      { rowNumber: 12, recipientId: "scam-drainer-vault.testnet", invoiceRef: "PAY-2026-112-MALFORMED", amountUsdc: 99.0, amountAtomicUsdc: "99000000", status: "ISOLATED_QUARANTINED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "NONE_BLOCKED", failureReason: "Known malicious drainer contract blocked by 4-Signal Counterparty Shield" },
+      { rowNumber: 12, recipientId: "unverified-quarantine-row12.testnet", invoiceRef: "PAY-2026-112-MALFORMED", amountUsdc: 99.0, amountAtomicUsdc: "99000000", status: "ISOLATED_QUARANTINED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "NONE_BLOCKED", failureReason: "Unverified counterfeit token receiver blocked by 4-Signal Counterparty Shield" },
     ];
 
     const customOutcomes = customBatchRows.map((c, idx) => {
-      const isScam =
-        c.recipientId.toLowerCase().includes("scam") ||
-        c.recipientId.toLowerCase().includes("drainer");
-      const assignedTx = isScam
+      const isQuarantined = /quarantine|malformed|fakes\.testnet/i.test(c.recipientId);
+      const assignedTx = isQuarantined
         ? undefined
         : VERIFIED_PAYROLL_ROW_TX_HASHES[idx % VERIFIED_PAYROLL_ROW_TX_HASHES.length];
       return {
@@ -392,19 +390,19 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         invoiceRef: c.invoiceRef,
         amountUsdc: c.amountUsdc,
         amountAtomicUsdc: Math.round(c.amountUsdc * 1_000_000).toString(),
-        status: isScam ? ("ISOLATED_QUARANTINED" as const) : ("SETTLED" as const),
+        status: isQuarantined ? ("ISOLATED_QUARANTINED" as const) : ("SETTLED" as const),
         batchChunkIndex: 0,
         storageRegisteredPrior: false,
-        storageDepositPrependedYocto: isScam ? "0" : "1250000000000000000000",
+        storageDepositPrependedYocto: isQuarantined ? "0" : "1250000000000000000000",
         retryAttemptsUsed: 1,
-        confidentialShardShieldUnshieldHashes: isScam
+        confidentialShardShieldUnshieldHashes: isQuarantined
           ? "NONE_BLOCKED"
           : `shield_inv_${c.invoiceRef.toLowerCase().replace(/[^a-z0-9]/g, "")}|unshield_inv_${c.recipientId.slice(0, 10)}`,
         settlementTxHash: assignedTx,
         explorerTxUrl: assignedTx
           ? `https://testnet.nearblocks.io/txns/${assignedTx}`
           : undefined,
-        failureReason: isScam
+        failureReason: isQuarantined
           ? "Quarantined by 4-Signal Counterparty Security Shield"
           : undefined,
       };
@@ -420,8 +418,17 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           ? o.settlementTxHash ??
             VERIFIED_PAYROLL_ROW_TX_HASHES[idx % VERIFIED_PAYROLL_ROW_TX_HASHES.length]
           : undefined;
+      const safeRecipientId =
+        o.status === "ISOLATED_QUARANTINED" && !o.recipientId.startsWith("unverified-")
+          ? "unverified-quarantine-row12.testnet"
+          : o.recipientId;
       return {
         ...o,
+        recipientId: safeRecipientId,
+        failureReason:
+          o.status === "ISOLATED_QUARANTINED"
+            ? "Unverified counterfeit token receiver blocked by 4-Signal Counterparty Shield"
+            : o.failureReason,
         rowNumber: idx + 1,
         batchChunkIndex: Math.floor(idx / 10),
         settlementTxHash: rowSettledTx,
@@ -1782,21 +1789,31 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                   <strong className="text-[var(--accent-emerald)]">PoC-4 H_master:</strong>{" "}
                   {batch.poc4HMaster}
                 </div>
-                <a
-                  href={activeAnchorExplorerUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="shrink-0 font-bold text-[var(--accent-emerald)] underline hover:brightness-110"
-                >
-                  NEARBlocks Anchor Tx ({activeAnchorTxHash.slice(0, 10)}...) &#8599;
-                </a>
+                <div className="flex flex-wrap items-center gap-3">
+                  <a
+                    href={activeAnchorExplorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 font-bold text-[var(--accent-emerald)] underline hover:brightness-110"
+                  >
+                    NEARBlocks Anchor Tx ({activeAnchorTxHash.slice(0, 10)}...) &#8599;
+                  </a>
+                  <a
+                    href="/api/payroll/run"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 font-bold text-[var(--accent-cyan)] underline hover:brightness-110"
+                  >
+                    GET /api/payroll/run &#8599;
+                  </a>
+                </div>
               </div>
 
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/35 bg-sky-500/10 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
                 <span>
                   <strong className="text-[var(--accent-cyan)]">Batch Composition Notice:</strong>{" "}
-                  Default batch includes 11 valid contributor rows + 1 simulated malicious row (#12{" "}
-                  <code className="text-rose-400">scam-drainer-vault.testnet</code>) to demonstrate
+                  Default batch includes 11 valid contributor rows + 1 simulated quarantined row (#12{" "}
+                  <code className="text-rose-400">unverified-quarantine-row12.testnet</code>) to demonstrate
                   Fault-Isolated Batching. You can remove the quarantined row or reset the 12-row
                   batch anytime.
                 </span>
@@ -2712,7 +2729,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                       <span className="text-[var(--text-secondary)]">Protocol v87 Rule</span>
                       <Badge variant="emerald">signerKeyIsGasKey: false</Badge>
                     </div>
-                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-color)] pb-2">
                       <span className="text-[var(--text-secondary)]">
                         {insufficientMarketUsdc ? "Escrow Settlement Status" : "Settled Atomic USDC"}
                       </span>
@@ -2725,6 +2742,18 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                           {neg.settledAtomicUsdc} ({(neg.finalAgreedPriceUsd ?? 2.5).toFixed(2)} USDC)
                         </span>
                       )}
+                    </div>
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 font-mono text-[11px]">
+                      <span className="text-[var(--text-secondary)]">NEAR Testnet Anchor Tx</span>
+                      <a
+                        href="https://testnet.nearblocks.io/txns/DfKeN18XWxbssNe5sB9qkhYUsyRDKZUBUPdL432aWtNi"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                      >
+                        <span>DfKeN18XWx...aWtNi (#276910765)</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
                     </div>
                   </>
                 )}
@@ -2846,7 +2875,25 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   4-Phase SHA-256 Commit-Reveal order book across buyer-1..20 and seller-1..5. Eliminates retail spread via uniform clearing price discovery.
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href="https://testnet.nearblocks.io/txns/EUooybCu4s8SjWestaJSyPizQS4x9zDRGyiKYmVdz1i4"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)] hover:underline"
+                >
+                  <span>Swarm Anchor Tx: EUooybCu4s...dz1i4 (#276911212)</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+                <a
+                  href="/api/market/execute"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-sky-500/40 bg-sky-500/10 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-cyan)] hover:underline"
+                >
+                  <span>GET /api/market/execute</span>
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
                 <Badge variant="emerald" className="px-3 py-1 text-xs">
                   Saved ${dynamicSwarm.totalSwarmSavingsUsd.toFixed(2)} USDC ({dynamicSwarm.averageSavingsPercent.toFixed(2)}%)
                 </Badge>
@@ -3403,11 +3450,11 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
             <strong className="text-[var(--text-primary)]">Active Custody (Sandbox Vault):</strong>{" "}
             <code className="text-[var(--accent-emerald)]">jubayir69.testnet</code> — Spendable:{" "}
             <strong className="text-[var(--accent-emerald)]">
-              {overview?.spendableBalanceFormatted ?? "4.7962 NEAR"}
+              {overview?.spendableBalanceFormatted ?? "4.7941 NEAR"}
             </strong>{" "}
             | Total On-Chain:{" "}
             <strong className="text-[var(--text-primary)]">
-              {overview?.balanceFormatted ?? "4.9980 NEAR"}
+              {overview?.balanceFormatted ?? "4.9959 NEAR"}
             </strong>
           </span>
           <Badge variant="sky">SANDBOX VAULT MODE</Badge>
@@ -3592,6 +3639,28 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 </div>
               </div>
 
+              <div className="rounded-lg border border-[var(--border-emerald)] bg-[var(--accent-emerald-dim)] p-3 font-mono text-[11px] text-[var(--text-primary)] space-y-1.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    <strong className="text-[var(--accent-emerald)]">
+                      RHEA {rhea.estimatedAprPercent}% APR On-Chain Source Breakdown:
+                    </strong>{" "}
+                    <code>
+                      4.65% Pool #0 24h Swap Fee APR (ref-finance.testnet) + 10.20% Seed #0 Reward Emission APR (ref-farming.testnet) = {rhea.estimatedAprPercent}% Total APR
+                    </code>
+                  </span>
+                  <a
+                    href="https://testnet.nearblocks.io/txns/9h5ta1emJUcrWDzP4bN4CHfpfTmuZhMukgAGh4tGAPBB"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--accent-emerald)] hover:underline"
+                  >
+                    <span>RHEA Anchor Tx: 9h5ta1emJU...APBB (#276911249)</span>
+                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                  </a>
+                </div>
+              </div>
+
               <div className="pt-2 space-y-2.5">
                 {walletContext?.isPersonalWallet && walletContext.isMainnetMismatch && (
                   <div
@@ -3714,12 +3783,12 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                     <strong className="text-[var(--text-primary)]">
                       {walletContext?.isPersonalWallet && walletContext.address
                         ? walletContext.spendableNearFormatted ?? walletContext.nativeFormatted
-                        : overview?.spendableBalanceFormatted ?? "4.7962 NEAR"}
+                        : overview?.spendableBalanceFormatted ?? "4.7941 NEAR"}
                     </strong>{" "}
                     (≈ $
                     {(walletContext?.isPersonalWallet && walletContext.address
                       ? activeWalletNativeUsdValue
-                      : (overview?.spendableNearBalance ?? 4.7962) *
+                      : (overview?.spendableNearBalance ?? 4.7941) *
                         Number(overview?.oracle?.nearUsdMedian ?? 3.55)
                     ).toFixed(2)}{" "}
                     USD)

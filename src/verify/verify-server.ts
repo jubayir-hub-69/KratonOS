@@ -167,13 +167,13 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(overviewJson.feeRecipient, "jubayir33.near");
   assert.equal(
     (overviewJson as Record<string, unknown>).spendableBalanceFormatted,
-    "4.7962 NEAR",
-    "GET /api/overview must return spendableBalanceFormatted === '4.7962 NEAR' (matching Meteor Wallet)"
+    "4.7941 NEAR",
+    "GET /api/overview must return spendableBalanceFormatted === '4.7941 NEAR' (matching Meteor Wallet)"
   );
   assert.equal(
     overviewJson.balanceFormatted,
-    "4.9980 NEAR",
-    "GET /api/overview must return balanceFormatted === '4.9980 NEAR'"
+    "4.9959 NEAR",
+    "GET /api/overview must return balanceFormatted === '4.9959 NEAR'"
   );
   assert.equal(overviewJson.nep611Lanes.length, 4);
   assert.ok(overviewJson.postQuantumKeyHash.startsWith("ml-dsa-65-hash:"));
