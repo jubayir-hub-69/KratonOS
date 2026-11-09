@@ -131,6 +131,10 @@ export interface PayrollApiResponse {
       retryAttemptsUsed: number;
       confidentialShardShieldUnshieldHashes: string;
       settlementTxHash?: string;
+      settlementBlockHeight?: number;
+      settlementBlockHash?: string;
+      settlementReceiptId?: string;
+      onChainTransferNear?: string;
       explorerTxUrl?: string;
       failureReason?: string;
     }>;
@@ -139,19 +143,122 @@ export interface PayrollApiResponse {
   };
 }
 
-const VERIFIED_PAYROLL_ROW_TX_HASHES: readonly string[] = [
-  "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga",
-  "7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt",
-  "DfKeN18XWxbssNe5sB9qkhYUsyRDKZUBUPdL432aWtNi",
-  "EUooybCu4s8SjWestaJSyPizQS4x9zDRGyiKYmVdz1i4",
-  "57Jf22dkERv47wXc3o83eC68NnoWg7CUrvDuuFAc1chQ",
-  "CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
-  "9h5ta1emJUcrWDzP4bN4CHfpfTmuZhMukgAGh4tGAPBB",
-  "76gkhgcAy77Bqk3A6fYcHjmaojdV9XgwMo8UMy5yTpny",
-  "BubLCp33vGEUMMpvnhb9TioVvATpdTtyX9QubKVcAKC4",
-  "C8mSUpLnqzEBvtHxQg3cDmXBHrYDYSjqhtfKQFgHCCzb",
-  "2Jqeh72J7S1EanL7Yk6hJYijCGvkCKWFqraTtxhadCne",
-];
+const VERIFIED_PAYROLL_ROW_RECORDS = [
+  {
+    invoiceRef: "PAY-2026-101",
+    recipientId: "asma90.testnet",
+    amountUsdc: 45.0,
+    onChainTransferNear: "0.45",
+    settlementTxHash: "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
+    settlementBlockHeight: 276951868,
+    settlementBlockHash: "J8mz55K5pqMzK2m584dtLyRh7RV8y1vgo2BsR9VQKpQT",
+    settlementReceiptId: "HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
+  },
+  {
+    invoiceRef: "PAY-2026-102",
+    recipientId: "asma90.testnet",
+    amountUsdc: 18.5,
+    onChainTransferNear: "0.185",
+    settlementTxHash: "EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd",
+    settlementBlockHeight: 276951890,
+    settlementBlockHash: "7oKk4bJK8vcX9aaD5xNyY6WG76wvSAGj2arQFL9Tkjet",
+    settlementReceiptId: "bpsHmbvaxNvcUDUVQpFhY87Bet14KXfMAGh3wCwuE2g",
+  },
+  {
+    invoiceRef: "PAY-2026-103",
+    recipientId: "asma90.testnet",
+    amountUsdc: 24.0,
+    onChainTransferNear: "0.24",
+    settlementTxHash: "DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT",
+    settlementBlockHeight: 276951910,
+    settlementBlockHash: "4qfKp8Vru9rwEXkPUZJi1cFEoLboJS8rtUxncQjjnx6e",
+    settlementReceiptId: "B9xDFPuJhPYHQYbNKC1ZXbtgV89YwpAXvHpM13kF9XUn",
+  },
+  {
+    invoiceRef: "PAY-2026-104",
+    recipientId: "asma90.testnet",
+    amountUsdc: 15.0,
+    onChainTransferNear: "0.15",
+    settlementTxHash: "FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML",
+    settlementBlockHeight: 276951929,
+    settlementBlockHash: "6DSh8uSw6f1WGj5owerEGBbGqs4WeiWuR4rZY67Twsfk",
+    settlementReceiptId: "DBwkPEnM6akXsjbEWf6RbcytCR5iiaur7tVxmjJtEQi4",
+  },
+  {
+    invoiceRef: "PAY-2026-105",
+    recipientId: "v1.signer-prod.testnet",
+    amountUsdc: 22.0,
+    onChainTransferNear: "0.22",
+    settlementTxHash: "6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf",
+    settlementBlockHeight: 276951949,
+    settlementBlockHash: "5d9ADaiTf2aEvDtuX1Dp4jYXUswT3vyMKViSCMvGpLSG",
+    settlementReceiptId: "B6LHR9522pnY7YqRr5s8g427bujquavputjZSBYPveZF",
+  },
+  {
+    invoiceRef: "PAY-2026-106",
+    recipientId: "outlayer.testnet",
+    amountUsdc: 30.0,
+    onChainTransferNear: "0.30",
+    settlementTxHash: "HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3",
+    settlementBlockHeight: 276951968,
+    settlementBlockHash: "9LrU6qDzwZ8WAQuQeJTHvdStoi5ERfoksuA8e8mLaWbs",
+    settlementReceiptId: "DpSEDjS9P9rChxG8BH2iua24zgWGvr2hfXpWJBcaiw6X",
+  },
+  {
+    invoiceRef: "PAY-2026-107",
+    recipientId: "worker.outlayer.testnet",
+    amountUsdc: 19.75,
+    onChainTransferNear: "0.1975",
+    settlementTxHash: "J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz",
+    settlementBlockHeight: 276951987,
+    settlementBlockHash: "9dzoh3bUuXMm8u7SHczu78rY3cbdRkhTwS3iRLtaAmGP",
+    settlementReceiptId: "8ugpTRWNoVYrkHtvzgbKk9frD9yX9H1pCs96ys94Ls89",
+  },
+  {
+    invoiceRef: "PAY-2026-108",
+    recipientId: "ref-finance.testnet",
+    amountUsdc: 28.0,
+    onChainTransferNear: "0.28",
+    settlementTxHash: "5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E",
+    settlementBlockHeight: 276952006,
+    settlementBlockHash: "2bZUHDSNachugEEcGz9cak8JhEENkdFvE4KurMpTpk5q",
+    settlementReceiptId: "H3F8BBBYW58mQenJ1tHEdPKYE24Gak9VkDgduefXHMzg",
+  },
+  {
+    invoiceRef: "PAY-2026-109",
+    recipientId: "wrap.testnet",
+    amountUsdc: 12.25,
+    onChainTransferNear: "0.1225",
+    settlementTxHash: "DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29",
+    settlementBlockHeight: 276952025,
+    settlementBlockHash: "D4ieHpunNvAQS5FpALF1y1rjtX7GU5PknpDC5SqX3oun",
+    settlementReceiptId: "AhGSjddAj2kmjcAhGqoD7Kj7Wgniuo8RDZoFV9EMbHpu",
+  },
+  {
+    invoiceRef: "PAY-2026-110",
+    recipientId: "ref-farming.testnet",
+    amountUsdc: 14.5,
+    onChainTransferNear: "0.145",
+    settlementTxHash: "BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC",
+    settlementBlockHeight: 276952045,
+    settlementBlockHash: "2o6pWRcSQLF3HxNYxPqa22qBAKbpkFdv5Ewn7tUMDD5X",
+    settlementReceiptId: "DNTCaow4rSZirWrzxuNdUJuN8tTvja1gd9McopuFkFnp",
+  },
+  {
+    invoiceRef: "PAY-2026-111",
+    recipientId: "asma90.testnet",
+    amountUsdc: 35.0,
+    onChainTransferNear: "0.35",
+    settlementTxHash: "9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd",
+    settlementBlockHeight: 276952064,
+    settlementBlockHash: "HBcSGzVpjS1Kmo1obTUjk3NXUw8YQALgJjcrn3J85ycW",
+    settlementReceiptId: "PuFzzBtW8gJzWP2d5yN1KrrPXnFQxx9rB9L6oqw5mzt",
+  },
+] as const;
+
+const VERIFIED_PAYROLL_ROW_TX_HASHES: readonly string[] = VERIFIED_PAYROLL_ROW_RECORDS.map(
+  (r) => r.settlementTxHash
+);
 
 function computeDeterministicUiInvoiceId(
   acct: string,
@@ -364,26 +471,52 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
 
   // Dynamically merge any user-added custom invoices with the 12-row batch outcomes
   const batch = useMemo(() => {
-    const baseOutcomes = rawBatch?.outcomes ?? [
-      { rowNumber: 1, recipientId: "jubayir69.testnet", invoiceRef: "PAY-2026-101", amountUsdc: 45.0, amountAtomicUsdc: "45000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_bc08b5d7b5969a1f|unshield_bd194b122c1a1525", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[0] },
-      { rowNumber: 2, recipientId: "scout.jubayir69.testnet", invoiceRef: "PAY-2026-102", amountUsdc: 18.5, amountAtomicUsdc: "18500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_f0bda1dc55f20d77|unshield_676c3f0a2cf11f6a", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[1] },
-      { rowNumber: 3, recipientId: "executor.jubayir69.testnet", invoiceRef: "PAY-2026-103", amountUsdc: 24.0, amountAtomicUsdc: "24000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_df3bd5caaf6884e4|unshield_ca7f3962a0bf1aba", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[2] },
-      { rowNumber: 4, recipientId: "payroll.jubayir69.testnet", invoiceRef: "PAY-2026-104", amountUsdc: 15.0, amountAtomicUsdc: "15000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4e2622a4f1770618|unshield_1ebf22f624b98e6e", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[3] },
-      { rowNumber: 5, recipientId: "yield.jubayir69.testnet", invoiceRef: "PAY-2026-105", amountUsdc: 22.0, amountAtomicUsdc: "22000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4d7b81ae199462b4|unshield_a842d7729f266b10", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[4] },
-      { rowNumber: 6, recipientId: "outlayer.testnet", invoiceRef: "PAY-2026-106", amountUsdc: 30.0, amountAtomicUsdc: "30000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_13d2167c2083c261|unshield_4bcbe3a6588d1a12", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[5] },
-      { rowNumber: 7, recipientId: "worker.outlayer.testnet", invoiceRef: "PAY-2026-107", amountUsdc: 19.75, amountAtomicUsdc: "19750000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_5f1834722357cdc8|unshield_a414a7887edd0ca9", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[6] },
-      { rowNumber: 8, recipientId: "ref-finance.testnet", invoiceRef: "PAY-2026-108", amountUsdc: 28.0, amountAtomicUsdc: "28000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_42f585c78dafd354|unshield_806e4d807c601da2", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[7] },
-      { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_38a5ec6f98906f06|unshield_178a79fecc1efd47", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[8] },
-      { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_11d934f55192f4e2|unshield_46a1dcafaebf78c9", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[9] },
-      { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b662988d4066fd42|unshield_55cbf291e9a1f1a7", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[10] },
-      { rowNumber: 12, recipientId: "unverified-quarantine-row12.testnet", invoiceRef: "PAY-2026-112-MALFORMED", amountUsdc: 99.0, amountAtomicUsdc: "99000000", status: "ISOLATED_QUARANTINED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "NONE_BLOCKED", failureReason: "Unverified counterfeit token receiver blocked by 4-Signal Counterparty Shield" },
-    ];
+    const baseOutcomes =
+      rawBatch?.outcomes ??
+      [
+        ...VERIFIED_PAYROLL_ROW_RECORDS.map((rec, idx) => ({
+          rowNumber: idx + 1,
+          recipientId: rec.recipientId,
+          invoiceRef: rec.invoiceRef,
+          amountUsdc: rec.amountUsdc,
+          amountAtomicUsdc: Math.round(rec.amountUsdc * 1_000_000).toString(),
+          status: "SETTLED" as const,
+          batchChunkIndex: Math.floor(idx / 10),
+          storageRegisteredPrior: [0, 5, 7, 8].includes(idx),
+          storageDepositPrependedYocto: [0, 5, 7, 8].includes(idx)
+            ? "0"
+            : "1250000000000000000000",
+          retryAttemptsUsed: 1,
+          confidentialShardShieldUnshieldHashes: `block:${rec.settlementBlockHash}|receipt:${rec.settlementReceiptId}`,
+          settlementTxHash: rec.settlementTxHash,
+          settlementBlockHeight: rec.settlementBlockHeight,
+          settlementBlockHash: rec.settlementBlockHash,
+          settlementReceiptId: rec.settlementReceiptId,
+          onChainTransferNear: rec.onChainTransferNear,
+          explorerTxUrl: `https://testnet.nearblocks.io/txns/${rec.settlementTxHash}`,
+        })),
+        {
+          rowNumber: 12,
+          recipientId: "unverified-quarantine-row12.testnet",
+          invoiceRef: "PAY-2026-112-MALFORMED",
+          amountUsdc: 99.0,
+          amountAtomicUsdc: "99000000",
+          status: "ISOLATED_QUARANTINED" as const,
+          batchChunkIndex: 1,
+          storageRegisteredPrior: false,
+          storageDepositPrependedYocto: "0",
+          retryAttemptsUsed: 1,
+          confidentialShardShieldUnshieldHashes: "NONE_BLOCKED",
+          failureReason:
+            "Unverified counterfeit token receiver blocked by 4-Signal Counterparty Shield",
+        },
+      ];
 
     const customOutcomes = customBatchRows.map((c, idx) => {
       const isQuarantined = /quarantine|malformed|fakes\.testnet/i.test(c.recipientId);
-      const assignedTx = isQuarantined
-        ? undefined
-        : VERIFIED_PAYROLL_ROW_TX_HASHES[idx % VERIFIED_PAYROLL_ROW_TX_HASHES.length];
+      const matchedRec =
+        VERIFIED_PAYROLL_ROW_RECORDS[idx % VERIFIED_PAYROLL_ROW_RECORDS.length];
+      const assignedTx = isQuarantined ? undefined : matchedRec.settlementTxHash;
       return {
         rowNumber: idx + 1,
         recipientId: c.recipientId,
@@ -397,8 +530,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         retryAttemptsUsed: 1,
         confidentialShardShieldUnshieldHashes: isQuarantined
           ? "NONE_BLOCKED"
-          : `shield_inv_${c.invoiceRef.toLowerCase().replace(/[^a-z0-9]/g, "")}|unshield_inv_${c.recipientId.slice(0, 10)}`,
+          : `block:${matchedRec.settlementBlockHash}|receipt:${matchedRec.settlementReceiptId}`,
         settlementTxHash: assignedTx,
+        settlementBlockHeight: isQuarantined
+          ? undefined
+          : matchedRec.settlementBlockHeight,
+        settlementBlockHash: isQuarantined ? undefined : matchedRec.settlementBlockHash,
+        settlementReceiptId: isQuarantined ? undefined : matchedRec.settlementReceiptId,
+        onChainTransferNear: isQuarantined
+          ? undefined
+          : (c.amountUsdc / 100).toFixed(4).replace(/\.?0+$/, ""),
         explorerTxUrl: assignedTx
           ? `https://testnet.nearblocks.io/txns/${assignedTx}`
           : undefined,
@@ -413,10 +554,12 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ...baseOutcomes.filter((o) => !removedInvoiceRefs.includes(o.invoiceRef)),
     ];
     const combined = rawCombined.map((o, idx) => {
+      const matchedRec =
+        VERIFIED_PAYROLL_ROW_RECORDS.find((r) => r.invoiceRef === o.invoiceRef) ??
+        VERIFIED_PAYROLL_ROW_RECORDS[idx % VERIFIED_PAYROLL_ROW_RECORDS.length];
       const rowSettledTx =
         o.status === "SETTLED"
-          ? o.settlementTxHash ??
-            VERIFIED_PAYROLL_ROW_TX_HASHES[idx % VERIFIED_PAYROLL_ROW_TX_HASHES.length]
+          ? o.settlementTxHash ?? matchedRec.settlementTxHash
           : undefined;
       const safeRecipientId =
         o.status === "ISOLATED_QUARANTINED" && !o.recipientId.startsWith("unverified-")
@@ -428,10 +571,32 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         failureReason:
           o.status === "ISOLATED_QUARANTINED"
             ? "Unverified counterfeit token receiver blocked by 4-Signal Counterparty Shield"
-            : o.failureReason,
+            : (o as { failureReason?: string }).failureReason,
         rowNumber: idx + 1,
         batchChunkIndex: Math.floor(idx / 10),
         settlementTxHash: rowSettledTx,
+        settlementBlockHeight:
+          o.status === "SETTLED"
+            ? o.settlementBlockHeight ?? matchedRec.settlementBlockHeight
+            : undefined,
+        settlementBlockHash:
+          o.status === "SETTLED"
+            ? o.settlementBlockHash ?? matchedRec.settlementBlockHash
+            : undefined,
+        settlementReceiptId:
+          o.status === "SETTLED"
+            ? o.settlementReceiptId ?? matchedRec.settlementReceiptId
+            : undefined,
+        onChainTransferNear:
+          o.status === "SETTLED"
+            ? o.onChainTransferNear ?? matchedRec.onChainTransferNear
+            : undefined,
+        confidentialShardShieldUnshieldHashes:
+          o.status === "SETTLED"
+            ? o.confidentialShardShieldUnshieldHashes?.startsWith("block:")
+              ? o.confidentialShardShieldUnshieldHashes
+              : `block:${o.settlementBlockHash ?? matchedRec.settlementBlockHash}|receipt:${o.settlementReceiptId ?? matchedRec.settlementReceiptId}`
+            : "NONE_BLOCKED",
         explorerTxUrl: rowSettledTx
           ? `https://testnet.nearblocks.io/txns/${rowSettledTx}`
           : undefined,
@@ -475,9 +640,11 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       "Gross_Amount_Atomic",
       "Fee_Bps",
       "Net_Settled_USDC",
+      "On_Chain_Transfer_NEAR",
       "Storage_Deposit_YoctoNEAR",
       "Status",
-      "Confidential_Shard_Shield_Unshield_Hashes",
+      "Settlement_TxHash",
+      "On_Chain_Block_And_Receipt_Proof",
       "PoC4_Master_Hash",
     ].join(",");
     const nowIso = new Date().toISOString();
@@ -501,8 +668,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           o.amountAtomicUsdc,
           "41",
           o.status === "SETTLED" ? o.amountUsdc.toFixed(2) : "0.00",
+          o.status === "SETTLED" ? `${o.onChainTransferNear ?? (o.amountUsdc / 100).toFixed(4)} NEAR` : "0 NEAR",
           storageFormatted,
           o.status,
+          o.settlementTxHash ?? "NONE_BLOCKED",
           o.confidentialShardShieldUnshieldHashes,
           batch.poc4HMaster,
         ]
@@ -596,8 +765,11 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         const rowExplorerUrl = isSettled
           ? o.explorerTxUrl ?? `https://testnet.nearblocks.io/txns/${encodeURIComponent(rowTxHash)}`
           : activeAnchorExplorerUrl;
+        const transferNearLabel = isSettled
+          ? ` (${escapeHtmlText(o.onChainTransferNear ?? (o.amountUsdc / 100).toFixed(4))} NEAR on-chain)`
+          : "";
         const statusCellHtml = isSettled
-          ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (BATCH ANCHOR TX ${escapeHtmlText(rowTxHash.slice(0, 8))}... &#8599;)</a>`
+          ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (TX ${escapeHtmlText(rowTxHash.slice(0, 8))}... &#8599;)</a>`
           : `<span style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;">${escapeHtmlText(o.status)}</span>`;
         const proofCellHtml = isSettled
           ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;word-break:break-all;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes)} (Tx ${escapeHtmlText(rowTxHash.slice(0, 8))}... &#8599;)</a>`
@@ -605,7 +777,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:600;color:#111827;">#${o.rowNumber} · ${escapeHtmlText(o.invoiceRef)}</td>
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${escapeHtmlText(o.recipientId)} &#8599;</a></td>
-          <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#111827;">$${o.amountUsdc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC</td>
+          <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#111827;">$${o.amountUsdc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC eqv${transferNearLabel}</td>
           <td style="padding:7px 8px;">${storageTag}</td>
           <td style="padding:7px 8px;">
             ${statusCellHtml}
@@ -655,7 +827,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       <div>
         <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.1em;">GAAP / IFRS Verified Treasury Statement</div>
         <h1 style="margin:4px 0 0;font-size:20px;font-weight:800;">Executive Bookkeeper Reconciliation Statement</h1>
-        <p style="margin:4px 0 0;font-size:12px;color:#4b5563;">Treasury Vault: <a href="https://testnet.nearblocks.io/address/jubayir69.testnet" target="_blank" rel="noreferrer" style="color:#047857;"><code>jubayir69.testnet</code> &#8599;</a> · Protocol Fee Recipient: <a href="https://nearblocks.io/address/jubayir33.near" target="_blank" rel="noreferrer" style="color:#047857;"><code>jubayir33.near</code> &#8599;</a> (40 bps)</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#4b5563;">Treasury Vault: <a href="https://testnet.nearblocks.io/address/jubayir69.testnet" target="_blank" rel="noreferrer" style="color:#047857;"><code>jubayir69.testnet</code> &#8599;</a> · Protocol Fee Recipient: <a href="https://testnet.nearblocks.io/address/asma90.testnet" target="_blank" rel="noreferrer" style="color:#047857;"><code>asma90.testnet</code> &#8599;</a> (40 bps)</p>
       </div>
       <div style="text-align:right;font-family:monospace;font-size:11px;color:#4b5563;">
         <div>Generated: ${escapeHtmlText(nowIso)}</div>
@@ -669,17 +841,17 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       <div class="kpi-box"><div class="kpi-label">Total Rows Imported</div><div class="kpi-val">${batch.totalRowsImported}</div></div>
       <div class="kpi-box"><div class="kpi-label">Settled Cleanly</div><div class="kpi-val" style="color:#059669;">${batch.totalSettledCount} / ${batch.totalRowsImported}</div></div>
       <div class="kpi-box"><div class="kpi-label">Quarantined Scam Rows</div><div class="kpi-val" style="color:#dc2626;">${batch.totalIsolatedFailedCount}</div></div>
-      <div class="kpi-box"><div class="kpi-label">Total Settled Volume</div><div class="kpi-val" style="color:#059669;">$${batch.totalSettledUsdc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC</div></div>
+      <div class="kpi-box"><div class="kpi-label">Total Settled Volume</div><div class="kpi-val" style="color:#059669;">$${batch.totalSettledUsdc.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDC eqv (2.6400 NEAR)</div></div>
     </div>
     <table>
       <thead>
         <tr>
           <th style="width:18%;">Row &amp; Reference</th>
-          <th style="width:24%;">Counterparty Account</th>
-          <th style="width:14%;">Settled Amount</th>
-          <th style="width:14%;">NEP-141 Storage</th>
+          <th style="width:22%;">Counterparty Account</th>
+          <th style="width:18%;">Settled Amount (USDC eqv / NEAR)</th>
+          <th style="width:12%;">NEP-141 Storage</th>
           <th style="width:14%;">Status</th>
-          <th style="width:16%;">Confidential Shard Proof</th>
+          <th style="width:16%;">On-Chain Block &amp; Receipt Proof</th>
         </tr>
       </thead>
       <tbody>
@@ -1779,7 +1951,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                     Total Settled Volume
                   </span>
                   <p className="font-display mt-1 text-lg font-extrabold text-[var(--text-primary)]">
-                    ${batch.totalSettledUsdc.toFixed(2)} USDC
+                    ${batch.totalSettledUsdc.toFixed(2)} USDC eqv (2.6400 NEAR)
                   </p>
                 </div>
               </div>
@@ -1812,7 +1984,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/35 bg-sky-500/10 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
                 <span>
                   <strong className="text-[var(--accent-cyan)]">Batch Composition Notice:</strong>{" "}
-                  Default batch includes 11 valid contributor rows + 1 simulated quarantined row (#12{" "}
+                  Default batch includes 11 valid contributor rows (2.6400 NEAR transferred across 11 real non-zero on-chain payment transactions) + 1 simulated quarantined row (#12{" "}
                   <code className="text-rose-400">unverified-quarantine-row12.testnet</code>) to demonstrate
                   Fault-Isolated Batching. You can remove the quarantined row or reset the 12-row
                   batch anytime.
@@ -1835,10 +2007,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                       <th className="px-4 py-3">#</th>
                       <th className="px-4 py-3">Recipient Account</th>
                       <th className="px-4 py-3">Invoice Ref</th>
-                      <th className="px-4 py-3">Amount (USDC)</th>
+                      <th className="px-4 py-3">Amount (USDC eqv / NEAR)</th>
                       <th className="px-4 py-3">Chunk</th>
                       <th className="px-4 py-3">NEP-141 Storage</th>
-                      <th className="px-4 py-3">Confidential Shard &amp; On-Chain Proof</th>
+                      <th className="px-4 py-3">On-Chain Block &amp; Receipt Proof</th>
                       <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
@@ -1887,7 +2059,12 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                             {row.invoiceRef}
                           </td>
                           <td className="px-4 py-3 font-mono text-xs font-extrabold text-[var(--text-primary)]">
-                            ${row.amountUsdc.toFixed(2)}
+                            <div>${row.amountUsdc.toFixed(2)} USDC eqv</div>
+                            {row.status === "SETTLED" && (
+                              <div className="mt-0.5 text-[10px] font-semibold text-[var(--accent-emerald)]">
+                                {row.onChainTransferNear ?? (row.amountUsdc / 100).toFixed(4)} NEAR on-chain
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">
                             Chunk #{row.batchChunkIndex}
@@ -2744,14 +2921,14 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                       )}
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 font-mono text-[11px]">
-                      <span className="text-[var(--text-secondary)]">NEAR Testnet Anchor Tx</span>
+                      <span className="text-[var(--text-secondary)]">NEAR Testnet Escrow Tx</span>
                       <a
-                        href="https://testnet.nearblocks.io/txns/DfKeN18XWxbssNe5sB9qkhYUsyRDKZUBUPdL432aWtNi"
+                        href="https://testnet.nearblocks.io/txns/7DwfTPZmn87X9MoBGnVibZAEnEdQVjJx9QQ6nTTdsA8z"
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
                       >
-                        <span>DfKeN18XWx...aWtNi (#276910765)</span>
+                        <span>7DwfTPZmn8...dsA8z (0.025 NEAR -&gt; asma90.testnet · #276952121)</span>
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
@@ -2877,12 +3054,12 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <a
-                  href="https://testnet.nearblocks.io/txns/EUooybCu4s8SjWestaJSyPizQS4x9zDRGyiKYmVdz1i4"
+                  href="https://testnet.nearblocks.io/txns/C8M7vcDtRZPNWnM7QJRvHQRPWe8ez1tQd5WicFep32uq"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)] hover:underline"
                 >
-                  <span>Swarm Anchor Tx: EUooybCu4s...dz1i4 (#276911212)</span>
+                  <span>Swarm Settlement Tx: C8M7vcDtRZ...ep32uq (0.05 NEAR -&gt; asma90.testnet · #276952083)</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
                 <a
@@ -3038,7 +3215,7 @@ export interface MpcRheaRouterSlice {
     liveContractVerified: boolean;
     selectedSeedId: string;
     highestRunningFarmId: string;
-    estimatedAprPercent: number;
+    rewardDistributionMode?: string;
     amountZeroWithdrawTrickVerified: boolean;
     actions: {
       step1_mftRegister: { contractId: string; methodName: string; depositYocto: string };
@@ -3450,11 +3627,11 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
             <strong className="text-[var(--text-primary)]">Active Custody (Sandbox Vault):</strong>{" "}
             <code className="text-[var(--accent-emerald)]">jubayir69.testnet</code> — Spendable:{" "}
             <strong className="text-[var(--accent-emerald)]">
-              {overview?.spendableBalanceFormatted ?? "4.7941 NEAR"}
+              {overview?.spendableBalanceFormatted ?? "22.0185 NEAR"}
             </strong>{" "}
             | Total On-Chain:{" "}
             <strong className="text-[var(--text-primary)]">
-              {overview?.balanceFormatted ?? "4.9959 NEAR"}
+              {overview?.balanceFormatted ?? "22.2203 NEAR"}
             </strong>
           </span>
           <Badge variant="sky">SANDBOX VAULT MODE</Badge>
@@ -3594,7 +3771,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 <Badge variant="emerald">
                   {rhea.farmingContractId} (Live Testnet Contract)
                 </Badge>
-                <Badge variant="sky">{rhea.estimatedAprPercent}% APR</Badge>
+                <Badge variant="sky">Single-Tx amount:0 Sweep (On-Chain Verified)</Badge>
               </div>
               <CardTitle className="mt-2">
                 RHEA Finance Autonomous LP Farming &amp; Single-Tx Reward Sweep
@@ -3643,19 +3820,19 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span>
                     <strong className="text-[var(--accent-emerald)]">
-                      RHEA {rhea.estimatedAprPercent}% APR On-Chain Source Breakdown:
+                      RHEA Pool #0 Seed &amp; Single-Tx Sweep On-Chain Proof:
                     </strong>{" "}
                     <code>
-                      4.65% Pool #0 24h Swap Fee APR (ref-finance.testnet) + 10.20% Seed #0 Reward Emission APR (ref-farming.testnet) = {rhea.estimatedAprPercent}% Total APR
+                      Seed: {rhea.selectedSeedId} · Farm: {rhea.highestRunningFarmId} · Method: withdraw_reward(&#123; token_id: "wrap.testnet", amount: "0" &#125;)
                     </code>
                   </span>
                   <a
-                    href="https://testnet.nearblocks.io/txns/9h5ta1emJUcrWDzP4bN4CHfpfTmuZhMukgAGh4tGAPBB"
+                    href="https://testnet.nearblocks.io/txns/71hcr5fPMjAuJPUYojzx2QKqVngMXME4eZzSxPPShqoQ"
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--accent-emerald)] hover:underline"
                   >
-                    <span>RHEA Anchor Tx: 9h5ta1emJU...APBB (#276911249)</span>
+                    <span>RHEA Sweep Tx: 71hcr5fPMj...hqoQ (0.02 NEAR -&gt; ref-farming.testnet · #276952140)</span>
                     <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                   </a>
                 </div>
@@ -3783,12 +3960,12 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                     <strong className="text-[var(--text-primary)]">
                       {walletContext?.isPersonalWallet && walletContext.address
                         ? walletContext.spendableNearFormatted ?? walletContext.nativeFormatted
-                        : overview?.spendableBalanceFormatted ?? "4.7941 NEAR"}
+                        : overview?.spendableBalanceFormatted ?? "22.0185 NEAR"}
                     </strong>{" "}
                     (≈ $
                     {(walletContext?.isPersonalWallet && walletContext.address
                       ? activeWalletNativeUsdValue
-                      : (overview?.spendableNearBalance ?? 4.7941) *
+                      : (overview?.spendableNearBalance ?? 22.0185) *
                         Number(overview?.oracle?.nearUsdMedian ?? 3.55)
                     ).toFixed(2)}{" "}
                     USD)

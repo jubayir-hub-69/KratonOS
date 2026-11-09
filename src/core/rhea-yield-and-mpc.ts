@@ -35,7 +35,7 @@ export interface RheaFarmingAndMcaReport {
   metadata: RheaFarmMetadata;
   selectedSeedId: string;
   highestRunningFarmId: string;
-  estimatedAprPercent: number;
+  rewardDistributionMode: string;
   amountZeroWithdrawTrickVerified: boolean;
   actions: {
     step1_mftRegister: RheaActionSpec;
@@ -212,7 +212,7 @@ export async function scanAndHarvestRheaFarms(params?: {
     metadata,
     selectedSeedId: seedId,
     highestRunningFarmId,
-    estimatedAprPercent: 14.85,
+    rewardDistributionMode: "ONCHAIN_POOL_SHARES_PROPORTIONAL",
     amountZeroWithdrawTrickVerified: step4_withdrawRewardAmountZero.args.amount === "0",
     actions: {
       step1_mftRegister,

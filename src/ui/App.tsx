@@ -125,7 +125,7 @@ const SIDEBAR_ITEMS: SidebarNavItem[] = [
   {
     id: "mpc",
     label: "Multi-Chain MPC & RHEA Yield",
-    subtitle: "5 Foreign Chains & 14.85% APR Farm",
+    subtitle: "5 Foreign Chains & RHEA LP Farming",
     icon: Wallet,
   },
   {
@@ -151,7 +151,7 @@ const INITIAL_FEED_ITEMS: TelemetryFeedItem[] = [
     id: "feed-2",
     title: "1Click Confidential Private Shard Route Selected",
     description:
-      "Quoted 100.00 USDC -> 99.590000 USDT (dry: true per Q-007) at 1 bp protocol fee + 40 bps app fee to jubayir33.near.",
+      "Quoted 100.00 USDC -> 99.590000 USDT (dry: true per Q-007) at 1 bp protocol fee + 40 bps app fee to asma90.testnet.",
     timeAgo: "Quote preview",
     category: "swap",
     tone: "cyan",
@@ -203,6 +203,37 @@ const LiveBlockBadge = React.memo(function LiveBlockBadge({
   );
 });
 
+function resolveDocPageFromLocationHash(rawHash: string): DocPageId {
+  const cleaned = rawHash.replace(/^#/, "").trim().toLowerCase();
+  if (
+    cleaned === "quickstart" ||
+    cleaned === "verification" ||
+    cleaned === "ch2" ||
+    cleaned === "02"
+  ) {
+    return "quickstart";
+  }
+  if (cleaned === "poc4" || cleaned === "ch3" || cleaned === "03") {
+    return "poc4";
+  }
+  if (cleaned === "outlayer" || cleaned === "tee" || cleaned === "ch4" || cleaned === "04") {
+    return "tee";
+  }
+  if (cleaned === "intents" || cleaned === "rhea" || cleaned === "router" || cleaned === "ch5" || cleaned === "05") {
+    return "router";
+  }
+  if (cleaned === "payroll" || cleaned === "invoicing" || cleaned === "ch6" || cleaned === "06") {
+    return "payroll";
+  }
+  if (cleaned === "swarm" || cleaned === "market" || cleaned === "x402" || cleaned === "ch7" || cleaned === "07") {
+    return "payroll";
+  }
+  if (cleaned === "changelog" || cleaned === "security" || cleaned === "ch8" || cleaned === "08") {
+    return "changelog";
+  }
+  return "intro";
+}
+
 export function App() {
   const { mode, setMode } = useTheme();
   const [activeView, setActiveView] = useState<ActiveSidebarView>(() =>
@@ -211,8 +242,8 @@ export function App() {
       : "overview"
   );
   const [docsInitialPage, setDocsInitialPage] = useState<DocPageId>(() =>
-    typeof window !== "undefined" && window.location.hash === "#quickstart"
-      ? "quickstart"
+    typeof window !== "undefined"
+      ? resolveDocPageFromLocationHash(window.location.hash)
       : "intro"
   );
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -242,15 +273,20 @@ export function App() {
   );
 
   useEffect(() => {
-    const onPopState = () => {
+    const onPopOrHashChange = () => {
       if (window.location.pathname.startsWith("/docs")) {
         setActiveView("docs");
+        setDocsInitialPage(resolveDocPageFromLocationHash(window.location.hash));
       } else {
         setActiveView((prev) => (prev === "docs" ? "overview" : prev));
       }
     };
-    window.addEventListener("popstate", onPopState);
-    return () => window.removeEventListener("popstate", onPopState);
+    window.addEventListener("popstate", onPopOrHashChange);
+    window.addEventListener("hashchange", onPopOrHashChange);
+    return () => {
+      window.removeEventListener("popstate", onPopOrHashChange);
+      window.removeEventListener("hashchange", onPopOrHashChange);
+    };
   }, []);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isBrandAnimating, setIsBrandAnimating] = useState(false);
@@ -1156,13 +1192,13 @@ export function App() {
           stage: 4,
           title: "4. 1Click / RHEA Execution",
           summary:
-            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps, 1Click JWT=true) + RHEA Farm ref-finance.testnet@0#0 (14.85% APR).",
+            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps to asma90.testnet) + RHEA Farm ref-finance.testnet@0#0 (1-Tx Sweep, Proof: 71hcr5fPMjAu...).",
         },
         {
           stage: 5,
           title: "5. Settled Across Chains!",
           summary:
-            "Settled 11/12 batch payroll rows ($264.00 USDC, 1 scam quarantined), x402 v2 receipt verified, and 20x5 Swarm saved $357.00.",
+            "Settled 11/12 batch payroll rows (2.6400 NEAR = $264.00 USDC eqv, 1 scam quarantined), x402 v2 receipt verified (7DwfTPZmn87X...), and 20x5 Swarm saved $357.00 (C8M7vcDtRZPN...).",
         },
       ],
     });
@@ -1355,7 +1391,7 @@ export function App() {
     }
   };
 
-  // Hydrate initial views on mount (per-visitor Kill-Switch is isolated in sessionStorage, defaulting to false)
+  // Hydrate initial views on mount & auto-refresh Oracle Snapshot every 60s (per Fix 10)
   useEffect(() => {
     void fetchOverview();
 
@@ -1375,6 +1411,11 @@ export function App() {
       },
       false
     );
+
+    const oracleRefreshTimer = window.setInterval(() => {
+      void fetchOverview();
+    }, 60_000);
+    return () => window.clearInterval(oracleRefreshTimer);
   }, [fetchOverview, fetchMpcAndRhea, handleRunPayroll, handleExecuteMarket]);
 
   const handleNavigateSwap = useCallback(() => {
@@ -1779,12 +1820,12 @@ export function App() {
                   <div className="flex items-center justify-between gap-1 text-[11px] text-[var(--text-secondary)]">
                     <span>Fee Recipient</span>
                     <a
-                      href={`https://nearblocks.io/address/${overview?.feeRecipient ?? "jubayir33.near"}`}
+                      href={`https://testnet.nearblocks.io/address/${overview?.feeRecipient ?? "asma90.testnet"}`}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 font-mono font-bold text-[var(--accent-cyan)] hover:underline"
                     >
-                      <span>{overview?.feeRecipient ?? "jubayir33.near"}</span>
+                      <span>{overview?.feeRecipient ?? "asma90.testnet"}</span>
                       <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                     </a>
                   </div>
@@ -2350,10 +2391,11 @@ export function App() {
               <div className="flex min-w-0 items-center gap-2">
                 <ShieldCheck className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
                 <span className="font-display break-words font-bold text-[var(--text-primary)]">
-                  KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR
+                  KratonOS v2026.6 — Autonomous Treasury &amp; Policy Vault on NEAR
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-3 font-mono text-[11px] sm:gap-4 sm:text-xs">
+                <span>v2026.6</span>
                 <span>PoC-4 Quad-Attested</span>
                 <span>NEP-611 4-Lane Parallel</span>
                 <span>FIPS 204 ml-dsa-65</span>
@@ -2477,47 +2519,6 @@ export function App() {
                               </button>
                             </div>
                           )}
-                        </div>
-                      )}
-
-                      {chain === "sui" && (
-                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                          <input
-                            id="sui-testnet-address-input"
-                            type="text"
-                            value={customSuiTestnetAddress}
-                            onChange={(e) => setCustomSuiTestnetAddress(e.target.value)}
-                            placeholder="Verify / Sync Slush Sui Testnet 0x... address"
-                            className="min-w-0 flex-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-input)] px-2 py-1 font-mono text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-emerald)] focus:outline-none"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const norm = normalizeSuiAddress(customSuiTestnetAddress);
-                              if (!norm) {
-                                pushNotification(
-                                  "[WARNING] Enter a valid 0x... Sui Testnet address from your Slush wallet.",
-                                  "shield",
-                                  "amber"
-                                );
-                                return;
-                              }
-                              void registerAndSyncChainWallet(
-                                "sui",
-                                norm,
-                                "Slush Wallet (Sui Testnet)"
-                              );
-                              setCustomSuiTestnetAddress("");
-                              pushNotification(
-                                `Synced Sui Testnet address ${formatShortWalletAddress(norm, "sui")} via fullnode.testnet.sui.io`,
-                                "shield",
-                                "emerald"
-                              );
-                            }}
-                            className="rounded-md border border-sky-500/45 bg-sky-500/15 px-2.5 py-1 font-mono text-[10px] font-extrabold text-[var(--accent-cyan)] hover:bg-sky-500/25 cursor-pointer"
-                          >
-                            Verify &amp; Sync RPC
-                          </button>
                         </div>
                       )}
                     </div>

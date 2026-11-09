@@ -164,7 +164,7 @@ export function loadEnvironmentConfig(workspaceRoot: string = resolveWorkspaceRo
     ONECLICK_BASE_URL: getVal("ONECLICK_BASE_URL", "https://1click.chaindefuser.com"),
     ONECLICK_API_KEY: process.env.ONECLICK_API_KEY ?? parsedEnv.ONECLICK_API_KEY ?? "",
     ONECLICK_EXPLORER_API_KEY: process.env.ONECLICK_EXPLORER_API_KEY ?? parsedEnv.ONECLICK_EXPLORER_API_KEY ?? "",
-    PROTOCOL_FEE_RECIPIENT: getVal("PROTOCOL_FEE_RECIPIENT", "jubayir33.near"),
+    PROTOCOL_FEE_RECIPIENT: getVal("PROTOCOL_FEE_RECIPIENT", "asma90.testnet"),
     NEARAI_CLOUD_BASE_URL: getVal("NEARAI_CLOUD_BASE_URL", "https://cloud-api.near.ai/v1"),
     NEARAI_CLOUD_API_KEY: process.env.NEARAI_CLOUD_API_KEY ?? parsedEnv.NEARAI_CLOUD_API_KEY ?? "",
     NEARAI_MODEL: getVal("NEARAI_MODEL", "zai-org/GLM-5.1-FP8"),

@@ -1189,8 +1189,8 @@ export function extractRequestedCryptoSymbols(prompt?: string): string[] {
 
 let cachedOneClickPrices: { fetchedAtMs: number; map: Map<string, number> } | null = null;
 
-async function getOneClickTokenPriceMap(): Promise<Map<string, number>> {
-  if (cachedOneClickPrices && Date.now() - cachedOneClickPrices.fetchedAtMs < 30_000) {
+async function getOneClickTokenPriceMap(bypassCache = false): Promise<Map<string, number>> {
+  if (!bypassCache && cachedOneClickPrices && Date.now() - cachedOneClickPrices.fetchedAtMs < 60_000) {
     return cachedOneClickPrices.map;
   }
   const map = new Map<string, number>();
@@ -1237,7 +1237,10 @@ const dynamicSnapshotCache = new Map<
   }
 >();
 
-export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
+export async function fetchDynamicMultiAssetSnapshot(
+  prompt?: string,
+  options?: { bypassCache?: boolean }
+): Promise<{
   ethUsd: number;
   nearUsd: number;
   solUsd: number;
@@ -1254,14 +1257,16 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
 }> {
   const initialSymbols = extractRequestedCryptoSymbols(prompt);
   const snapshotKey = initialSymbols.join(",");
-  const cachedSnap = dynamicSnapshotCache.get(snapshotKey);
-  if (cachedSnap && Date.now() < cachedSnap.expiresAtMs) {
-    return cachedSnap.snapshot;
+  if (!options?.bypassCache) {
+    const cachedSnap = dynamicSnapshotCache.get(snapshotKey);
+    if (cachedSnap && Date.now() < cachedSnap.expiresAtMs) {
+      return cachedSnap.snapshot;
+    }
   }
 
   const priceTimestampIso = new Date().toISOString();
   const priceSource = "Coinbase Spot API (api.coinbase.com)";
-  const oneClickMap = await getOneClickTokenPriceMap();
+  const oneClickMap = await getOneClickTokenPriceMap(Boolean(options?.bypassCache));
 
   const allValidKnownSymbols = Array.from(
     new Set([...Object.keys(KNOWN_CRYPTO_FALLBACK_PRICES), ...Array.from(oneClickMap.keys())])

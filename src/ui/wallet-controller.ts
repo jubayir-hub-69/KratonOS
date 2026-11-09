@@ -1046,21 +1046,13 @@ export async function connectInPageBrowserWallet(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let res: any = null;
         try {
-          res = await Promise.race([
-            connectFeature.connect(),
-            new Promise((_, reject) =>
-              setTimeout(
-                () =>
-                  reject(
-                    new Error(
-                      "SUI_CONNECT_TIMEOUT: Slush extension popup awaiting approval or blocked by domain heuristic — paste your 0x... Sui Testnet address in the box below and click Verify & Sync RPC for instant connection."
-                    )
-                  ),
-                2500
-              )
-            ),
-          ]);
+          res = await connectFeature.connect();
         } catch (connectErr) {
+          if (isUserRejectionError(connectErr)) {
+            throw new WalletSignatureRejectedError(
+              "Connection rejected in Slush / Sui Wallet extension popup."
+            );
+          }
           if (Array.isArray(stdSuiWallet.accounts) && stdSuiWallet.accounts.length > 0) {
             res = { accounts: stdSuiWallet.accounts };
           } else {
@@ -1833,18 +1825,51 @@ export async function signMessageWithPersonalWallet(params: {
   if (chainType === "sui") {
     try {
       const bytes = new TextEncoder().encode(message);
-      const stdWallet =
+      let stdWallet =
         activeSuiStandardWalletRef?.wallet ?? getRegisteredSuiStandardWallet();
+      if (!stdWallet && typeof window !== "undefined") {
+        initWalletStandardRegistry();
+        stdWallet = getRegisteredSuiStandardWallet();
+      }
       if (stdWallet) {
-        const account =
-          activeSuiStandardWalletRef?.account ??
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          stdWallet.accounts?.find((a: any) =>
-            String(a?.address ?? "").toLowerCase() === address.toLowerCase()
-          ) ??
-          stdWallet.accounts?.[0] ?? { address };
+        // Ensure Slush / Sui Wallet has populated its WalletAccount objects (with publicKey & chains)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let availableAccounts: any[] = Array.isArray(stdWallet.accounts)
+          ? [...stdWallet.accounts]
+          : [];
+        if (
+          availableAccounts.length === 0 &&
+          !activeSuiStandardWalletRef?.account?.publicKey &&
+          typeof stdWallet.features?.["standard:connect"]?.connect === "function"
+        ) {
+          const connectedRes = await stdWallet.features["standard:connect"].connect();
+          if (Array.isArray(connectedRes?.accounts)) {
+            availableAccounts.push(...connectedRes.accounts);
+          }
+          if (Array.isArray(stdWallet.accounts)) {
+            for (const a of stdWallet.accounts) {
+              if (!availableAccounts.includes(a)) availableAccounts.push(a);
+            }
+          }
+        }
 
-        if (detectSuiExplicitMainnetState(stdWallet, account)) {
+        const normTarget = normalizeSuiAddress(address);
+        const matchedAccount =
+          availableAccounts.find(
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (a: any) => normalizeSuiAddress(String(a?.address ?? "")) === normTarget
+          ) ??
+          (activeSuiStandardWalletRef?.account &&
+          normalizeSuiAddress(String(activeSuiStandardWalletRef.account.address ?? "")) ===
+            normTarget
+            ? activeSuiStandardWalletRef.account
+            : null) ??
+          availableAccounts[0] ??
+          activeSuiStandardWalletRef?.account ?? { address: normTarget || address };
+
+        activeSuiStandardWalletRef = { wallet: stdWallet, account: matchedAccount };
+
+        if (detectSuiExplicitMainnetState(stdWallet, matchedAccount)) {
           throw new WalletMainnetMismatchError(
             "[TESTNET MODE REQUIRED] Please switch Slush / Sui Wallet to Sui Testnet mode."
           );
@@ -1855,16 +1880,28 @@ export async function signMessageWithPersonalWallet(params: {
           signPersonalFeature &&
           typeof signPersonalFeature.signPersonalMessage === "function"
         ) {
-          const signed = await signPersonalFeature.signPersonalMessage({
-            message: bytes,
-            account,
-            chain: "sui:testnet",
-          });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let signed: any = null;
+          try {
+            signed = await signPersonalFeature.signPersonalMessage({
+              message: bytes,
+              account: matchedAccount,
+            });
+          } catch (firstErr) {
+            if (isUserRejectionError(firstErr)) {
+              throw new WalletSignatureRejectedError();
+            }
+            signed = await signPersonalFeature.signPersonalMessage({
+              message: bytes,
+              account: matchedAccount,
+              chain: "sui:testnet",
+            });
+          }
           const sig = signed?.signature ?? signed?.bytes ?? "";
           if (!sig) throw new WalletSignatureRejectedError();
           return {
             signature: String(sig),
-            signerAddress: address,
+            signerAddress: normalizeSuiAddress(String(matchedAccount?.address ?? address)) || address,
             chainType: "sui",
           };
         }
@@ -1873,14 +1910,13 @@ export async function signMessageWithPersonalWallet(params: {
         if (signMessageFeature && typeof signMessageFeature.signMessage === "function") {
           const signed = await signMessageFeature.signMessage({
             message: bytes,
-            account,
-            chain: "sui:testnet",
+            account: matchedAccount,
           });
           const sig = signed?.signature ?? signed?.messageBytes ?? "";
           if (!sig) throw new WalletSignatureRejectedError();
           return {
             signature: String(sig),
-            signerAddress: address,
+            signerAddress: normalizeSuiAddress(String(matchedAccount?.address ?? address)) || address,
             chainType: "sui",
           };
         }

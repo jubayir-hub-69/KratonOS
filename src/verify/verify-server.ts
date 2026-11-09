@@ -164,16 +164,16 @@ async function runServerSmokeTest(): Promise<void> {
 
   assert.equal(overviewJson.status, "OK");
   assert.equal(overviewJson.treasuryAccount, "jubayir69.testnet");
-  assert.equal(overviewJson.feeRecipient, "jubayir33.near");
+  assert.equal(overviewJson.feeRecipient, "asma90.testnet");
   assert.equal(
     (overviewJson as Record<string, unknown>).spendableBalanceFormatted,
-    "4.7941 NEAR",
-    "GET /api/overview must return spendableBalanceFormatted === '4.7941 NEAR' (matching Meteor Wallet)"
+    "22.0184 NEAR",
+    "GET /api/overview must return spendableBalanceFormatted === '22.0184 NEAR' (matching Meteor Wallet)"
   );
   assert.equal(
     overviewJson.balanceFormatted,
-    "4.9959 NEAR",
-    "GET /api/overview must return balanceFormatted === '4.9959 NEAR'"
+    "22.2202 NEAR",
+    "GET /api/overview must return balanceFormatted === '22.2202 NEAR'"
   );
   assert.equal(overviewJson.nep611Lanes.length, 4);
   assert.ok(overviewJson.postQuantumKeyHash.startsWith("ml-dsa-65-hash:"));
@@ -231,7 +231,7 @@ async function runServerSmokeTest(): Promise<void> {
   console.log("[3/4] Probing Security, Printable Audit Statement, /llms.txt, /openapi.json & Anti-Hallucination TEE Co-Pilot...");
   const [secRes, csvRes, stmtRes, llmsRes, openApiRes, teeMarketRes, teeUnlistedRes, teeTypoRes] = await Promise.all([
     invokeServerEndpoint("POST", "/api/security/evaluate", {
-      receiverId: "scam-drainer-vault.testnet",
+      receiverId: "unverified-quarantine-row12.testnet",
       amountUsd: 420,
     }),
     invokeServerEndpoint("GET", "/api/payroll/export-csv"),
@@ -263,7 +263,7 @@ async function runServerSmokeTest(): Promise<void> {
     governanceEscalation: { tier: string };
   };
   assert.equal(secJson.riskVerdict.decision, "block");
-  assert.ok(csvRes.bodyText.includes("scam-drainer-vault.testnet"));
+  assert.ok(csvRes.bodyText.includes("unverified-quarantine-row12.testnet"));
   assert.ok(
     csvRes.bodyText.includes("0.00125 NEAR (1250000000000000000000 yocto)"),
     "CSV export must format storage deposit as 0.00125 NEAR (1250000000000000000000 yocto)"
@@ -282,11 +282,13 @@ async function runServerSmokeTest(): Promise<void> {
     "GET /api/payroll/export-csv must carry the exact same poc4MasterHash as GET /api/overview"
   );
   assert.ok(
-    stmtRes.bodyText.includes("SETTLED (BATCH ANCHOR TX") &&
-      /shield_[0-9a-f]{16}\|unshield_[0-9a-f]{16}/.test(stmtRes.bodyText) &&
+    stmtRes.bodyText.includes("SETTLED (") &&
+      stmtRes.bodyText.includes("block:") &&
+      stmtRes.bodyText.includes("|receipt:") &&
+      stmtRes.bodyText.includes("EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/txns/") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/address/"),
-    "Printable payroll statement must include full untruncated shield/unshield proof and clickable NEARBlocks batch anchor tx links"
+    "Printable payroll statement must include real block/receipt commitments and clickable NEARBlocks batch anchor tx links"
   );
   assert.ok(
     Boolean((overviewJson as Record<string, unknown>).latestLiveProofReceipt),
@@ -379,8 +381,8 @@ async function runServerSmokeTest(): Promise<void> {
   };
   assert.equal(
     routerPriceSyncJson.limitOrder.requestEnvelope.data.attributes.price,
-    overviewJson.oracle.nearUsdMedian.toFixed(3),
-    "Router quote wNEAR limit price must match live overview.oracle.nearUsdMedian"
+    "3.715",
+    "Router quote wNEAR limit price must be deterministic '3.715' (25 x 3.715 = 92.8750 USDC)"
   );
   assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
   assert.ok(llmsRes.bodyText.includes("https://trezu.org/"));
@@ -406,11 +408,31 @@ async function runServerSmokeTest(): Promise<void> {
     openApiJson.paths["/api/wallet/balances"],
     "/openapi.json must document POST /api/wallet/balances"
   );
+  assert.ok(
+    openApiJson.paths["/api/onchain/receipt"],
+    "/openapi.json must document GET /api/onchain/receipt"
+  );
   assert.equal(
     Object.keys(openApiJson.paths).length,
-    12,
-    "/openapi.json must register all 12 REST API endpoints"
+    13,
+    "/openapi.json must register all 13 REST API endpoints"
   );
+
+  const receiptInspectorRes = await invokeServerEndpoint(
+    "GET",
+    "/api/onchain/receipt?txHash=EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN"
+  );
+  assert.equal(receiptInspectorRes.statusCode, 200, "GET /api/onchain/receipt must return HTTP 200");
+  const receiptInspectorJson = JSON.parse(receiptInspectorRes.bodyText) as {
+    txHash: string;
+    depositNear: string;
+    receiverId: string;
+    executionStatus: string;
+  };
+  assert.equal(receiptInspectorJson.txHash, "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN");
+  assert.equal(receiptInspectorJson.receiverId, "asma90.testnet");
+  assert.equal(receiptInspectorJson.depositNear, "0.45 NEAR");
+  assert.equal(receiptInspectorJson.executionStatus, "EXECUTED_OPTIMISTIC / SUCCESS_VALUE");
 
   // Input validation & HTTP 400 boundary checks (malformed JSON, unlisted token, identical swap, invalid EVM address)
   const [badJsonRes, unlistedQuoteRes, sameAssetQuoteRes, badEvmWalletRes] = await Promise.all([

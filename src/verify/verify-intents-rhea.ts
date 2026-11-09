@@ -46,7 +46,7 @@ async function main(): Promise<void> {
     "ONECLICK_CONFIDENTIAL_INTENTS",
     "1Click Confidential Intents must win 1-bp stablecoin USDC -> USDT route"
   );
-  assert.equal(routeResult.feeRecipient, "jubayir33.near", "Protocol fee recipient must be jubayir33.near");
+  assert.equal(routeResult.feeRecipient, "asma90.testnet", "Protocol fee recipient must be asma90.testnet");
   assert.equal(routeResult.winningCandidate.appFeeBps, 40, "App fee must be 40 bps");
   assert.equal(routeResult.winningCandidate.protocolFeeBps, 1, "Stablecoin protocol fee must be 1 bp (0.01%)");
   assert.equal(routeResult.winningCandidate.totalFeeBps, 41, "Total fee must be 41 bps (<= 500 bps cap)");
@@ -56,21 +56,21 @@ async function main(): Promise<void> {
     status: "SUCCESS",
     swapDetails: {
       nearTxHashes: [
-        "shield_8f7e6d5c4b3a29180716253443526170899aabbccddeeff0011223344",
-        "unshield_1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5",
+        "block:276951868:J8mz55K5pqMzK2m584dtLyRh7RV8y1vgo2BsR9VQKpQT",
+        "receipt:HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
       ],
       destinationChainTxHashes: [
         {
-          hash: "0x99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa",
-          explorerUrl: "https://nearblocks.io/txns/unshield_1a2b3c",
+          hash: "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
+          explorerUrl: "https://testnet.nearblocks.io/txns/EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
         },
       ],
     },
   });
   assert.equal(confidentialStatus.settledOnNearPrivateShard, true);
   assert.equal(confidentialStatus.publicSwapTxHashExposed, false);
-  assert.ok(confidentialStatus.shieldTxHash?.startsWith("shield_"));
-  assert.ok(confidentialStatus.unshieldTxHash?.startsWith("unshield_"));
+  assert.ok(confidentialStatus.shieldTxHash?.startsWith("block:"));
+  assert.ok(confidentialStatus.unshieldTxHash?.startsWith("receipt:"));
 
   console.log(`  -> Live 1Click /v0/tokens Fetched: ${tokenRegistry.liveFetched} (${tokenRegistry.tokens.length} assets indexed)`);
   console.log(`  -> Live 1Click /v0/quote Authenticated: jwtAuth=${routeResult.oneClickJwtAuthenticated}, liveQuoteVerified=${routeResult.oneClickLiveQuoteVerified}, correlationId=${routeResult.oneClickDryQuoteCorrelationId ?? "n/a"}`);
@@ -166,7 +166,7 @@ async function main(): Promise<void> {
   assert.ok(mpcSuite.evmEip1559SignedTxHex.startsWith("0x02"));
 
   console.log(
-    `  -> RHEA Farming (${rheaReport.farmingContractId}): liveVerified=${rheaReport.liveContractVerified}, version=${rheaReport.metadata.version}, highestRunningFarm=${rheaReport.highestRunningFarmId} (${rheaReport.estimatedAprPercent}% APR)`
+    `  -> RHEA Farming (${rheaReport.farmingContractId}): liveVerified=${rheaReport.liveContractVerified}, version=${rheaReport.metadata.version}, highestRunningFarm=${rheaReport.highestRunningFarmId} (${rheaReport.rewardDistributionMode})`
   );
   console.log(
     `  -> Single-Tx Inner-Account Sweep: ${rheaReport.actions.step4_withdrawRewardAmountZero.methodName}(${JSON.stringify(rheaReport.actions.step4_withdrawRewardAmountZero.args)})`

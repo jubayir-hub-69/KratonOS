@@ -43,6 +43,9 @@ export interface TriVenueRouteResult {
   feeRecipient: string;
   totalFeeWithin500BpsCap: boolean;
   oneClickJwtAuthenticated: boolean;
+  oneClickQuoteMode: "UNAUTHENTICATED_DRY_RUN_PREVIEW" | "AUTHENTICATED_LIVE_QUOTE";
+  quoteCalculationMode: string;
+  quoteTimestampIso: string;
   oneClickLiveQuoteVerified: boolean;
   oneClickDryQuoteCorrelationId?: string;
   rheaPoolCountOnChain: number;
@@ -431,7 +434,7 @@ export async function findOptimalTriVenueRoute(params: {
     );
   }
 
-  const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near";
+  const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "asma90.testnet";
   const hasOneClickApiKey = Boolean(runtime.env.ONECLICK_API_KEY && runtime.env.ONECLICK_API_KEY.trim());
 
   // Enforce hard 500 bps total fee ceiling:
@@ -702,6 +705,7 @@ export async function findOptimalTriVenueRoute(params: {
     (a, b) => a.totalFeeBps + a.priceImpactBps - (b.totalFeeBps + b.priceImpactBps)
   );
   const winningCandidate = sorted[0];
+  const isAuthenticatedLive = Boolean(hasOneClickApiKey && oneClickLiveQuoteVerified);
 
   return {
     winningVenue: winningCandidate.venue,
@@ -709,7 +713,12 @@ export async function findOptimalTriVenueRoute(params: {
     candidates,
     feeRecipient,
     totalFeeWithin500BpsCap: candidates.every((c) => c.totalFeeBps <= 500),
-    oneClickJwtAuthenticated: hasOneClickApiKey && oneClickLiveQuoteVerified,
+    oneClickJwtAuthenticated: isAuthenticatedLive,
+    oneClickQuoteMode: isAuthenticatedLive
+      ? "AUTHENTICATED_LIVE_QUOTE"
+      : "UNAUTHENTICATED_DRY_RUN_PREVIEW",
+    quoteCalculationMode: "Fee-Tier & Live Spot Estimate (Dry Run — Rule Q-007)",
+    quoteTimestampIso: new Date().toISOString(),
     oneClickLiveQuoteVerified,
     oneClickDryQuoteCorrelationId: oneClickCorrelationId,
     rheaPoolCountOnChain,
@@ -904,7 +913,7 @@ export function createConfidentialLimitOrder(params: {
   const runtime = loadKratonConfig();
   const recipient = params.recipient ?? runtime.constraints.treasury_account;
   const refundTo = params.refundTo ?? runtime.constraints.treasury_account;
-  const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near";
+  const feeRecipient = runtime.env.PROTOCOL_FEE_RECIPIENT || "asma90.testnet";
 
   const quoteCeiling = computeLimitOrderQuoteCeilingAtomic({
     quantityBaseAtomic: BigInt(params.quantityBaseAtomic),
@@ -977,7 +986,7 @@ export function buildPartnerAnyInputSweepQuote(params?: {
 }): PartnerAnyInputSweepBundle {
   const runtime = loadKratonConfig();
   const baseUrl = runtime.env.ONECLICK_BASE_URL.replace(/\/+$/, "");
-  const recipient = params?.recipient ?? (runtime.env.PROTOCOL_FEE_RECIPIENT || "jubayir33.near");
+  const recipient = params?.recipient ?? (runtime.env.PROTOCOL_FEE_RECIPIENT || "asma90.testnet");
   const destinationAsset =
     params?.destinationAsset ??
     "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";

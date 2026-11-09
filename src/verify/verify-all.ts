@@ -282,7 +282,12 @@ async function runMasterVerificationSuite(): Promise<void> {
   assert.equal(
     parseConfidentialOneClickStatus({
       status: "SUCCESS",
-      swapDetails: { nearTxHashes: ["shield_1", "unshield_2"] },
+      swapDetails: {
+        nearTxHashes: [
+          "block:276951868:J8mz55K5pqMzK2m584dtLyRh7RV8y1vgo2BsR9VQKpQT",
+          "receipt:HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
+        ],
+      },
     }).settledOnNearPrivateShard,
     true
   );
@@ -403,7 +408,7 @@ async function runMasterVerificationSuite(): Promise<void> {
     "https://trezu.org/",
     "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
     "https://testnet.nearblocks.io/address/jubayir69.testnet",
-    "https://nearblocks.io/address/jubayir33.near",
+    "https://testnet.nearblocks.io/address/asma90.testnet",
     "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
   ];
   for (const url of requiredReferenceUrls) {
