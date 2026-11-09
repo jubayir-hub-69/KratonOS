@@ -759,10 +759,72 @@ export function getRegisteredSuiStandardWallet(): any | null {
   return candidates[0];
 }
 
+export function normalizeSuiAddress(addr: string): string {
+  const cleaned = String(addr ?? "")
+    .trim()
+    .replace(/^0x/i, "")
+    .toLowerCase();
+  if (!cleaned) return "";
+  return `0x${cleaned.padStart(64, "0")}`;
+}
+
+const forceFreshPermissionPrompt: Partial<Record<WalletChainType, boolean>> = {};
+
+export async function disconnectChainWallet(chainType: WalletChainType): Promise<void> {
+  forceFreshPermissionPrompt[chainType] = true;
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage?.setItem(`kratonos_disconnected_${chainType}`, "true");
+    } catch {
+      // Ignore storage errors
+    }
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const win = typeof window !== "undefined" ? (window as any) : {};
+
+  if (chainType === "sui") {
+    const stdWallet =
+      activeSuiStandardWalletRef?.wallet ?? getRegisteredSuiStandardWallet();
+    activeSuiStandardWalletRef = null;
+    try {
+      await stdWallet?.features?.["standard:disconnect"]?.disconnect?.();
+    } catch {
+      // Ignore standard:disconnect error
+    }
+    const legacySui =
+      win.slush ?? win.suiWallet ?? win.sui ?? win.suiet ?? win.nightly?.sui;
+    try {
+      await legacySui?.disconnect?.();
+    } catch {
+      // Ignore legacy disconnect error
+    }
+  } else if (chainType === "solana") {
+    const solProvider =
+      win?.phantom?.solana ??
+      (win?.solana?.isPhantom ? win.solana : win?.solflare ?? win?.solana);
+    try {
+      await solProvider?.disconnect?.();
+    } catch {
+      // Ignore solana disconnect error
+    }
+  } else if (chainType === "evm") {
+    const ethProvider = win.ethereum;
+    try {
+      await ethProvider?.request?.({
+        method: "wallet_revokePermissions",
+        params: [{ eth_accounts: {} }],
+      });
+    } catch {
+      // Optional revokePermissions (supported in MetaMask/Rabby)
+    }
+  }
+}
+
 /**
  * Connects directly to an installed browser wallet extension for non-NEAR chains
  * (`evm`, `solana`, `bitcoin`, `sui`, `ton`, `xrp`).
  * Never fakes a connection: if the extension is not installed, throws a clear user-facing error.
+ * Always forces an interactive wallet permission/approval popup when connecting or reconnecting after Disconnect.
  */
 export async function connectInPageBrowserWallet(
   chainType: Exclude<WalletChainType, "near">
@@ -773,6 +835,21 @@ export async function connectInPageBrowserWallet(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const win = typeof window !== "undefined" ? (window as any) : {};
   const meta = CHAIN_FAMILY_META[chainType];
+  const wasDisconnected = Boolean(
+    forceFreshPermissionPrompt[chainType] ||
+      (typeof window !== "undefined" &&
+        window.sessionStorage?.getItem(`kratonos_disconnected_${chainType}`) === "true")
+  );
+  const clearDisconnectFlag = () => {
+    forceFreshPermissionPrompt[chainType] = false;
+    if (typeof window !== "undefined") {
+      try {
+        window.sessionStorage?.removeItem(`kratonos_disconnected_${chainType}`);
+      } catch {
+        // Ignore storage error
+      }
+    }
+  };
 
   if (chainType === "evm") {
     const ethProvider = win.ethereum;
@@ -781,9 +858,27 @@ export async function connectInPageBrowserWallet(
         `Wallet extension not detected in browser — install ${meta.recommendedWallets} or connect an installed wallet.`
       );
     }
-    const requested = await ethProvider.request({
-      method: "eth_requestAccounts",
-    });
+    // Always invoke wallet_requestPermissions first so Rabby / MetaMask opens its interactive account/permission popup
+    let requested: unknown = null;
+    try {
+      await ethProvider.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      requested = await ethProvider.request({
+        method: "eth_requestAccounts",
+      });
+    } catch (permErr) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const code = (permErr as any)?.code;
+      const msg = permErr instanceof Error ? permErr.message : String(permErr);
+      if (code === 4001 || /reject|denied|cancel/i.test(msg)) {
+        throw new Error("Wallet connection rejected by user in EVM extension popup.");
+      }
+      requested = await ethProvider.request({
+        method: "eth_requestAccounts",
+      });
+    }
     const address =
       Array.isArray(requested) && typeof requested[0] === "string"
         ? requested[0]
@@ -802,6 +897,7 @@ export async function connectInPageBrowserWallet(
     } catch {
       // Non-fatal: mismatch flag will surface in Wallet Hub if user declined Sepolia switch
     }
+    clearDisconnectFlag();
     const providerName = ethProvider.isRabby
       ? "Rabby Wallet (EVM)"
       : ethProvider.isMetaMask
@@ -821,12 +917,28 @@ export async function connectInPageBrowserWallet(
         `Wallet extension not detected in browser — install ${meta.recommendedWallets} or connect an installed wallet.`
       );
     }
-    const resp = await solProvider.connect();
+    if (wasDisconnected && typeof solProvider.disconnect === "function") {
+      await solProvider.disconnect().catch(() => {});
+    }
+    const connectStartMs = Date.now();
+    const resp = await solProvider.connect({ onlyIfTrusted: false });
+    const elapsedMs = Date.now() - connectStartMs;
     const pubKey =
       resp?.publicKey?.toString?.() ?? solProvider?.publicKey?.toString?.();
     if (!pubKey) {
       throw new Error("Solana wallet did not return a public key.");
     }
+    // If Chromium cached the origin permission and connect() resolved silently in < 280ms after disconnect, require popup approval
+    if (
+      (wasDisconnected || elapsedMs < 280) &&
+      typeof solProvider.signMessage === "function"
+    ) {
+      const authBytes = new TextEncoder().encode(
+        `Authorize KratonOS Solana Testnet Wallet Connection\nAccount: ${String(pubKey)}`
+      );
+      await solProvider.signMessage(authBytes, "utf8");
+    }
+    clearDisconnectFlag();
     const providerName = solProvider.isPhantom
       ? "Phantom Wallet (Solana)"
       : solProvider.isSolflare
@@ -837,7 +949,9 @@ export async function connectInPageBrowserWallet(
 
   if (chainType === "bitcoin") {
     if (win.unisat && typeof win.unisat.requestAccounts === "function") {
+      const connectStartMs = Date.now();
       const accounts = await win.unisat.requestAccounts();
+      const elapsedMs = Date.now() - connectStartMs;
       let addr = Array.isArray(accounts) && accounts[0] ? String(accounts[0]) : "";
       if (!addr) {
         throw new Error("UniSat Wallet did not return a Bitcoin address.");
@@ -848,6 +962,15 @@ export async function connectInPageBrowserWallet(
           addr = switched.newAddress;
         }
       }
+      if (
+        (wasDisconnected || elapsedMs < 280) &&
+        typeof win.unisat.signMessage === "function"
+      ) {
+        await win.unisat.signMessage(
+          `Authorize KratonOS Bitcoin Testnet Wallet Connection\nAccount: ${addr}`
+        );
+      }
+      clearDisconnectFlag();
       return { address: addr, providerName: "UniSat Wallet (Bitcoin)" };
     }
     const xverse =
@@ -861,6 +984,7 @@ export async function connectInPageBrowserWallet(
       if (!firstAddr) {
         throw new Error("Xverse Wallet did not return a Bitcoin address.");
       }
+      clearDisconnectFlag();
       return { address: String(firstAddr), providerName: "Xverse Wallet (Bitcoin)" };
     }
     throw new Error(
@@ -872,24 +996,98 @@ export async function connectInPageBrowserWallet(
     // 1. Check @mysten/wallet-standard registry first (Slush, Sui Wallet, Nightly, Surf, Ethos, Martian)
     const stdSuiWallet = getRegisteredSuiStandardWallet();
     if (stdSuiWallet) {
+      if (
+        wasDisconnected &&
+        typeof stdSuiWallet.features?.["standard:disconnect"]?.disconnect === "function"
+      ) {
+        await stdSuiWallet.features["standard:disconnect"].disconnect().catch(() => {});
+      }
       const connectFeature = stdSuiWallet.features?.["standard:connect"];
       if (connectFeature && typeof connectFeature.connect === "function") {
+        const connectStartMs = Date.now();
         const res = await connectFeature.connect();
-        const account =
-          (Array.isArray(res?.accounts) && res.accounts[0]) ||
-          (Array.isArray(stdSuiWallet.accounts) && stdSuiWallet.accounts[0]);
-        const addr = account?.address ? String(account.address) : "";
-        if (!addr) {
+        const elapsedMs = Date.now() - connectStartMs;
+
+        // Collect all candidate accounts exposed by Slush / Sui Wallet and probe Sui Testnet RPC for non-zero balance
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawAccounts: any[] = [];
+        if (Array.isArray(res?.accounts)) rawAccounts.push(...res.accounts);
+        if (Array.isArray(stdSuiWallet.accounts)) {
+          for (const a of stdSuiWallet.accounts) {
+            if (
+              a?.address &&
+              !rawAccounts.some(
+                (existing) =>
+                  normalizeSuiAddress(existing?.address) === normalizeSuiAddress(a.address)
+              )
+            ) {
+              rawAccounts.push(a);
+            }
+          }
+        }
+
+        if (rawAccounts.length === 0) {
           throw new Error(
             `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return an authorized Sui account.`
           );
         }
-        activeSuiStandardWalletRef = { wallet: stdSuiWallet, account };
+
+        let selectedAccount = rawAccounts[0];
+        if (rawAccounts.length > 1) {
+          const balances = await Promise.all(
+            rawAccounts.map(async (acc) => {
+              const norm = normalizeSuiAddress(String(acc?.address ?? ""));
+              if (!norm) return 0;
+              const snap = await querySuiTestnetMultiRpc(norm);
+              return snap.sui;
+            })
+          );
+          let bestIdx = 0;
+          for (let i = 1; i < balances.length; i++) {
+            if (balances[i] > balances[bestIdx]) {
+              bestIdx = i;
+            }
+          }
+          selectedAccount = rawAccounts[bestIdx];
+        }
+
+        const normalizedAddr = normalizeSuiAddress(String(selectedAccount?.address ?? ""));
+        if (!normalizedAddr) {
+          throw new Error(
+            `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return a valid Sui address.`
+          );
+        }
+
+        // If Slush resolved standard:connect silently from browser cache (< 350ms) or after Disconnect, open Slush popup for user approval
+        if (wasDisconnected || elapsedMs < 350) {
+          const signPersonalFeat = stdSuiWallet.features?.["sui:signPersonalMessage"];
+          const signMsgFeat = stdSuiWallet.features?.["sui:signMessage"];
+          const authBytes = new TextEncoder().encode(
+            `Authorize KratonOS Sui Testnet Wallet Connection\nAccount: ${normalizedAddr}`
+          );
+          if (
+            signPersonalFeat &&
+            typeof signPersonalFeat.signPersonalMessage === "function"
+          ) {
+            await signPersonalFeat.signPersonalMessage({
+              message: authBytes,
+              account: selectedAccount,
+            });
+          } else if (signMsgFeat && typeof signMsgFeat.signMessage === "function") {
+            await signMsgFeat.signMessage({
+              message: authBytes,
+              account: selectedAccount,
+            });
+          }
+        }
+
+        activeSuiStandardWalletRef = { wallet: stdSuiWallet, account: selectedAccount };
+        clearDisconnectFlag();
         const rawName = String(stdSuiWallet.name || "Slush Wallet").trim();
         const providerName = rawName.toLowerCase().includes("sui")
           ? rawName
           : `${rawName} (Sui)`;
-        return { address: addr, providerName };
+        return { address: normalizedAddr, providerName };
       }
     }
 
@@ -918,10 +1116,12 @@ export async function connectInPageBrowserWallet(
           ? accounts[0]
           : accounts[0]?.address
         : "";
-    if (!first) {
+    const normalizedFirst = normalizeSuiAddress(String(first ?? ""));
+    if (!normalizedFirst) {
       throw new Error("Slush / Sui Wallet did not return an account address.");
     }
-    return { address: String(first), providerName: "Slush / Sui Wallet" };
+    clearDisconnectFlag();
+    return { address: normalizedFirst, providerName: "Slush / Sui Wallet" };
   }
 
   if (chainType === "ton") {
@@ -972,8 +1172,10 @@ export async function connectInPageBrowserWallet(
  */
 async function querySuiRpcBalances(
   rpcUrl: string,
-  address: string
+  rawAddress: string
 ): Promise<{ sui: number; usdc: number; usdt: number; ok: boolean }> {
+  const address = normalizeSuiAddress(rawAddress);
+  if (!address) return { sui: 0, usdc: 0, usdt: 0, ok: false };
   try {
     const [balRes, allBalRes] = await Promise.all([
       fetch(rpcUrl, {
@@ -1047,6 +1249,22 @@ async function querySuiRpcBalances(
   } catch {
     return { sui: 0, usdc: 0, usdt: 0, ok: false };
   }
+}
+
+async function querySuiTestnetMultiRpc(
+  rawAddress: string
+): Promise<{ sui: number; usdc: number; usdt: number; ok: boolean }> {
+  const [r1, r2, r3] = await Promise.all([
+    querySuiRpcBalances("https://fullnode.testnet.sui.io:443", rawAddress),
+    querySuiRpcBalances("https://sui-testnet-rpc.publicnode.com", rawAddress),
+    querySuiRpcBalances("https://rpc-testnet.suiscan.xyz:443", rawAddress),
+  ]);
+  return {
+    sui: Math.max(r1.sui, r2.sui, r3.sui),
+    usdc: Math.max(r1.usdc, r2.usdc, r3.usdc),
+    usdt: Math.max(r1.usdt, r2.usdt, r3.usdt),
+    ok: r1.ok || r2.ok || r3.ok,
+  };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1152,11 +1370,8 @@ export async function fetchLiveConnectedWalletBalances(params: {
     const stdAccount = activeSuiStandardWalletRef?.account ?? stdWallet?.accounts?.[0];
     inPageSuiActiveChain = detectSuiExplicitMainnetState(stdWallet, stdAccount);
 
-    // Query STRICTLY Sui Testnet RPC (https://fullnode.testnet.sui.io:443) — never Mainnet
-    const testnetSui = await querySuiRpcBalances(
-      "https://fullnode.testnet.sui.io:443",
-      address
-    );
+    // Query STRICTLY Sui Testnet RPCs (https://fullnode.testnet.sui.io:443 + publicnode + suiscan) — never Mainnet
+    const testnetSui = await querySuiTestnetMultiRpc(address);
     if (testnetSui.ok) {
       inPageNative = testnetSui.sui;
       inPageUsdc = testnetSui.usdc;

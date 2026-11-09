@@ -69,6 +69,8 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   onProofCommitted,
   feedItems,
   judgeMode,
+  killSwitchActive,
+  onNotify,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overview: any;
@@ -86,6 +88,12 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   onProofCommitted?: (receipt: any) => void;
   feedItems: TelemetryFeedItem[];
   judgeMode: boolean;
+  killSwitchActive?: boolean;
+  onNotify?: (
+    msg: string,
+    category?: TelemetryFeedItem["category"],
+    tone?: TelemetryFeedItem["tone"]
+  ) => void;
 }) {
   const stageLabels = [
     { num: 1, title: "EIP-1186 Proof", desc: "Ethereum Mainnet Trie" },
@@ -109,6 +117,13 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
   const [onChainReceipt, setOnChainReceipt] = React.useState<any | null>(null);
 
   const handleCommitProofOnChain = async () => {
+    if (killSwitchActive) {
+      const msg =
+        "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.";
+      setProofError(msg);
+      onNotify?.(msg, "shield", "red");
+      return;
+    }
     setCommittingProof(true);
     setProofError(null);
     const targetHMaster =
@@ -229,12 +244,14 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         ctaLabel="Open Cross-Chain Swap dApp"
         onCtaClick={onNavigateSwap}
         secondaryCtaLabel={
-          loopState.running
-            ? "EXECUTING 5-STAGE LOOP..."
-            : "EXECUTE 5-STAGE AUTONOMOUS LOOP"
+          killSwitchActive
+            ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+            : loopState.running
+              ? "EXECUTING 5-STAGE LOOP..."
+              : "EXECUTE 5-STAGE AUTONOMOUS LOOP"
         }
         onSecondaryCtaClick={onRunLoop}
-        secondaryDisabled={loopState.running}
+        secondaryDisabled={loopState.running || Boolean(killSwitchActive)}
         walkthroughCtaLabel="2-Min Judge Walkthrough (No Wallet) →"
         onWalkthroughCtaClick={onOpenDocsQuickstart}
       />
@@ -525,8 +542,12 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
               <button
                 type="button"
                 onClick={handleCommitProofOnChain}
-                disabled={committingProof}
-                className="inline-flex max-w-full items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/15 px-3.5 py-2 font-mono text-xs font-extrabold text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/25 cursor-pointer"
+                disabled={committingProof || Boolean(killSwitchActive)}
+                className={`inline-flex max-w-full items-center gap-2 rounded-lg border px-3.5 py-2 font-mono text-xs font-extrabold transition-all ${
+                  killSwitchActive
+                    ? "border-rose-500/50 bg-rose-500/15 text-rose-400 cursor-not-allowed opacity-90"
+                    : "border-emerald-500/50 bg-emerald-500/15 text-[var(--accent-emerald)] hover:bg-emerald-500/25 cursor-pointer"
+                }`}
               >
                 {committingProof ? (
                   <RefreshCw className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -534,13 +555,15 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
                 )}
                 <span className="break-words text-left">
-                  {committingProof
-                    ? walletContext?.isPersonalWallet
-                      ? "AWAITING WALLET POPUP APPROVAL..."
-                      : "SIGNING ON-CHAIN PROOF..."
-                    : walletContext?.isPersonalWallet
-                      ? `Sign & Anchor PoC-4 Proof (${walletContext.shortAddress})`
-                      : "Verify & Anchor PoC-4 Proof On-Chain"}
+                  {killSwitchActive
+                    ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                    : committingProof
+                      ? walletContext?.isPersonalWallet
+                        ? "AWAITING WALLET POPUP APPROVAL..."
+                        : "SIGNING ON-CHAIN PROOF..."
+                      : walletContext?.isPersonalWallet
+                        ? `Sign & Anchor PoC-4 Proof (${walletContext.shortAddress})`
+                        : "Verify & Anchor PoC-4 Proof On-Chain"}
                 </span>
               </button>
             </div>
@@ -837,12 +860,14 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   overview,
   walletContext,
   judgeMode,
+  killSwitchActive,
   onNotify,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overview: any;
   walletContext?: ConnectedWalletState;
   judgeMode: boolean;
+  killSwitchActive?: boolean;
   onNotify?: (
     msg: string,
     category?: TelemetryFeedItem["category"],
@@ -922,11 +947,15 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       }
       return fallbackUsd;
     };
-    const nearUsd = Number(overview?.oracle?.nearUsdMedian ?? lookupDynamicUsd("NEAR", 3.74));
-    const ethUsd = Number(overview?.oracle?.ethUsdMedian ?? lookupDynamicUsd("ETH", 2246.48));
-    const solUsd = Number(overview?.oracle?.solUsdMedian ?? lookupDynamicUsd("SOL", 90.23));
-    const btcUsd = Number(overview?.oracle?.btcUsdMedian ?? lookupDynamicUsd("BTC", 76124.84));
-    const xrpUsd = Number(overview?.oracle?.xrpUsdMedian ?? lookupDynamicUsd("XRP", 1.3515));
+    const nearUsd = Number(overview?.oracle?.nearUsdMedian ?? lookupDynamicUsd("NEAR", 3.55));
+    const ethUsd = Number(overview?.oracle?.ethUsdMedian ?? lookupDynamicUsd("ETH", 2127.0));
+    const solUsd = Number(overview?.oracle?.solUsdMedian ?? lookupDynamicUsd("SOL", 86.5));
+    const btcUsd = Number(overview?.oracle?.btcUsdMedian ?? lookupDynamicUsd("BTC", 74400.0));
+    const xrpUsd = Number(overview?.oracle?.xrpUsdMedian ?? lookupDynamicUsd("XRP", 1.09));
+    const suiUsd = Number(overview?.oracle?.suiUsdMedian ?? lookupDynamicUsd("SUI", 0.815));
+    const tonUsd = Number(overview?.oracle?.tonUsdMedian ?? lookupDynamicUsd("TON", 1.45));
+    const arbUsd = Number(overview?.oracle?.arbUsdMedian ?? lookupDynamicUsd("ARB", 0.32));
+    const zecUsd = Number(overview?.oracle?.zecUsdMedian ?? lookupDynamicUsd("ZEC", 38.5));
 
     return [
       { id: "USDC-NEAR", symbol: "USDC", label: "USDC (NEAR)", priceUsd: 1.0, decimals: 6 },
@@ -936,15 +965,16 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       { id: "ETH-ETHEREUM", symbol: "ETH", label: "ETH (Ethereum)", priceUsd: ethUsd, decimals: 18 },
       { id: "USDC-BASE", symbol: "USDC", label: "USDC (Base)", priceUsd: 1.0, decimals: 6 },
       { id: "USDT-ARBITRUM", symbol: "USDT", label: "USDT (Arbitrum)", priceUsd: 1.0, decimals: 6 },
+      { id: "ARB-ARBITRUM", symbol: "ARB", label: "ARB (Arbitrum)", priceUsd: arbUsd, decimals: 18 },
       { id: "SOL-SOLANA", symbol: "SOL", label: "SOL (Solana)", priceUsd: solUsd, decimals: 9 },
       { id: "BTC-BITCOIN", symbol: "WBTC", label: "BTC (Bitcoin)", priceUsd: btcUsd, decimals: 8 },
       { id: "XRP-RIPPLE", symbol: "XRP", label: "XRP (Ripple)", priceUsd: xrpUsd, decimals: 6 },
-      { id: "SUI-SUI", symbol: "SUI", label: "SUI (Sui)", priceUsd: lookupDynamicUsd("SUI", 2.74), decimals: 9 },
+      { id: "SUI-SUI", symbol: "SUI", label: "SUI (Sui)", priceUsd: suiUsd, decimals: 9 },
       { id: "DOGE-DOGECOIN", symbol: "DOGE", label: "DOGE (Dogecoin)", priceUsd: lookupDynamicUsd("DOGE", 0.1642), decimals: 8 },
       { id: "AVAX-AVALANCHE", symbol: "AVAX", label: "AVAX (Avalanche)", priceUsd: lookupDynamicUsd("AVAX", 24.85), decimals: 18 },
       { id: "BNB-BNB", symbol: "BNB", label: "BNB (BNB Chain)", priceUsd: lookupDynamicUsd("BNB", 612.4), decimals: 18 },
-      { id: "ZEC-ZCASH", symbol: "ZEC", label: "ZEC (Zcash)", priceUsd: lookupDynamicUsd("ZEC", 38.9), decimals: 8 },
-      { id: "TON-TON", symbol: "TON", label: "TON (TON)", priceUsd: lookupDynamicUsd("TON", 3.82), decimals: 9 },
+      { id: "ZEC-ZCASH", symbol: "ZEC", label: "ZEC (Zcash)", priceUsd: zecUsd, decimals: 8 },
+      { id: "TON-TON", symbol: "TON", label: "TON (TON)", priceUsd: tonUsd, decimals: 9 },
     ];
   }, [overview]);
 
@@ -1007,6 +1037,14 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       const toSym = overrideDestSym ?? destinationSymbol;
       const fromId = overrideOriginId ?? originTokenId;
       const toId = overrideDestId ?? destinationTokenId;
+
+      if (userTriggered && killSwitchActive) {
+        const msg =
+          "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.";
+        setSwapError(msg);
+        onNotify?.(msg, "swap", "red");
+        return;
+      }
 
       if (
         fromId === toId ||
@@ -1089,6 +1127,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       limitPrice,
       limitQtyWnear,
       walletContext,
+      killSwitchActive,
       onNotify,
     ]
   );
@@ -1100,7 +1139,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     const nextDestSym = originToken.symbol;
     setOriginTokenId(nextOriginId);
     setDestinationTokenId(nextDestId);
-    if (!walletContext?.isPersonalWallet) {
+    if (!walletContext?.isPersonalWallet && !killSwitchActive) {
       void fetchQuote(true, nextOriginSym, nextDestSym, nextOriginId, nextDestId);
     }
   };
@@ -1271,6 +1310,13 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     parsedLimitQtyWnear > availableWnearBalance;
 
   const handleExecutePersonalSwap = async () => {
+    if (killSwitchActive) {
+      const msg =
+        "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.";
+      setSwapSignError(msg);
+      onNotify?.(msg, "swap", "red");
+      return;
+    }
     if (!walletContext?.isPersonalWallet) return;
     if (!hasOriginChainWallet || !originChainWallet) {
       await walletContext.connectChainWallet(originChainFamily);
@@ -1390,6 +1436,13 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
   };
 
   const handleSubmitPersonalLimitOrder = async () => {
+    if (killSwitchActive) {
+      const msg =
+        "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.";
+      setLimitSignError(msg);
+      onNotify?.(msg, "swap", "red");
+      return;
+    }
     if (!walletContext?.isPersonalWallet || !walletContext.address) return;
     if (limitWalletMainnetMismatch) {
       setLimitSignError(
@@ -1793,12 +1846,14 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   /* CASE 1: Mode A (Disconnected / Judge Sandbox Mode) */
                   <HulySolarButton
                     label={
-                      loading
-                        ? "BENCHMARKING 3 VENUES LIVE..."
-                        : "Get Live Cross-Chain Quote (Sandbox Mode)"
+                      killSwitchActive
+                        ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                        : loading
+                          ? "BENCHMARKING 3 VENUES LIVE..."
+                          : "Get Live Cross-Chain Quote (Sandbox Mode)"
                     }
                     onClick={() => void fetchQuote(true)}
-                    disabled={loading}
+                    disabled={loading || Boolean(killSwitchActive)}
                     className="w-full"
                   />
                 ) : !hasOriginChainWallet ? (
@@ -1925,6 +1980,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     <button
                       type="button"
                       disabled={
+                        Boolean(killSwitchActive) ||
                         parsedAmountIn <= 0 ||
                         isIdenticalPair ||
                         signingSwap ||
@@ -1932,9 +1988,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                         originBalancesLoading
                       }
                       onClick={() => void handleExecutePersonalSwap()}
-                      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-emerald-400 bg-emerald-500/25 px-4 py-3 text-center font-mono text-xs font-extrabold text-[var(--accent-emerald)] shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-400/35 transition-all hover:bg-emerald-500/35 cursor-pointer"
+                      className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-center font-mono text-xs font-extrabold transition-all ${
+                        killSwitchActive
+                          ? "border-rose-500/60 bg-rose-500/15 text-rose-400 cursor-not-allowed opacity-90"
+                          : "border-emerald-400 bg-emerald-500/25 text-[var(--accent-emerald)] shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-400/35 hover:bg-emerald-500/35 cursor-pointer"
+                      }`}
                     >
-                      {signingSwap || loading ? (
+                      {killSwitchActive ? (
+                        <span>
+                          [HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]
+                        </span>
+                      ) : signingSwap || loading ? (
                         <>
                           <RefreshCw className="h-4 w-4 shrink-0 animate-spin" />
                           <span>Awaiting {originChainWallet?.providerName} Signature Popup...</span>
@@ -2332,6 +2396,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     <button
                       type="button"
                       disabled={
+                        Boolean(killSwitchActive) ||
                         limitWalletMainnetMismatch ||
                         insufficientLimitBalance ||
                         parsedLimitQtyWnear <= 0 ||
@@ -2340,14 +2405,20 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       }
                       onClick={() => void handleSubmitPersonalLimitOrder()}
                       className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-center font-mono text-xs font-extrabold transition-all ${
-                        limitWalletMainnetMismatch
-                          ? "border-amber-500/50 bg-amber-500/12 text-amber-300 opacity-90 cursor-not-allowed"
-                          : insufficientLimitBalance || parsedLimitQtyWnear <= 0
-                            ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
-                            : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                        killSwitchActive
+                          ? "border-rose-500/60 bg-rose-500/15 text-rose-400 cursor-not-allowed opacity-90"
+                          : limitWalletMainnetMismatch
+                            ? "border-amber-500/50 bg-amber-500/12 text-amber-300 opacity-90 cursor-not-allowed"
+                            : insufficientLimitBalance || parsedLimitQtyWnear <= 0
+                              ? "border-rose-500/45 bg-rose-500/10 text-rose-400 opacity-85 cursor-not-allowed"
+                              : "border-emerald-500/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
                       }`}
                     >
-                      {limitWalletMainnetMismatch ? (
+                      {killSwitchActive ? (
+                        <span>
+                          [HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]
+                        </span>
+                      ) : limitWalletMainnetMismatch ? (
                         <span>[TESTNET MODE REQUIRED] Switch Wallet to Testnet Mode</span>
                       ) : insufficientLimitBalance ? (
                         <span>[LOCKED] Insufficient Testnet wNEAR Balance in Connected Wallet</span>
@@ -2420,16 +2491,24 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                 ) : (
                   <div className="flex flex-col gap-2.5 pt-1">
                     <HoldConfirmButton
-                      label="Hold to Submit Confidential Order"
+                      label={
+                        killSwitchActive
+                          ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                          : "Hold to Submit Confidential Order"
+                      }
                       doneLabel="CONFIDENTIAL ORDER COMMITTED"
                       onConfirm={() => void fetchQuote(true)}
-                      disabled={loading}
+                      disabled={loading || Boolean(killSwitchActive)}
                       className="w-full"
                     />
                     <UnseenEnterButton
-                      label="Recalculate Ceiling Quote & VRF Slices"
+                      label={
+                        killSwitchActive
+                          ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                          : "Recalculate Ceiling Quote & VRF Slices"
+                      }
                       onClick={() => void fetchQuote(true)}
-                      disabled={loading}
+                      disabled={loading || Boolean(killSwitchActive)}
                       className="w-full"
                     />
                   </div>
@@ -2504,12 +2583,14 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
   overview,
   walletContext,
   judgeMode,
+  killSwitchActive,
   onNotify,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overview: any;
   walletContext?: ConnectedWalletState;
   judgeMode: boolean;
+  killSwitchActive?: boolean;
   onNotify?: (
     msg: string,
     category?: TelemetryFeedItem["category"],
@@ -2570,6 +2651,12 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
       customBrief?: string,
       userTriggered = false
     ) => {
+      if (userTriggered && killSwitchActive) {
+        const msg =
+          "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.";
+        onNotify?.(msg, "shield", "red");
+        return;
+      }
       setLoading(true);
       setLitSignalStep(0);
       if (shieldTimerRef.current !== null) {
@@ -2624,7 +2711,7 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
         setLoading(false);
       }
     },
-    [receiverId, amountUsd, brief, auditedCustodyAccount, onNotify]
+    [receiverId, amountUsd, brief, auditedCustodyAccount, killSwitchActive, onNotify]
   );
 
   const lastAuditedAccountRef = React.useRef<string | undefined | "__uninit__">("__uninit__");
@@ -2758,7 +2845,11 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
               />
             </div>
             <RunCompilerButton
-              label="RUN_SHIELD_SCAN"
+              label={
+                killSwitchActive
+                  ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                  : "RUN_SHIELD_SCAN"
+              }
               running={loading}
               onClick={() => runScan(undefined, undefined, undefined, true)}
             />
@@ -2909,9 +3000,16 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
 
                     <button
                       type="button"
-                      disabled={signingVerdict}
+                      disabled={signingVerdict || Boolean(killSwitchActive)}
                       onClick={() => {
                         void (async () => {
+                          if (killSwitchActive) {
+                            const msg =
+                              "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.";
+                            setVerdictSignError(msg);
+                            onNotify?.(msg, "shield", "red");
+                            return;
+                          }
                           if (!walletContext?.address) return;
                           if (walletContext.isMainnetMismatch) {
                             setVerdictSignError(
@@ -3003,12 +3101,18 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                           }
                         })();
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/60 bg-emerald-500/20 px-4 py-2.5 font-mono text-xs font-extrabold text-[var(--accent-emerald)] transition-all hover:bg-emerald-500/30 cursor-pointer"
+                      className={`flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 font-mono text-xs font-extrabold transition-all ${
+                        killSwitchActive
+                          ? "border-rose-500/60 bg-rose-500/15 text-rose-400 cursor-not-allowed opacity-90"
+                          : "border-emerald-400/60 bg-emerald-500/20 text-[var(--accent-emerald)] hover:bg-emerald-500/30 cursor-pointer"
+                      }`}
                     >
                       <span>
-                        {signingVerdict
-                          ? `AWAITING WALLET SIGNATURE (${walletContext.providerName})...`
-                          : `Sign & Anchor Policy Verdict On-Chain (${walletContext.shortAddress})`}
+                        {killSwitchActive
+                          ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                          : signingVerdict
+                            ? `AWAITING WALLET SIGNATURE (${walletContext.providerName})...`
+                            : `Sign & Anchor Policy Verdict On-Chain (${walletContext.shortAddress})`}
                       </span>
                     </button>
 
@@ -3393,16 +3497,16 @@ export function formatTokenPriceUsd(price: number): string {
 }
 
 const CLIENT_KNOWN_TOKEN_PRICES: Record<string, number> = {
-  BTC: 76124.84,
-  WBTC: 76124.84,
-  ETH: 2246.48,
-  WETH: 2246.48,
-  SOL: 90.23,
-  NEAR: 3.74,
-  WNEAR: 3.74,
-  XRP: 1.3515,
+  BTC: 74400.0,
+  WBTC: 74400.0,
+  ETH: 2127.0,
+  WETH: 2127.0,
+  SOL: 86.5,
+  NEAR: 3.55,
+  WNEAR: 3.55,
+  XRP: 1.09,
   BNB: 612.4,
-  SUI: 2.74,
+  SUI: 0.815,
   DOGE: 0.1642,
   ADA: 0.728,
   AVAX: 24.85,
@@ -3410,9 +3514,9 @@ const CLIENT_KNOWN_TOKEN_PRICES: Record<string, number> = {
   LINK: 16.45,
   UNI: 8.92,
   LTC: 91.5,
-  ZEC: 38.9,
-  TON: 3.82,
-  ARB: 0.482,
+  ZEC: 38.5,
+  TON: 1.45,
+  ARB: 0.32,
   OP: 1.14,
   APT: 6.45,
   PEPE: 0.00000845,
@@ -3456,6 +3560,10 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
   const solUsd = Number(liveOracle?.solUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.SOL);
   const btcUsd = Number(liveOracle?.btcUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.BTC);
   const xrpUsd = Number(liveOracle?.xrpUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.XRP);
+  const suiUsd = Number(liveOracle?.suiUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.SUI);
+  const tonUsd = Number(liveOracle?.tonUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.TON);
+  const arbUsd = Number(liveOracle?.arbUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.ARB);
+  const zecUsd = Number(liveOracle?.zecUsdMedian ?? CLIENT_KNOWN_TOKEN_PRICES.ZEC);
 
   const dynamicPriceTable: Record<string, number> = {
     ...CLIENT_KNOWN_TOKEN_PRICES,
@@ -3467,6 +3575,10 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
     BTC: btcUsd,
     WBTC: btcUsd,
     XRP: xrpUsd,
+    SUI: suiUsd,
+    TON: tonUsd,
+    ARB: arbUsd,
+    ZEC: zecUsd,
   };
   const dynamicSpreadTable: Record<string, number> = {
     ETH: Number(liveOracle?.ethMaxDeviationPercent ?? 0.12),
@@ -3640,12 +3752,18 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
 export const DualTeeOracleView = React.memo(function DualTeeOracleView({
   overview,
   judgeMode,
+  killSwitchActive,
   onNotify,
 }: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   overview?: any;
   judgeMode: boolean;
-  onNotify?: (msg: string, category?: TelemetryFeedItem["category"]) => void;
+  killSwitchActive?: boolean;
+  onNotify?: (
+    msg: string,
+    category?: TelemetryFeedItem["category"],
+    tone?: TelemetryFeedItem["tone"]
+  ) => void;
 }) {
   const [prompt, setPrompt] = React.useState(
     "Audit Q4 treasury statement, verify Chainlink ETH/USD EIP-1186 storage proof, and authorize 1-bp USDC->USDT rebalance."
@@ -3673,6 +3791,14 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
 
   const runVerification = React.useCallback(
     async (userTriggered = false, overridePrompt?: string) => {
+      if (userTriggered && killSwitchActive) {
+        onNotify?.(
+          "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.",
+          "tee",
+          "red"
+        );
+        return;
+      }
       const activePrompt = overridePrompt ?? prompt;
       setLoading(true);
       setVerifiedStepsCount(1);
@@ -3734,7 +3860,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
         setLoading(false);
       }
     },
-    [prompt, overview?.oracle, overview?.nearAiTee, onNotify]
+    [prompt, overview?.oracle, overview?.nearAiTee, killSwitchActive, onNotify]
   );
 
   const didInitTeeRef = React.useRef(false);
@@ -3872,7 +3998,11 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                 className="w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-3.5 font-mono text-xs text-[var(--text-primary)]"
               />
               <RunCompilerButton
-                label="RUN_TEE_VERIFIER"
+                label={
+                  killSwitchActive
+                    ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
+                    : "RUN_TEE_VERIFIER"
+                }
                 running={loading}
                 onClick={() => runVerification(true)}
               />

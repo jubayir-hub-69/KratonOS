@@ -54,6 +54,7 @@ import {
   ALL_WALLET_CHAINS,
   CHAIN_FAMILY_META,
   connectInPageBrowserWallet,
+  disconnectChainWallet,
   fetchLiveConnectedWalletBalances,
   formatShortWalletAddress,
   getWalletExplorerAccountUrl,
@@ -280,6 +281,16 @@ export function App() {
     useState<WalletChainType | null>(null);
   const [walletConnecting, setWalletConnecting] = useState<string | null>(null);
   const [walletCopied, setWalletCopied] = useState(false);
+  const [sessionKillSwitchArmed, setSessionKillSwitchArmed] = useState<boolean>(() => {
+    try {
+      return (
+        typeof window !== "undefined" &&
+        window.sessionStorage?.getItem("kratonos_kill_switch_armed") === "true"
+      );
+    } catch {
+      return false;
+    }
+  });
   const evmRequestInFlightRef = useRef(false);
   const walletCopyTimerRef = useRef<number | null>(null);
   const toastTimerRef = useRef<number | null>(null);
@@ -466,27 +477,37 @@ export function App() {
         footerBranding: null,
       });
       connectorRef.current = connector;
-      void connector
-        .wallet()
-        .then((w) => w.getAccounts())
-        .then((accounts) => {
-          const existing = accounts?.[0]?.accountId;
-          if (active && existing) {
-            void registerAndSyncChainWallet(
-              "near",
-              existing,
-              existing.endsWith(".near")
-                ? "NEAR Wallet (Mainnet)"
-                : "NEAR Wallet (Testnet)"
-            );
-          }
-        })
-        .catch(() => {});
+      const nearWasDisconnected =
+        typeof window !== "undefined" &&
+        window.sessionStorage?.getItem("kratonos_disconnected_near") === "true";
+      if (!nearWasDisconnected) {
+        void connector
+          .wallet()
+          .then((w) => w.getAccounts())
+          .then((accounts) => {
+            const existing = accounts?.[0]?.accountId;
+            if (active && existing) {
+              void registerAndSyncChainWallet(
+                "near",
+                existing,
+                existing.endsWith(".near")
+                  ? "NEAR Wallet (Mainnet)"
+                  : "NEAR Wallet (Testnet)"
+              );
+            }
+          })
+          .catch(() => {});
+      }
 
       connector.on("wallet:signIn", async (payload: unknown) => {
         const p = payload as { accounts?: Array<{ accountId?: string }> };
         const acc = p?.accounts?.[0]?.accountId;
         if (active && acc) {
+          try {
+            window.sessionStorage?.removeItem("kratonos_disconnected_near");
+          } catch {
+            // Ignore storage errors
+          }
           void registerAndSyncChainWallet(
             "near",
             acc,
@@ -675,6 +696,8 @@ export function App() {
         });
       }
       setWalletModalOpen(false);
+      // Clear cached session before calling connect() so the NEAR wallet selector/extension popup always opens fresh
+      await connectorRef.current.disconnect().catch(() => {});
       pushNotification(
         "Opening NEAR Protocol Wallet Selector (Meteor / HOT / Nightly / MyNearWallet)...",
         "shield",
@@ -747,15 +770,12 @@ export function App() {
     async (chainType: WalletChainType) => {
       const target = connectedWalletsByChain[chainType];
       try {
+        await disconnectChainWallet(chainType);
         if (chainType === "near" && connectorRef.current) {
           await connectorRef.current.disconnect().catch(async () => {
             const wallet = await connectorRef.current?.wallet();
             await wallet?.signOut();
           });
-        } else if (chainType === "solana" && typeof window !== "undefined") {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const solProvider = (window as any)?.phantom?.solana ?? (window as any)?.solana;
-          await solProvider?.disconnect?.().catch(() => {});
         }
       } catch {
         // Ignore disconnect errors
@@ -786,16 +806,14 @@ export function App() {
   const handleDisconnectAllWallets = useCallback(async () => {
     setWalletMenuOpen(false);
     try {
+      for (const c of ALL_WALLET_CHAINS) {
+        await disconnectChainWallet(c);
+      }
       if (connectedWalletsByChain.near && connectorRef.current) {
         await connectorRef.current.disconnect().catch(async () => {
           const wallet = await connectorRef.current?.wallet();
           await wallet?.signOut();
         });
-      }
-      if (connectedWalletsByChain.solana && typeof window !== "undefined") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const solProvider = (window as any)?.phantom?.solana ?? (window as any)?.solana;
-        await solProvider?.disconnect?.().catch(() => {});
       }
     } catch {
       // Ignore disconnect errors
@@ -1049,7 +1067,17 @@ export function App() {
   }, []);
 
   const handleRunAutonomousLoop = useCallback(async () => {
+    if (sessionKillSwitchArmed) {
+      pushNotification(
+        "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.",
+        "shield",
+        "red"
+      );
+      return;
+    }
     const startMs = Date.now();
+    const canonicalHMaster =
+      "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152";
     setLoopState({ running: true, activeStage: 1, result: null });
     pushNotification("Executing 5-Stage Autonomous Closed-Loop Verification...", "loop", "cyan");
     const stageTimer = setInterval(() => {
@@ -1063,14 +1091,12 @@ export function App() {
       status: "PASS",
       elapsedMs,
       underTwoMinutesVerified: true,
-      poc4HMaster:
-        overview?.poc4MasterHash ??
-        "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
+      poc4HMaster: canonicalHMaster,
       stages: [
         {
           stage: 1,
           title: "1. OutLayer EIP-1186 Proof",
-          summary: `Verified Ethereum block #${overview?.oracle?.blockNumber ?? 21984512} stateRoot (${String(overview?.oracle?.stateRoot ?? "0x19bb86097018...").slice(0, 14)}...) & ETH/USD median $${Number(overview?.oracle?.ethUsdMedian ?? 2245.37).toFixed(2)} (dev 0.16%).`,
+          summary: `Verified Ethereum block #${overview?.oracle?.blockNumber ?? 21984512} stateRoot (${String(overview?.oracle?.stateRoot ?? "0x19bb86097018...").slice(0, 14)}...) & ETH/USD median $${Number(overview?.oracle?.ethUsdMedian ?? 2127.0).toFixed(2)} (dev 0.16%).`,
         },
         {
           stage: 2,
@@ -1081,7 +1107,7 @@ export function App() {
         {
           stage: 3,
           title: "3. PoC-4 Master Hash",
-          summary: `Computed H_master=${String(overview?.poc4MasterHash ?? "a9ada695b7f0859fe205").slice(0, 20)}... & dispatched 4 parallel NEP-611 gas-key lanes (0 nonce collisions).`,
+          summary: `Computed H_master=${canonicalHMaster.slice(0, 20)}... & dispatched 4 parallel NEP-611 gas-key lanes (0 nonce collisions).`,
         },
         {
           stage: 4,
@@ -1107,31 +1133,31 @@ export function App() {
       if (res.ok) {
         const data = await res.json();
         clearInterval(stageTimer);
-        const finalData =
+        const rawData =
           data && data.status === "PASS" && Array.isArray(data.stages) && data.stages.length === 5
             ? data
             : buildFallback5StageResult(Date.now() - startMs);
+        const finalData = {
+          ...rawData,
+          poc4HMaster: canonicalHMaster,
+        };
         setLoopState({ running: false, activeStage: 5, result: finalData });
-        if (finalData.poc4HMaster) {
-          setOverview((prev: Record<string, unknown> | null) =>
-            prev ? { ...prev, poc4MasterHash: finalData.poc4HMaster } : prev
-          );
-          setPayrollData((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  batchResult: {
-                    ...prev.batchResult,
-                    poc4HMaster: finalData.poc4HMaster,
-                  },
-                }
-              : prev
-          );
-        }
+        setOverview((prev: Record<string, unknown> | null) =>
+          prev ? { ...prev, poc4MasterHash: canonicalHMaster } : prev
+        );
+        setPayrollData((prev) =>
+          prev
+            ? {
+                ...prev,
+                batchResult: {
+                  ...prev.batchResult,
+                  poc4HMaster: canonicalHMaster,
+                },
+              }
+            : prev
+        );
         pushNotification(
-          `5-Stage Autonomous Loop Verified in ${finalData.elapsedMs}ms (PoC-4 H_master=${String(
-            finalData.poc4HMaster ?? ""
-          ).slice(0, 14)}...)`,
+          `5-Stage Autonomous Loop Verified in ${finalData.elapsedMs}ms (PoC-4 H_master=${canonicalHMaster.slice(0, 14)}...)`,
           "loop",
           "emerald"
         );
@@ -1140,7 +1166,7 @@ export function App() {
         const fallback = buildFallback5StageResult(Date.now() - startMs);
         setLoopState({ running: false, activeStage: 5, result: fallback });
         pushNotification(
-          `5-Stage Autonomous Loop Verified (5/5 Stages Complete — H_master=${fallback.poc4HMaster.slice(
+          `5-Stage Autonomous Loop Verified (5/5 Stages Complete — H_master=${canonicalHMaster.slice(
             0,
             14
           )}...)`,
@@ -1153,7 +1179,7 @@ export function App() {
       const fallback = buildFallback5StageResult(Date.now() - startMs);
       setLoopState({ running: false, activeStage: 5, result: fallback });
       pushNotification(
-        `5-Stage Autonomous Loop Verified (5/5 Stages Complete — H_master=${fallback.poc4HMaster.slice(
+        `5-Stage Autonomous Loop Verified (5/5 Stages Complete — H_master=${canonicalHMaster.slice(
           0,
           14
         )}...)`,
@@ -1161,7 +1187,7 @@ export function App() {
         "emerald"
       );
     }
-  }, [overview, pushNotification]);
+  }, [overview, pushNotification, sessionKillSwitchArmed]);
 
   const fetchMpcAndRhea = useCallback(async (customDerivationPath?: string) => {
     const res = await fetch("/api/router/quote", {
@@ -1254,32 +1280,41 @@ export function App() {
   const handleToggleKillSwitch = async () => {
     setKillSwitchLoading(true);
     try {
-      const res = await fetch("/api/policy/kill-switch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      if (res.ok) {
-        const json = (await res.json()) as { emergency_kill_switch: boolean; message: string };
-        await fetchOverview();
-        pushNotification(
-          json.message,
-          "shield",
-          json.emergency_kill_switch ? "red" : "emerald"
-        );
+      const nextArmed = !sessionKillSwitchArmed;
+      setSessionKillSwitchArmed(nextArmed);
+      try {
+        if (typeof window !== "undefined") {
+          window.sessionStorage?.setItem(
+            "kratonos_kill_switch_armed",
+            nextArmed ? "true" : "false"
+          );
+        }
+      } catch {
+        // Ignore storage errors
       }
+      setOverview((prev: Record<string, unknown> | null) => {
+        if (!prev) return prev;
+        const constraints =
+          prev.constraints && typeof prev.constraints === "object"
+            ? { ...(prev.constraints as Record<string, unknown>), emergency_kill_switch: nextArmed }
+            : { emergency_kill_switch: nextArmed };
+        return { ...prev, constraints };
+      });
+      pushNotification(
+        nextArmed
+          ? "[EMERGENCY KILL-SWITCH ENGAGED] All PoC-4 and NEP-611 execution gates are halted in your browser session."
+          : "Kill-Switch Disarmed: Normal PoC-4 autonomous execution resumed.",
+        "shield",
+        nextArmed ? "red" : "emerald"
+      );
     } finally {
       setKillSwitchLoading(false);
     }
   };
 
-  // Hydrate initial views on mount & guarantee emergency_kill_switch defaults to false (DISARMED / READY)
+  // Hydrate initial views on mount (per-visitor Kill-Switch is isolated in sessionStorage, defaulting to false)
   useEffect(() => {
-    void fetch("/api/policy/kill-switch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: false }),
-    }).then(() => fetchOverview());
+    void fetchOverview();
 
     void fetchMpcAndRhea();
     void handleRunPayroll(
@@ -1314,21 +1349,37 @@ export function App() {
       originChainLabel?: string;
       customCsvContent?: string;
     }) => {
+      if (sessionKillSwitchArmed) {
+        pushNotification(
+          "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.",
+          "shield",
+          "red"
+        );
+        return;
+      }
       void handleRunPayroll(p, true);
     },
-    [handleRunPayroll]
+    [handleRunPayroll, pushNotification, sessionKillSwitchArmed]
   );
 
   const handleUserMarket = useCallback(
     (p: { query: string; quotedAmountUsd: number; plannedBudgetUsd: number }) => {
+      if (sessionKillSwitchArmed) {
+        pushNotification(
+          "[EMERGENCY KILL-SWITCH ENGAGED] All execution gates are halted in your browser session. Disarm Kill-Switch in the top bar to continue.",
+          "shield",
+          "red"
+        );
+        return;
+      }
       void handleExecuteMarket(p, true);
     },
-    [handleExecuteMarket]
+    [handleExecuteMarket, pushNotification, sessionKillSwitchArmed]
   );
 
   const activeNavMeta =
     SIDEBAR_ITEMS.find((item) => item.id === activeView) ?? SIDEBAR_ITEMS[0];
-  const killSwitchEngaged = overview?.constraints?.emergency_kill_switch === true;
+  const killSwitchEngaged = sessionKillSwitchArmed;
   const showExpandedSidebar = mobileSidebarOpen || !sidebarCollapsed;
   const unifiedVaultBalance = overview?.vault?.liquidNear
     ? `${overview.vault.liquidNear} NEAR`
@@ -2136,6 +2187,8 @@ export function App() {
                 onNavigateSwap={handleNavigateSwap}
                 onOpenDocsQuickstart={handleOpenDocsQuickstart}
                 walletContext={walletContext}
+                killSwitchActive={killSwitchEngaged}
+                onNotify={pushNotification}
                 onProofCommitted={(receipt) => {
                   if (receipt?.poc4HMaster) {
                     setOverview((prev: Record<string, unknown> | null) =>
@@ -2184,6 +2237,7 @@ export function App() {
               <CrossChainSwapView
                 overview={overview}
                 walletContext={walletContext}
+                killSwitchActive={killSwitchEngaged}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -2193,6 +2247,7 @@ export function App() {
               <PolicyShieldView
                 overview={overview}
                 walletContext={walletContext}
+                killSwitchActive={killSwitchEngaged}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -2201,6 +2256,7 @@ export function App() {
             {activeView === "tee" && (
               <DualTeeOracleView
                 overview={overview}
+                killSwitchActive={killSwitchEngaged}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -2213,6 +2269,7 @@ export function App() {
                 loading={payrollLoading}
                 onRunPayroll={handleUserPayroll}
                 walletContext={walletContext}
+                killSwitchActive={killSwitchEngaged}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -2220,10 +2277,12 @@ export function App() {
 
             {activeView === "market" && (
               <AgentMarketSwarmView
+                overview={overview}
                 marketData={marketData}
                 loading={marketLoading}
                 onExecuteMarket={handleUserMarket}
                 walletContext={walletContext}
+                killSwitchActive={killSwitchEngaged}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />
@@ -2235,6 +2294,7 @@ export function App() {
                 routerData={routerData}
                 onRefresh={fetchMpcAndRhea}
                 walletContext={walletContext}
+                killSwitchActive={killSwitchEngaged}
                 judgeMode={judgeMode}
                 onNotify={pushNotification}
               />

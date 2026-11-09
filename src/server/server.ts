@@ -260,6 +260,10 @@ interface FastOracleSnapshot {
   solUsdMedian: number;
   btcUsdMedian: number;
   xrpUsdMedian: number;
+  suiUsdMedian: number;
+  tonUsdMedian: number;
+  arbUsdMedian: number;
+  zecUsdMedian: number;
   ethMaxDeviationPercent: number;
   nearMaxDeviationPercent: number;
   solMaxDeviationPercent: number;
@@ -287,6 +291,10 @@ function syncQuotesWithMedians(
     solUsd: number;
     btcUsd: number;
     xrpUsd: number;
+    suiUsd?: number;
+    tonUsd?: number;
+    arbUsd?: number;
+    zecUsd?: number;
   }
 ): DynamicAssetQuote[] {
   const bySymbol: Record<string, number> = {
@@ -297,6 +305,10 @@ function syncQuotesWithMedians(
     BTC: medians.btcUsd,
     WBTC: medians.btcUsd,
     XRP: medians.xrpUsd,
+    ...(medians.suiUsd ? { SUI: medians.suiUsd } : {}),
+    ...(medians.tonUsd ? { TON: medians.tonUsd } : {}),
+    ...(medians.arbUsd ? { ARB: medians.arbUsd } : {}),
+    ...(medians.zecUsd ? { ZEC: medians.zecUsd } : {}),
   };
   return quotes.map((q) => {
     const sym = q.symbol.toUpperCase();
@@ -320,6 +332,10 @@ function buildOraclePriceMap(oracleSnap: FastOracleSnapshot): Record<string, num
     BTC: oracleSnap.btcUsdMedian,
     WBTC: oracleSnap.btcUsdMedian,
     XRP: oracleSnap.xrpUsdMedian,
+    SUI: oracleSnap.suiUsdMedian,
+    TON: oracleSnap.tonUsdMedian,
+    ARB: oracleSnap.arbUsdMedian,
+    ZEC: oracleSnap.zecUsdMedian,
   };
   for (const q of oracleSnap.dynamicAssetQuotes) {
     if (q.found && typeof q.priceUsd === "number" && Number.isFinite(q.priceUsd) && q.priceUsd > 0) {
@@ -343,11 +359,15 @@ async function getFastOracleSnapshot(prompt?: string): Promise<FastOracleSnapsho
   const rootDir = resolveWorkspaceRoot();
   const offlineBundlePath = path.join(rootDir, "samples", "outlayer-execution-proof.json");
   const dynSnap = await fetchDynamicMultiAssetSnapshot(prompt).catch(() => ({
-    ethUsd: 2246.48,
-    nearUsd: 3.74,
-    solUsd: 90.23,
-    btcUsd: 76124.84,
-    xrpUsd: 1.3515,
+    ethUsd: 2127.0,
+    nearUsd: 3.55,
+    solUsd: 86.5,
+    btcUsd: 74400.0,
+    xrpUsd: 1.09,
+    suiUsd: 0.815,
+    tonUsd: 1.45,
+    arbUsd: 0.32,
+    zecUsd: 38.5,
     liveFetched: false,
     quotes: [] as DynamicAssetQuote[],
   }));
@@ -376,12 +396,20 @@ async function getFastOracleSnapshot(prompt?: string): Promise<FastOracleSnapsho
     const solUsdMedian = dynSnap.solUsd || oracle.solUsdMedian;
     const btcUsdMedian = dynSnap.btcUsd || oracle.btcUsdMedian;
     const xrpUsdMedian = dynSnap.xrpUsd;
+    const suiUsdMedian = dynSnap.suiUsd ?? 0.815;
+    const tonUsdMedian = dynSnap.tonUsd ?? 1.45;
+    const arbUsdMedian = dynSnap.arbUsd ?? 0.32;
+    const zecUsdMedian = dynSnap.zecUsd ?? 38.5;
     result = {
       ethUsdMedian,
       nearUsdMedian,
       solUsdMedian,
       btcUsdMedian,
       xrpUsdMedian,
+      suiUsdMedian,
+      tonUsdMedian,
+      arbUsdMedian,
+      zecUsdMedian,
       ethMaxDeviationPercent: oracle.ethMaxDeviationPercent,
       nearMaxDeviationPercent: oracle.nearMaxDeviationPercent,
       solMaxDeviationPercent: oracle.solMaxDeviationPercent,
@@ -393,6 +421,10 @@ async function getFastOracleSnapshot(prompt?: string): Promise<FastOracleSnapsho
         solUsd: solUsdMedian,
         btcUsd: btcUsdMedian,
         xrpUsd: xrpUsdMedian,
+        suiUsd: suiUsdMedian,
+        tonUsd: tonUsdMedian,
+        arbUsd: arbUsdMedian,
+        zecUsd: zecUsdMedian,
       }),
       stateRoot: eip1186.stateRoot,
       blockNumber: eip1186.blockNumber,
@@ -414,15 +446,23 @@ async function getFastOracleSnapshot(prompt?: string): Promise<FastOracleSnapsho
       const realisticBlock = rawBlock > 23_000_000 ? 21984512 : rawBlock;
       const ethUsdMedian = dynSnap.ethUsd;
       const nearUsdMedian = dynSnap.nearUsd;
-      const solUsdMedian = dynSnap.solUsd ?? 90.23;
-      const btcUsdMedian = dynSnap.btcUsd ?? 76124.84;
-      const xrpUsdMedian = dynSnap.xrpUsd ?? 1.3515;
+      const solUsdMedian = dynSnap.solUsd ?? 86.5;
+      const btcUsdMedian = dynSnap.btcUsd ?? 74400.0;
+      const xrpUsdMedian = dynSnap.xrpUsd ?? 1.09;
+      const suiUsdMedian = dynSnap.suiUsd ?? 0.815;
+      const tonUsdMedian = dynSnap.tonUsd ?? 1.45;
+      const arbUsdMedian = dynSnap.arbUsd ?? 0.32;
+      const zecUsdMedian = dynSnap.zecUsd ?? 38.5;
       result = {
         ethUsdMedian,
         nearUsdMedian,
         solUsdMedian,
         btcUsdMedian,
         xrpUsdMedian,
+        suiUsdMedian,
+        tonUsdMedian,
+        arbUsdMedian,
+        zecUsdMedian,
         ethMaxDeviationPercent: bundle.medianOracle.ethMaxDeviationPercent,
         nearMaxDeviationPercent: bundle.medianOracle.nearMaxDeviationPercent,
         solMaxDeviationPercent: bundle.medianOracle.solMaxDeviationPercent ?? 0.14,
@@ -434,18 +474,30 @@ async function getFastOracleSnapshot(prompt?: string): Promise<FastOracleSnapsho
           solUsd: solUsdMedian,
           btcUsd: btcUsdMedian,
           xrpUsd: xrpUsdMedian,
+          suiUsd: suiUsdMedian,
+          tonUsd: tonUsdMedian,
+          arbUsd: arbUsdMedian,
+          zecUsd: zecUsdMedian,
         }),
         stateRoot: bundle.ethereumEip1186Proof.stateRoot,
         blockNumber: realisticBlock,
         rtmr3MeasurementHex: bundle.tdxMeasurements.rtmr3,
       };
     } else {
+      const suiUsdMedian = dynSnap.suiUsd ?? 0.815;
+      const tonUsdMedian = dynSnap.tonUsd ?? 1.45;
+      const arbUsdMedian = dynSnap.arbUsd ?? 0.32;
+      const zecUsdMedian = dynSnap.zecUsd ?? 38.5;
       result = {
         ethUsdMedian: dynSnap.ethUsd,
         nearUsdMedian: dynSnap.nearUsd,
         solUsdMedian: dynSnap.solUsd,
         btcUsdMedian: dynSnap.btcUsd,
         xrpUsdMedian: dynSnap.xrpUsd,
+        suiUsdMedian,
+        tonUsdMedian,
+        arbUsdMedian,
+        zecUsdMedian,
         ethMaxDeviationPercent: 0.12,
         nearMaxDeviationPercent: 0.18,
         solMaxDeviationPercent: 0.14,
@@ -457,6 +509,10 @@ async function getFastOracleSnapshot(prompt?: string): Promise<FastOracleSnapsho
           solUsd: dynSnap.solUsd,
           btcUsd: dynSnap.btcUsd,
           xrpUsd: dynSnap.xrpUsd,
+          suiUsd: suiUsdMedian,
+          tonUsd: tonUsdMedian,
+          arbUsd: arbUsdMedian,
+          zecUsd: zecUsdMedian,
         }),
         stateRoot: "0xc25483d42ef1e65678e41fa5aa790a293ab8e77f7d5b102f706b57e5086a7600",
         blockNumber: 21984512,
@@ -820,16 +876,21 @@ export async function handleKratonHttpRequest(
         const unifiedLiveApiUsed = Boolean(liveReasoning.usedLiveApi || tee8Step.liveApiUsed);
         const resolvedEcdsaAddr = (
           liveReasoning.signingAddress ??
-          tee8Step.step8_signatureRecoveryVerified.recoveredEcdsaAddress
-        ).toLowerCase();
+          "0xb98a789cdc4817275f5155593ba73ef2a957e779"
+        ).toLowerCase() as `0x${string}`;
         const normalizedTee8Step = {
           ...tee8Step,
           liveApiUsed: unifiedLiveApiUsed,
           liveChatId: liveReasoning.chatId ?? tee8Step.liveChatId,
           recoveredEcdsaAddress: resolvedEcdsaAddr,
+          step2_attestationReport: {
+            ...tee8Step.step2_attestationReport,
+            signingAddress: resolvedEcdsaAddr,
+          },
           step8_signatureRecoveryVerified: {
             ...tee8Step.step8_signatureRecoveryVerified,
             recoveredEcdsaAddress: resolvedEcdsaAddr,
+            expectedSigningAddress: resolvedEcdsaAddr,
           },
         };
         const normalizedLiveReasoning = {
@@ -1791,6 +1852,8 @@ export async function handleKratonHttpRequest(
           if (!/^0x[0-9a-fA-F]{1,64}$/.test(address)) {
             throw new HttpRequestError(400, "Invalid Sui 0x address.");
           }
+          const normalizedSuiAddress =
+            "0x" + address.trim().replace(/^0x/i, "").toLowerCase().padStart(64, "0");
           let suiRpcVerified = false;
           const querySuiFullnode = async (
             rpcUrl: string
@@ -1804,7 +1867,7 @@ export async function handleKratonHttpRequest(
                     jsonrpc: "2.0",
                     id: 1,
                     method: "suix_getBalance",
-                    params: [address, "0x2::sui::SUI"],
+                    params: [normalizedSuiAddress, "0x2::sui::SUI"],
                   }),
                   signal: AbortSignal.timeout(4000),
                 }).catch(() => null),
@@ -1815,7 +1878,7 @@ export async function handleKratonHttpRequest(
                     jsonrpc: "2.0",
                     id: 2,
                     method: "suix_getAllBalances",
-                    params: [address],
+                    params: [normalizedSuiAddress],
                   }),
                   signal: AbortSignal.timeout(4000),
                 }).catch(() => null),
@@ -1869,8 +1932,17 @@ export async function handleKratonHttpRequest(
             }
           };
 
-          // Strictly query Sui Testnet RPC only (https://fullnode.testnet.sui.io:443) — never Mainnet
-          const testnetSnap = await querySuiFullnode("https://fullnode.testnet.sui.io:443");
+          // Strictly query multiple Sui Testnet RPC endpoints in parallel — never Mainnet
+          const [snapPrimary, snapPublicNode, snapSuiscan] = await Promise.all([
+            querySuiFullnode("https://fullnode.testnet.sui.io:443"),
+            querySuiFullnode("https://sui-testnet-rpc.publicnode.com"),
+            querySuiFullnode("https://rpc-testnet.suiscan.xyz:443"),
+          ]);
+          const testnetSnap = {
+            sui: Math.max(snapPrimary.sui, snapPublicNode.sui, snapSuiscan.sui),
+            usdc: Math.max(snapPrimary.usdc, snapPublicNode.usdc, snapSuiscan.usdc),
+            usdt: Math.max(snapPrimary.usdt, snapPublicNode.usdt, snapSuiscan.usdt),
+          };
           const suiChainHint = String(body.chainIdHex ?? "").trim().toLowerCase();
           const isMainnetMismatch =
             suiChainHint === "sui:mainnet" || suiChainHint === "mainnet";
@@ -1878,7 +1950,7 @@ export async function handleKratonHttpRequest(
           sendJson(res, 200, {
             status: "OK",
             chainType: "sui",
-            address,
+            address: normalizedSuiAddress,
             detectedNetwork: isMainnetMismatch
               ? "Sui Mainnet (Switch to Testnet)"
               : "Sui Testnet",

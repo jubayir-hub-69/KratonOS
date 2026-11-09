@@ -826,47 +826,50 @@ export async function fetchMultiSourceMedianOracle(params: {
 }
 
 const KNOWN_CRYPTO_FALLBACK_PRICES: Record<string, number> = {
-  BTC: 76124.84,
-  WBTC: 76124.84,
-  ETH: 2246.48,
-  SOL: 90.23,
-  NEAR: 3.74,
-  WNEAR: 3.74,
-  XRP: 1.3515,
+  BTC: 74400.0,
+  WBTC: 74400.0,
+  ETH: 2127.0,
+  SOL: 86.5,
+  NEAR: 3.55,
+  WNEAR: 3.55,
+  XRP: 1.09,
   BNB: 612.4,
   DOGE: 0.1642,
   ADA: 0.682,
   AVAX: 24.85,
-  SUI: 2.74,
-  TON: 3.82,
-  ZEC: 38.9,
-  ARB: 0.542,
-  OP: 1.12,
-  DOT: 5.18,
-  LINK: 15.65,
-  POL: 0.342,
-  MATIC: 0.342,
-  SHIB: 0.0000148,
-  PEPE: 0.00000845,
+  SUI: 0.815,
+  TON: 1.45,
+  ZEC: 38.5,
+  ARB: 0.32,
+  OP: 0.92,
+  DOT: 4.82,
+  LINK: 15.2,
+  POL: 0.28,
+  MATIC: 0.28,
+  SHIB: 0.0000142,
+  PEPE: 0.0000072,
   FLOKI: 0.0000642,
-  LTC: 98.4,
+  LTC: 92.4,
   UNI: 7.85,
-  APT: 6.45,
-  ATOM: 4.92,
-  TRX: 0.238,
+  APT: 6.15,
+  ATOM: 4.65,
+  TRX: 0.235,
   XLM: 0.294,
   HBAR: 0.198,
-  BCH: 384.2,
-  FIL: 3.45,
-  AAVE: 214.6,
-  RENDER: 4.35,
-  TAO: 342.0,
-  INJ: 12.8,
+  BCH: 348.0,
+  FIL: 3.12,
+  AAVE: 194.5,
+  RENDER: 3.92,
+  TAO: 295.0,
+  INJ: 11.4,
   SEI: 0.285,
-  TIA: 3.65,
-  WIF: 0.68,
-  BONK: 0.0000162,
+  TIA: 3.45,
+  WIF: 0.62,
+  BONK: 0.0000118,
   JUP: 0.642,
+  USDC: 1.0,
+  USDT: 1.0,
+  DAI: 1.0,
 };
 
 const FULL_NAME_TO_TICKER: Record<string, string> = {
@@ -1078,7 +1081,20 @@ export function findClosestValidTicker(
  * ["NEAR", "XRP", "SOL", "ETH", "BTC"] only when no specific tokens are requested or on the default Q4 audit prompt.
  */
 export function extractRequestedCryptoSymbols(prompt?: string): string[] {
-  const DEFAULT_CORE_BASKET = ["NEAR", "XRP", "SOL", "ETH", "BTC"];
+  const DEFAULT_CORE_BASKET = [
+  "NEAR",
+  "XRP",
+  "SOL",
+  "ETH",
+  "BTC",
+  "SUI",
+  "TON",
+  "ARB",
+  "ZEC",
+  "DOGE",
+  "AVAX",
+  "BNB",
+];
   if (!prompt || !prompt.trim()) {
     return [...DEFAULT_CORE_BASKET];
   }
@@ -1183,6 +1199,10 @@ const dynamicSnapshotCache = new Map<
       solUsd: number;
       btcUsd: number;
       xrpUsd: number;
+      suiUsd: number;
+      tonUsd: number;
+      arbUsd: number;
+      zecUsd: number;
       liveFetched: boolean;
       quotes: DynamicAssetQuote[];
     };
@@ -1195,6 +1215,10 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   solUsd: number;
   btcUsd: number;
   xrpUsd: number;
+  suiUsd: number;
+  tonUsd: number;
+  arbUsd: number;
+  zecUsd: number;
   liveFetched: boolean;
   quotes: DynamicAssetQuote[];
 }> {
@@ -1342,11 +1366,15 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   }
 
   const snapshot = {
-    ethUsd: resolvedMap.get("ETH")?.priceUsd ?? oneClickMap.get("ETH") ?? 2246.48,
-    nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? oneClickMap.get("NEAR") ?? 3.74,
-    solUsd: resolvedMap.get("SOL")?.priceUsd ?? oneClickMap.get("SOL") ?? 90.23,
-    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 76124.84,
-    xrpUsd: resolvedMap.get("XRP")?.priceUsd ?? oneClickMap.get("XRP") ?? 1.3515,
+    ethUsd: resolvedMap.get("ETH")?.priceUsd ?? oneClickMap.get("ETH") ?? 2127.0,
+    nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? oneClickMap.get("NEAR") ?? 3.55,
+    solUsd: resolvedMap.get("SOL")?.priceUsd ?? oneClickMap.get("SOL") ?? 86.5,
+    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 74400.0,
+    xrpUsd: resolvedMap.get("XRP")?.priceUsd ?? oneClickMap.get("XRP") ?? 1.09,
+    suiUsd: resolvedMap.get("SUI")?.priceUsd ?? oneClickMap.get("SUI") ?? 0.815,
+    tonUsd: resolvedMap.get("TON")?.priceUsd ?? oneClickMap.get("TON") ?? 1.45,
+    arbUsd: resolvedMap.get("ARB")?.priceUsd ?? oneClickMap.get("ARB") ?? 0.32,
+    zecUsd: resolvedMap.get("ZEC")?.priceUsd ?? oneClickMap.get("ZEC") ?? 38.5,
     liveFetched,
     quotes,
   };
