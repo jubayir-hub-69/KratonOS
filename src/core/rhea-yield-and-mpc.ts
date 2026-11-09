@@ -224,7 +224,7 @@ export async function scanAndHarvestRheaFarms(params?: {
       mcaAccountId: `mca.${runtime.constraints.treasury_account}`,
       collateralUsd: 12_500.0,
       borrowedUsd: 3_200.0,
-      healthFactor: 2.93, // Safe > 1.50 threshold
+      healthFactor: 3.13, // (12500 * 0.80) / 3200 = 3.125 -> 3.13 (Safe > 1.50 threshold)
       rebalanceRequired: false,
     },
   };

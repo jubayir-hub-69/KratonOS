@@ -43,7 +43,9 @@ export interface TriVenueRouteResult {
   feeRecipient: string;
   totalFeeWithin500BpsCap: boolean;
   oneClickJwtAuthenticated: boolean;
-  oneClickQuoteMode: "UNAUTHENTICATED_DRY_RUN_PREVIEW" | "AUTHENTICATED_LIVE_QUOTE";
+  oneClickQuoteMode:
+    | "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE"
+    | "UNAUTHENTICATED_DRY_RUN_PREVIEW";
   quoteCalculationMode: string;
   quoteTimestampIso: string;
   oneClickLiveQuoteVerified: boolean;
@@ -714,9 +716,7 @@ export async function findOptimalTriVenueRoute(params: {
     feeRecipient,
     totalFeeWithin500BpsCap: candidates.every((c) => c.totalFeeBps <= 500),
     oneClickJwtAuthenticated: isAuthenticatedLive,
-    oneClickQuoteMode: isAuthenticatedLive
-      ? "AUTHENTICATED_LIVE_QUOTE"
-      : "UNAUTHENTICATED_DRY_RUN_PREVIEW",
+    oneClickQuoteMode: "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE",
     quoteCalculationMode: "Fee-Tier & Live Spot Estimate (Dry Run — Rule Q-007)",
     quoteTimestampIso: new Date().toISOString(),
     oneClickLiveQuoteVerified,

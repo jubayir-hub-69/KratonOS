@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import type http from "node:http";
+import { VERIFIED_PAYROLL_ONCHAIN_RECORDS } from "../core/payroll-and-invoicing.js";
 import { handleKratonHttpRequest } from "../server/server.js";
 
 async function invokeServerEndpoint(
@@ -166,14 +167,24 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(overviewJson.treasuryAccount, "jubayir69.testnet");
   assert.equal(overviewJson.feeRecipient, "asma90.testnet");
   assert.equal(
-    (overviewJson as Record<string, unknown>).spendableBalanceFormatted,
-    "22.0184 NEAR",
-    "GET /api/overview must return spendableBalanceFormatted === '22.0184 NEAR' (matching Meteor Wallet)"
+    typeof (overviewJson as Record<string, unknown>).liveAccountRpcVerified,
+    "boolean",
+    "GET /api/overview must expose boolean liveAccountRpcVerified"
   );
-  assert.equal(
-    overviewJson.balanceFormatted,
-    "22.2202 NEAR",
-    "GET /api/overview must return balanceFormatted === '22.2202 NEAR'"
+  assert.ok(
+    (overviewJson as Record<string, unknown>).balanceSource === "live_near_testnet_rpc" ||
+      (overviewJson as Record<string, unknown>).balanceSource === "offline_fallback_snapshot",
+    "GET /api/overview must expose balanceSource as live_near_testnet_rpc or offline_fallback_snapshot"
+  );
+  assert.ok(
+    String((overviewJson as Record<string, unknown>).spendableBalanceFormatted).endsWith(" NEAR") &&
+      !String((overviewJson as Record<string, unknown>).spendableBalanceFormatted).includes("22.0184"),
+    "GET /api/overview spendableBalanceFormatted must never fall back to stale 22.0184 NEAR"
+  );
+  assert.ok(
+    overviewJson.balanceFormatted.endsWith(" NEAR") &&
+      !overviewJson.balanceFormatted.includes("22.2202"),
+    "GET /api/overview balanceFormatted must never fall back to stale 22.2202 NEAR"
   );
   assert.equal(overviewJson.nep611Lanes.length, 4);
   assert.ok(overviewJson.postQuantumKeyHash.startsWith("ml-dsa-65-hash:"));
@@ -330,6 +341,74 @@ async function runServerSmokeTest(): Promise<void> {
     false,
     "Printable audit statement must never contain simulated CwyjzR6A9Y tx hash"
   );
+  assert.equal(
+    stmtRes.bodyText.includes("264.00"),
+    false,
+    "Printable audit statement must never state false 2.6400 NEAR = $264.00 equivalence"
+  );
+  assert.equal(
+    csvRes.bodyText.includes("264.00"),
+    false,
+    "Exported bookkeeper CSV must never state false 2.6400 NEAR = $264.00 equivalence"
+  );
+
+  // Verify POST /api/payroll/run & assert ALL 11 VERIFIED_PAYROLL_ONCHAIN_RECORDS txHashes & blockHeights across all payroll + overview + receipt endpoints
+  const payrollRunRes = await invokeServerEndpoint("POST", "/api/payroll/run", {
+    freelancerAccountId: "alice-dev.testnet",
+    requestedNetUsdc: 250,
+    originChainLabel: "Arbitrum",
+  });
+  assert.equal(payrollRunRes.statusCode, 200, "POST /api/payroll/run must return HTTP 200");
+  assert.equal(
+    payrollRunRes.bodyText.includes("264.00"),
+    false,
+    "POST /api/payroll/run must never return $264.00 for 2.6400 NEAR payroll"
+  );
+  const payrollRunJson = JSON.parse(payrollRunRes.bodyText) as {
+    batchResult: {
+      totalSettledNear: number;
+      totalSettledUsdc: number;
+      outcomes: Array<{ txHash: string; blockHeight: number; amountNear: number }>;
+    };
+  };
+  assert.equal(
+    payrollRunJson.batchResult.totalSettledNear,
+    2.64,
+    "POST /api/payroll/run totalSettledNear must equal 2.64 NEAR"
+  );
+  assert.ok(
+    payrollRunJson.batchResult.totalSettledUsdc > 0 && payrollRunJson.batchResult.totalSettledUsdc < 50,
+    `POST /api/payroll/run totalSettledUsdc must reflect real live USD value of 2.64 NEAR (≈ $9.37), got ${payrollRunJson.batchResult.totalSettledUsdc}`
+  );
+
+  assert.equal(
+    VERIFIED_PAYROLL_ONCHAIN_RECORDS.length,
+    11,
+    "VERIFIED_PAYROLL_ONCHAIN_RECORDS must contain all 11 settled payroll payment records"
+  );
+  for (const record of VERIFIED_PAYROLL_ONCHAIN_RECORDS) {
+    assert.equal(record.txHash.length, 44, `Payroll txHash ${record.txHash} must be 44 chars`);
+    assert.ok(
+      stmtRes.bodyText.includes(record.txHash) &&
+        stmtRes.bodyText.includes(String(record.blockHeight)),
+      `GET /api/payroll/export-statement must include Row #${record.rowNumber} txHash ${record.txHash} and blockHeight ${record.blockHeight}`
+    );
+    assert.ok(
+      csvRes.bodyText.includes(record.txHash) &&
+        csvRes.bodyText.includes(String(record.blockHeight)),
+      `GET /api/payroll/export-csv must include Row #${record.rowNumber} txHash ${record.txHash} and blockHeight ${record.blockHeight}`
+    );
+    assert.ok(
+      payrollRunRes.bodyText.includes(record.txHash) &&
+        payrollRunRes.bodyText.includes(String(record.blockHeight)),
+      `POST /api/payroll/run must include Row #${record.rowNumber} txHash ${record.txHash} and blockHeight ${record.blockHeight}`
+    );
+    assert.ok(
+      overviewRes.bodyText.includes(record.txHash) &&
+        overviewRes.bodyText.includes(String(record.blockHeight)),
+      `GET /api/overview must include Row #${record.rowNumber} txHash ${record.txHash} and blockHeight ${record.blockHeight}`
+    );
+  }
 
   // Verify 3-Tier Earned-Trust Governance on POST /api/security/evaluate ($45 AUTO_APPROVE vs $85 ONE_COUNCIL_FAST_TRACK vs $250 SPUTNIK_DAO_PROPOSAL)
   const [safeTier1Res, fastTrackTier2Res, daoTier3Res] = await Promise.all([
@@ -377,12 +456,36 @@ async function runServerSmokeTest(): Promise<void> {
   });
   assert.equal(routerPriceSyncRes.statusCode, 200, "POST /api/router/quote (wNEAR->USDC) must return HTTP 200");
   const routerPriceSyncJson = JSON.parse(routerPriceSyncRes.bodyText) as {
+    quoteMode: string;
+    mcaHealthFactor: number;
+    routeResult: { oneClickQuoteMode: string; quoteCalculationMode: string };
+    rheaReport: { mcaLendingHealth: { healthFactor: number } };
     limitOrder: { requestEnvelope: { data: { attributes: { price: string } } } };
   };
   assert.equal(
     routerPriceSyncJson.limitOrder.requestEnvelope.data.attributes.price,
     "3.715",
     "Router quote wNEAR limit price must be deterministic '3.715' (25 x 3.715 = 92.8750 USDC)"
+  );
+  assert.equal(
+    routerPriceSyncJson.quoteMode,
+    "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE",
+    "POST /api/router/quote quoteMode must equal DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE"
+  );
+  assert.equal(
+    routerPriceSyncJson.routeResult.oneClickQuoteMode,
+    "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE",
+    "POST /api/router/quote routeResult.oneClickQuoteMode must equal DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE"
+  );
+  assert.equal(
+    routerPriceSyncJson.mcaHealthFactor,
+    3.13,
+    "POST /api/router/quote mcaHealthFactor must equal 3.13"
+  );
+  assert.equal(
+    routerPriceSyncJson.rheaReport.mcaLendingHealth.healthFactor,
+    3.13,
+    "POST /api/router/quote rheaReport.mcaLendingHealth.healthFactor must equal 3.13"
   );
   assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
   assert.ok(llmsRes.bodyText.includes("https://trezu.org/"));
@@ -433,6 +536,13 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(receiptInspectorJson.receiverId, "asma90.testnet");
   assert.equal(receiptInspectorJson.depositNear, "0.45 NEAR");
   assert.equal(receiptInspectorJson.executionStatus, "EXECUTED_OPTIMISTIC / SUCCESS_VALUE");
+  for (const record of VERIFIED_PAYROLL_ONCHAIN_RECORDS) {
+    assert.ok(
+      receiptInspectorRes.bodyText.includes(record.txHash) &&
+        receiptInspectorRes.bodyText.includes(String(record.blockHeight)),
+      `GET /api/onchain/receipt must include Row #${record.rowNumber} txHash ${record.txHash} and blockHeight ${record.blockHeight}`
+    );
+  }
 
   // Input validation & HTTP 400 boundary checks (malformed JSON, unlisted token, identical swap, invalid EVM address)
   const [badJsonRes, unlistedQuoteRes, sameAssetQuoteRes, badEvmWalletRes] = await Promise.all([

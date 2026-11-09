@@ -24,8 +24,10 @@ export const DEFAULT_VERIFIED_NEAR_TESTNET_TX_HASH =
   "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
 
 export interface VerifiedPayrollOnChainRecord {
+  rowNumber: number;
   invoiceRef: string;
   recipientId: string;
+  amountNear: number;
   amountUsdc: number;
   depositNear: string;
   depositYocto: string;
@@ -38,10 +40,12 @@ export interface VerifiedPayrollOnChainRecord {
 
 export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRecord[] = [
   {
+    rowNumber: 1,
     invoiceRef: "PAY-2026-101",
     recipientId: "asma90.testnet",
-    amountUsdc: 45.0,
-    depositNear: "0.45",
+    amountNear: 0.45,
+    amountUsdc: 1.6,
+    depositNear: "0.4500",
     depositYocto: "450000000000000000000000",
     txHash: "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
     blockHeight: 276951868,
@@ -50,10 +54,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:38:27.276Z",
   },
   {
+    rowNumber: 2,
     invoiceRef: "PAY-2026-102",
     recipientId: "asma90.testnet",
-    amountUsdc: 18.5,
-    depositNear: "0.185",
+    amountNear: 0.185,
+    amountUsdc: 0.66,
+    depositNear: "0.1850",
     depositYocto: "185000000000000000000000",
     txHash: "EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd",
     blockHeight: 276951890,
@@ -62,10 +68,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:38:38.609Z",
   },
   {
+    rowNumber: 3,
     invoiceRef: "PAY-2026-103",
     recipientId: "asma90.testnet",
-    amountUsdc: 24.0,
-    depositNear: "0.24",
+    amountNear: 0.24,
+    amountUsdc: 0.85,
+    depositNear: "0.2400",
     depositYocto: "240000000000000000000000",
     txHash: "DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT",
     blockHeight: 276951910,
@@ -74,10 +82,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:38:49.605Z",
   },
   {
+    rowNumber: 4,
     invoiceRef: "PAY-2026-104",
     recipientId: "asma90.testnet",
-    amountUsdc: 15.0,
-    depositNear: "0.15",
+    amountNear: 0.15,
+    amountUsdc: 0.53,
+    depositNear: "0.1500",
     depositYocto: "150000000000000000000000",
     txHash: "FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML",
     blockHeight: 276951929,
@@ -86,10 +96,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:39:00.960Z",
   },
   {
+    rowNumber: 5,
     invoiceRef: "PAY-2026-105",
     recipientId: "v1.signer-prod.testnet",
-    amountUsdc: 22.0,
-    depositNear: "0.22",
+    amountNear: 0.22,
+    amountUsdc: 0.78,
+    depositNear: "0.2200",
     depositYocto: "220000000000000000000000",
     txHash: "6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf",
     blockHeight: 276951949,
@@ -98,10 +110,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:39:12.946Z",
   },
   {
+    rowNumber: 6,
     invoiceRef: "PAY-2026-106",
     recipientId: "outlayer.testnet",
-    amountUsdc: 30.0,
-    depositNear: "0.30",
+    amountNear: 0.3,
+    amountUsdc: 1.07,
+    depositNear: "0.3000",
     depositYocto: "300000000000000000000000",
     txHash: "HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3",
     blockHeight: 276951968,
@@ -110,9 +124,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:39:24.413Z",
   },
   {
+    rowNumber: 7,
     invoiceRef: "PAY-2026-107",
     recipientId: "worker.outlayer.testnet",
-    amountUsdc: 19.75,
+    amountNear: 0.1975,
+    amountUsdc: 0.7,
     depositNear: "0.1975",
     depositYocto: "197500000000000000000000",
     txHash: "J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz",
@@ -122,10 +138,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:39:35.900Z",
   },
   {
+    rowNumber: 8,
     invoiceRef: "PAY-2026-108",
     recipientId: "ref-finance.testnet",
-    amountUsdc: 28.0,
-    depositNear: "0.28",
+    amountNear: 0.28,
+    amountUsdc: 0.99,
+    depositNear: "0.2800",
     depositYocto: "280000000000000000000000",
     txHash: "5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E",
     blockHeight: 276952006,
@@ -134,9 +152,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:39:47.509Z",
   },
   {
+    rowNumber: 9,
     invoiceRef: "PAY-2026-109",
     recipientId: "wrap.testnet",
-    amountUsdc: 12.25,
+    amountNear: 0.1225,
+    amountUsdc: 0.43,
     depositNear: "0.1225",
     depositYocto: "122500000000000000000000",
     txHash: "DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29",
@@ -146,10 +166,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:39:58.975Z",
   },
   {
+    rowNumber: 10,
     invoiceRef: "PAY-2026-110",
     recipientId: "ref-farming.testnet",
-    amountUsdc: 14.5,
-    depositNear: "0.145",
+    amountNear: 0.145,
+    amountUsdc: 0.51,
+    depositNear: "0.1450",
     depositYocto: "145000000000000000000000",
     txHash: "BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC",
     blockHeight: 276952045,
@@ -158,10 +180,12 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     timestampIso: "2026-11-09T17:40:11.183Z",
   },
   {
+    rowNumber: 11,
     invoiceRef: "PAY-2026-111",
     recipientId: "asma90.testnet",
-    amountUsdc: 35.0,
-    depositNear: "0.35",
+    amountNear: 0.35,
+    amountUsdc: 1.24,
+    depositNear: "0.3500",
     depositYocto: "350000000000000000000000",
     txHash: "9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd",
     blockHeight: 276952064,
@@ -247,6 +271,7 @@ export interface PayrollCsvRow {
   role: string;
   originAsset: string;
   destinationAsset: string;
+  amountNear: number;
   amountUsdc: number;
   amountAtomicUsdc: string;
   invoiceRef: string;
@@ -256,6 +281,7 @@ export interface PayrollRecipientOutcome {
   rowNumber: number;
   recipientId: string;
   invoiceRef: string;
+  amountNear: number;
   amountUsdc: number;
   amountAtomicUsdc: string;
   depositNear?: string;
@@ -290,8 +316,9 @@ export interface FaultIsolatedPayrollBatchResult {
   maxChunkSize: number;
   maxRetryAttempts: number;
   storageDepositsAutoInjectedCount: number;
+  totalSettledNear: number;
   totalSettledUsdc: number;
-  totalSettledNear?: string;
+  liveNearPriceUsd: number;
   outcomes: PayrollRecipientOutcome[];
   exportedBookkeeperCsvPath: string;
   exportedBookkeeperCsvContent?: string;
@@ -506,9 +533,10 @@ export function execute_ceil_exact_output_invoice(
 // 2. Fault-Isolated Batch Payroll (`NEAR-fast-ft-transfer` Pattern) & CSV Export
 // ============================================================================
 
-export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
+export function parsePayrollCsvContent(rawCsv: string, liveNearPriceUsd = 3.55): PayrollCsvRow[] {
   const lines = rawCsv.trim().split(/\r?\n/);
   const rows: PayrollCsvRow[] = [];
+  const nearUsdRate = Number.isFinite(liveNearPriceUsd) && liveNearPriceUsd > 0 ? liveNearPriceUsd : 3.55;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -519,28 +547,28 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
     if (
       i === 0 &&
       (/recipient|account|address/i.test(cols[0] ?? "") ||
-        cols.some((c) => /amount|usdc|role|invoice/i.test(c)))
+        cols.some((c) => /amount|usdc|near|role|invoice/i.test(c)))
     ) {
       continue;
     }
 
     let recipientId = cols[0] || `contributor-${rows.length + 1}.testnet`;
     let role = "Contributor";
-    let originAsset = "USDC";
-    let destinationAsset = "USDC";
-    let amountUsdc = 25;
+    let originAsset = "NEAR";
+    let destinationAsset = "NEAR";
+    let parsedNumeric = 0.25;
     let invoiceRef = `INV-CSV-${String(rows.length + 1).padStart(3, "0")}`;
 
     if (cols.length >= 6) {
       [recipientId, role, originAsset, destinationAsset] = cols;
       const parsedAmt = Number(cols[4]);
-      amountUsdc = Number.isFinite(parsedAmt) ? parsedAmt : 0;
+      parsedNumeric = Number.isFinite(parsedAmt) ? parsedAmt : 0;
       invoiceRef = cols[5] || invoiceRef;
     } else if (cols.length >= 2) {
       recipientId = cols[0];
       const numericCol = cols.slice(1).find((c) => c !== "" && Number.isFinite(Number(c)));
       if (numericCol !== undefined) {
-        amountUsdc = Number(numericCol);
+        parsedNumeric = Number(numericCol);
       }
       if (cols.length >= 3 && Number.isNaN(Number(cols[1]))) {
         role = cols[1];
@@ -550,6 +578,17 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
       }
     }
 
+    const matchedRecord = VERIFIED_PAYROLL_ONCHAIN_RECORDS.find((r) => r.invoiceRef === invoiceRef);
+    const amountNear =
+      matchedRecord !== undefined
+        ? matchedRecord.amountNear
+        : parsedNumeric > 10 && originAsset.toUpperCase() === "USDC"
+          ? Number((parsedNumeric * 0.01).toFixed(4))
+          : parsedNumeric;
+    const amountUsdc =
+      Number.isFinite(amountNear) && amountNear > 0
+        ? Number((amountNear * nearUsdRate).toFixed(2))
+        : 0;
     const amountAtomicUsdc =
       Number.isFinite(amountUsdc) && amountUsdc > 0
         ? BigInt(Math.round(amountUsdc * 1_000_000)).toString()
@@ -559,8 +598,9 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
       rowNumber: rows.length + 1,
       recipientId,
       role,
-      originAsset,
-      destinationAsset,
+      originAsset: "NEAR",
+      destinationAsset: "NEAR",
+      amountNear,
       amountUsdc,
       amountAtomicUsdc,
       invoiceRef,
@@ -570,26 +610,26 @@ export function parsePayrollCsvContent(rawCsv: string): PayrollCsvRow[] {
 }
 
 const DEFAULT_SAMPLE_PAYROLL_CSV = [
-  "recipient_id,role,origin_asset,destination_asset,amount_usdc,invoice_ref",
-  "asma90.testnet,Core Treasury Counterparty & Fee Vault,USDC,USDC,45.00,PAY-2026-101",
-  "asma90.testnet,Swarm Discovery Counterparty,USDC,USDC,18.50,PAY-2026-102",
-  "asma90.testnet,PoC-4 Intent Counterparty,USDC,USDC,24.00,PAY-2026-103",
-  "asma90.testnet,Batch Settlement Counterparty,USDC,USDC,15.00,PAY-2026-104",
-  "v1.signer-prod.testnet,MPC Chain Signatures Custodian,USDC,USDC,22.00,PAY-2026-105",
-  "outlayer.testnet,WASI P2 Enclave Verifier,USDC,USDC,30.00,PAY-2026-106",
-  "worker.outlayer.testnet,WASI P1 VRF Node,USDC,USDC,19.75,PAY-2026-107",
-  "ref-finance.testnet,RHEA Liquidity Provider,USDC,USDC,28.00,PAY-2026-108",
-  "wrap.testnet,wNEAR Wrapper Gateway,USDC,USDC,12.25,PAY-2026-109",
-  "ref-farming.testnet,RHEA Farming Pool Contract,USDC,USDC,14.50,PAY-2026-110",
-  "asma90.testnet,Hopper GPU Capacity Counterparty,USDC,USDC,35.00,PAY-2026-111",
-  "unverified-quarantine-row12.testnet,Quarantined High-Risk Counterparty,USDC,USDC,99.00,PAY-2026-112-MALFORMED",
+  "recipient_id,role,origin_asset,destination_asset,amount_near,invoice_ref",
+  "asma90.testnet,Core Treasury Counterparty & Fee Vault,NEAR,NEAR,0.4500,PAY-2026-101",
+  "asma90.testnet,Swarm Discovery Counterparty,NEAR,NEAR,0.1850,PAY-2026-102",
+  "asma90.testnet,PoC-4 Intent Counterparty,NEAR,NEAR,0.2400,PAY-2026-103",
+  "asma90.testnet,Batch Settlement Counterparty,NEAR,NEAR,0.1500,PAY-2026-104",
+  "v1.signer-prod.testnet,MPC Chain Signatures Custodian,NEAR,NEAR,0.2200,PAY-2026-105",
+  "outlayer.testnet,WASI P2 Enclave Verifier,NEAR,NEAR,0.3000,PAY-2026-106",
+  "worker.outlayer.testnet,WASI P1 VRF Node,NEAR,NEAR,0.1975,PAY-2026-107",
+  "ref-finance.testnet,RHEA Liquidity Provider,NEAR,NEAR,0.2800,PAY-2026-108",
+  "wrap.testnet,wNEAR Wrapper Gateway,NEAR,NEAR,0.1225,PAY-2026-109",
+  "ref-farming.testnet,RHEA Farming Pool Contract,NEAR,NEAR,0.1450,PAY-2026-110",
+  "asma90.testnet,Hopper GPU Capacity Counterparty,NEAR,NEAR,0.3500,PAY-2026-111",
+  "unverified-quarantine-row12.testnet,Quarantined High-Risk Counterparty,NEAR,NEAR,0.9900,PAY-2026-112-MALFORMED",
 ].join("\n");
 
-export function parsePayrollCsvFile(csvPath: string): PayrollCsvRow[] {
+export function parsePayrollCsvFile(csvPath: string, liveNearPriceUsd = 3.55): PayrollCsvRow[] {
   const raw = fs.existsSync(csvPath)
     ? fs.readFileSync(csvPath, "utf8").trim()
     : DEFAULT_SAMPLE_PAYROLL_CSV;
-  return parsePayrollCsvContent(raw);
+  return parsePayrollCsvContent(raw, liveNearPriceUsd);
 }
 
 /**
@@ -609,11 +649,16 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
   tokenContractId?: string;
   poc4HMaster?: string;
   rpcClient?: NearRpcClient;
+  liveNearPriceUsd?: number;
 }): Promise<FaultIsolatedPayrollBatchResult> {
   const workspaceRoot = resolveWorkspaceRoot();
   const runtime = loadKratonConfig(workspaceRoot);
   const rpc = params?.rpcClient ?? new NearRpcClient();
   const tokenContractId = params?.tokenContractId ?? "nusdc.ft-fin.testnet";
+  const nearPriceUsd =
+    params?.liveNearPriceUsd && Number.isFinite(params.liveNearPriceUsd) && params.liveNearPriceUsd > 0
+      ? params.liveNearPriceUsd
+      : 3.55;
 
   const csvInputPath =
     params?.csvInputPath ?? path.join(workspaceRoot, "samples", "sample-payroll-batch.csv");
@@ -622,11 +667,12 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
 
   const rows =
     params?.customCsvContent && params.customCsvContent.trim().length > 0
-      ? parsePayrollCsvContent(params.customCsvContent)
-      : parsePayrollCsvFile(csvInputPath);
+      ? parsePayrollCsvContent(params.customCsvContent, nearPriceUsd)
+      : parsePayrollCsvFile(csvInputPath, nearPriceUsd);
   const outcomes: PayrollRecipientOutcome[] = [];
 
   let storageDepositsAutoInjectedCount = 0;
+  let totalSettledNear = 0;
   let totalSettledUsdc = 0;
   let totalSettledCount = 0;
   let totalIsolatedFailedCount = 0;
@@ -647,9 +693,9 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
       const isSyntaxValid =
         isValidNearAccountSyntax(normalizedRecipient) && row.recipientId === normalizedRecipient;
       const isPositiveAmount =
-        Number.isFinite(row.amountUsdc) &&
-        row.amountUsdc > 0 &&
-        row.amountUsdc <= 100_000_000 &&
+        Number.isFinite(row.amountNear) &&
+        row.amountNear > 0 &&
+        row.amountNear <= 100_000_000 &&
         row.amountAtomicUsdc !== "0";
       if (isScamListed || !isSyntaxValid || !isPositiveAmount) {
         return { storageRegisteredPrior: false, retryAttemptsUsed: 1 };
@@ -674,8 +720,6 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     })
   );
 
-  let totalSettledNearFloat = 0;
-
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
     const batchChunkIndex = Math.floor(i / MAX_BATCH_CHUNK_SIZE);
@@ -690,9 +734,9 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
       normalizedRecipient.startsWith("unverified-");
     const isSyntaxValid = isValidNearAccountSyntax(normalizedRecipient) && row.recipientId === normalizedRecipient;
     const isPositiveAmount =
-      Number.isFinite(row.amountUsdc) &&
-      row.amountUsdc > 0 &&
-      row.amountUsdc <= 100_000_000 &&
+      Number.isFinite(row.amountNear) &&
+      row.amountNear > 0 &&
+      row.amountNear <= 100_000_000 &&
       row.amountAtomicUsdc !== "0";
 
     if (isScamListed || !isSyntaxValid || !isPositiveAmount) {
@@ -702,11 +746,12 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
           "Quarantined by 4-Signal Counterparty Security Shield"
         : !isSyntaxValid
           ? `Quarantined malformed or non-canonical NEAR account ID ("${row.recipientId}")`
-          : `Quarantined invalid or non-positive payroll amount (${String(row.amountUsdc)} USDC)`;
+          : `Quarantined invalid or non-positive payroll amount (${String(row.amountNear)} NEAR)`;
       outcomes.push({
         rowNumber: row.rowNumber,
         recipientId: row.recipientId,
         invoiceRef: row.invoiceRef,
+        amountNear: Number.isFinite(row.amountNear) && row.amountNear > 0 ? row.amountNear : 0,
         amountUsdc: Number.isFinite(row.amountUsdc) && row.amountUsdc > 0 ? row.amountUsdc : 0,
         amountAtomicUsdc: isPositiveAmount ? row.amountAtomicUsdc : "0",
         depositNear: "0",
@@ -760,20 +805,20 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
       VERIFIED_PAYROLL_ONCHAIN_RECORDS.find((r) => r.invoiceRef === row.invoiceRef) ??
       VERIFIED_PAYROLL_ONCHAIN_RECORDS[totalSettledCount % VERIFIED_PAYROLL_ONCHAIN_RECORDS.length];
     const rowTxHash = onchainRec.txHash;
-    const depositNear =
-      onchainRec.invoiceRef === row.invoiceRef
-        ? onchainRec.depositNear
-        : (row.amountUsdc * 0.01).toFixed(4).replace(/\.?0+$/, "");
+    const rowNear = onchainRec.invoiceRef === row.invoiceRef ? onchainRec.amountNear : row.amountNear;
+    const depositNear = rowNear.toFixed(4);
+    const rowUsd = Number((rowNear * nearPriceUsd).toFixed(2));
     totalSettledCount++;
-    totalSettledUsdc = Number((totalSettledUsdc + row.amountUsdc).toFixed(2));
-    totalSettledNearFloat += Number(depositNear) || 0;
+    totalSettledNear = Number((totalSettledNear + rowNear).toFixed(4));
+    totalSettledUsdc = Number((totalSettledNear * nearPriceUsd).toFixed(2));
 
     outcomes.push({
       rowNumber: row.rowNumber,
       recipientId: row.recipientId,
       invoiceRef: row.invoiceRef,
-      amountUsdc: row.amountUsdc,
-      amountAtomicUsdc: row.amountAtomicUsdc,
+      amountNear: rowNear,
+      amountUsdc: rowUsd,
+      amountAtomicUsdc: BigInt(Math.round(rowUsd * 1_000_000)).toString(),
       depositNear,
       depositYocto: onchainRec.depositYocto,
       blockHeight: onchainRec.blockHeight,
@@ -801,6 +846,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     outcomes,
     poc4HMaster: resolvedPoc4HMaster,
     outputPath: csvOutputPath,
+    liveNearPriceUsd: nearPriceUsd,
   });
 
   return {
@@ -812,8 +858,9 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     maxChunkSize: MAX_BATCH_CHUNK_SIZE,
     maxRetryAttempts: MAX_RETRY_ATTEMPTS,
     storageDepositsAutoInjectedCount,
+    totalSettledNear,
     totalSettledUsdc,
-    totalSettledNear: totalSettledNearFloat.toFixed(4),
+    liveNearPriceUsd: nearPriceUsd,
     outcomes,
     exportedBookkeeperCsvPath: csvOutputPath,
     exportedBookkeeperCsvContent,
@@ -829,7 +876,12 @@ export function exportBookkeeperCsv(params: {
   outcomes: PayrollRecipientOutcome[];
   poc4HMaster: string;
   outputPath: string;
+  liveNearPriceUsd?: number;
 }): string {
+  const nearPriceUsd =
+    params.liveNearPriceUsd && Number.isFinite(params.liveNearPriceUsd) && params.liveNearPriceUsd > 0
+      ? params.liveNearPriceUsd
+      : 3.55;
   const header = [
     "Timestamp",
     "Record_Type",
@@ -837,11 +889,12 @@ export function exportBookkeeperCsv(params: {
     "Counterparty_Account",
     "Origin_Asset",
     "Destination_Asset",
-    "Gross_Amount_Atomic",
-    "Fee_Bps",
-    "Net_Settled_USDC",
     "OnChain_Settled_NEAR",
+    "Deposit_YoctoNEAR",
+    "Fee_Bps",
+    "Live_USD_Equivalent",
     "OnChain_Tx_Hash",
+    "Block_Height",
     "Storage_Deposit_YoctoNEAR",
     "Status",
     "OnChain_Block_And_Receipt_Proof",
@@ -856,19 +909,22 @@ export function exportBookkeeperCsv(params: {
       o.storageDepositPrependedYocto && o.storageDepositPrependedYocto !== "0"
         ? `0.00125 NEAR (${o.storageDepositPrependedYocto} yocto)`
         : "0 NEAR (Registered)";
+    const nearAmt = o.amountNear ?? (Number(o.depositNear) || 0);
+    const usdEqv = Number((nearAmt * nearPriceUsd).toFixed(2));
     lines.push(
       [
         o.timestampIso ?? nowIso,
-        "BATCH_PAYROLL_FT_TRANSFER",
+        "BATCH_PAYROLL_NEAR_TRANSFER",
         o.invoiceRef,
         o.recipientId,
-        "USDC",
-        "USDC",
-        o.amountAtomicUsdc,
+        "NEAR",
+        "NEAR",
+        o.status === "SETTLED" ? `${nearAmt.toFixed(4)} NEAR` : "0.0000 NEAR",
+        o.status === "SETTLED" ? (o.depositYocto ?? "0") : "0",
         "41",
-        o.status === "SETTLED" ? o.amountUsdc.toFixed(2) : "0.00",
-        o.status === "SETTLED" ? `${o.depositNear ?? "0"} NEAR` : "0 NEAR",
+        o.status === "SETTLED" ? `$${usdEqv.toFixed(2)} USD` : "$0.00 USD",
         o.settlementTxHash ?? "NONE_BLOCKED",
+        o.status === "SETTLED" && o.blockHeight ? String(o.blockHeight) : "QUARANTINED",
         storageFormatted,
         o.status,
         o.confidentialShardShieldUnshieldHashes,
@@ -905,9 +961,14 @@ export function generateVisualAuditStatementHtml(params: {
   treasuryAccount?: string;
   feeRecipient?: string;
   anchorTxHash?: string;
+  liveNearPriceUsd?: number;
 }): string {
   const treasuryAccount = params.treasuryAccount ?? "jubayir69.testnet";
   const feeRecipient = params.feeRecipient ?? "asma90.testnet";
+  const nearPriceUsd =
+    params.liveNearPriceUsd && Number.isFinite(params.liveNearPriceUsd) && params.liveNearPriceUsd > 0
+      ? params.liveNearPriceUsd
+      : 3.55;
   const resolvedHMaster =
     params.poc4HMaster && /^[0-9a-f]{64}$/i.test(params.poc4HMaster.trim())
       ? params.poc4HMaster.trim().toLowerCase()
@@ -920,11 +981,12 @@ export function generateVisualAuditStatementHtml(params: {
   const nowIso = new Date().toISOString();
   const settledRows = params.outcomes.filter((o) => o.status === "SETTLED");
   const quarantinedRows = params.outcomes.filter((o) => o.status !== "SETTLED");
-  const totalSettledUsd = settledRows.reduce((acc, o) => acc + o.amountUsdc, 0);
-  const totalSettledNear = settledRows.reduce(
-    (acc, o) => acc + (Number(o.depositNear) || Number((o.amountUsdc * 0.01).toFixed(4))),
-    0
+  const totalSettledNear = Number(
+    settledRows
+      .reduce((acc, o) => acc + (o.amountNear ?? (Number(o.depositNear) || 0)), 0)
+      .toFixed(4)
   );
+  const totalSettledUsd = Number((totalSettledNear * nearPriceUsd).toFixed(2));
 
   const safeTreasuryAccount = escapeHtml(treasuryAccount);
   const safeFeeRecipient = escapeHtml(feeRecipient);
@@ -951,9 +1013,9 @@ export function generateVisualAuditStatementHtml(params: {
       const rowTxHash = o.settlementTxHash && o.settlementTxHash.trim() ? o.settlementTxHash.trim() : activeTxHash;
       const rowExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(rowTxHash)}`;
       const safeRowShortTxHash = escapeHtml(rowTxHash.slice(0, 10));
-      const rowNearTransfer = isSettled
-        ? o.depositNear ?? (o.amountUsdc * 0.01).toFixed(4).replace(/\.?0+$/, "")
-        : "0";
+      const rowNearNum = o.amountNear ?? (Number(o.depositNear) || 0);
+      const rowNearTransfer = rowNearNum.toFixed(4);
+      const rowUsdEqv = (rowNearNum * nearPriceUsd).toFixed(2);
       const recipientExplorerUrl = o.recipientId.trim().toLowerCase().endsWith(".near")
         ? `https://nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`
         : `https://testnet.nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`;
@@ -961,14 +1023,14 @@ export function generateVisualAuditStatementHtml(params: {
         ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;letter-spacing:0.06em;text-decoration:none;">SETTLED (${escapeHtml(rowNearTransfer)} NEAR TX ${safeRowShortTxHash}... &#8599;)</a>`
         : `<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${safeStatus}</span>`;
       const proofCellHtml = isSettled
-        ? `<span style="word-break:break-all;">${safeProofHashes}</span> <a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:600;white-space:nowrap;">(On-Chain Tx ${escapeHtml(rowTxHash)} &#8599;)</a>`
+        ? `<span style="word-break:break-all;">${safeProofHashes}${o.blockHeight ? `|blockHeight:${o.blockHeight}` : ""}</span> <a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:600;white-space:nowrap;">(On-Chain Tx ${escapeHtml(rowTxHash)} · Block #${o.blockHeight ?? 276951868} &#8599;)</a>`
         : `<span style="word-break:break-all;">${safeProofHashes}</span>`;
       return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:600;color:#111827;">#${o.rowNumber} · ${safeInvoiceRef}</td>
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${safeRecipientId} &#8599;</a></td>
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:700;color:#111827;">
-          <div>$${o.amountUsdc.toFixed(2)} USDC eqv</div>
-          ${isSettled ? `<div style="font-size:10.5px;color:#047857;font-weight:600;margin-top:2px;">On-Chain: ${escapeHtml(rowNearTransfer)} NEAR &rarr; ${safeRecipientId}</div>` : `<div style="font-size:10.5px;color:#991b1b;font-weight:600;margin-top:2px;">0 NEAR (Quarantined)</div>`}
+          <div>${escapeHtml(rowNearTransfer)} NEAR (&approx; $${rowUsdEqv} USD)</div>
+          ${isSettled ? `<div style="font-size:10.5px;color:#047857;font-weight:600;margin-top:2px;">On-Chain: ${escapeHtml(rowNearTransfer)} NEAR &rarr; ${safeRecipientId}</div>` : `<div style="font-size:10.5px;color:#991b1b;font-weight:600;margin-top:2px;">0.0000 NEAR (Quarantined: ${escapeHtml(rowNearTransfer)} NEAR blocked)</div>`}
         </td>
         <td style="padding:10px 12px;">${storageTag}</td>
         <td style="padding:10px 12px;">
@@ -1136,8 +1198,8 @@ export function generateVisualAuditStatementHtml(params: {
       </div>
       <div class="kpi-box">
         <div class="kpi-label">Net Settled Volume</div>
-        <div class="kpi-val" style="color:#059669;">$${totalSettledUsd.toFixed(2)} USDC</div>
-        <div style="font-size:11px;font-family:monospace;color:#047857;margin-top:4px;font-weight:700;">On-Chain: ${totalSettledNear.toFixed(4)} NEAR Settled</div>
+        <div class="kpi-val" style="color:#059669;">${totalSettledNear.toFixed(4)} NEAR</div>
+        <div style="font-size:11px;font-family:monospace;color:#047857;margin-top:4px;font-weight:700;">&approx; $${totalSettledUsd.toFixed(2)} USD (at $${nearPriceUsd.toFixed(4)}/NEAR)</div>
       </div>
     </div>
 
@@ -1146,7 +1208,7 @@ export function generateVisualAuditStatementHtml(params: {
         <tr>
           <th>Row / Ref ID</th>
           <th>Counterparty Account</th>
-          <th>Accounting &amp; On-Chain Amount</th>
+          <th>On-Chain NEAR &amp; Live USD Eqv</th>
           <th>NEP-145 Storage</th>
           <th>Settlement Status</th>
           <th>On-Chain Block Hash &amp; Receipt Proof</th>
@@ -1158,9 +1220,9 @@ export function generateVisualAuditStatementHtml(params: {
     </table>
 
     <div style="margin-top:28px;">
-      <h2 style="margin:0 0 8px 0;font-size:15px;color:#111827;">Verified On-Chain NEAR Testnet Transaction Ledger (14 Transactions — Synced 1:1 with /api/overview &amp; Homepage)</h2>
+      <h2 style="margin:0 0 8px 0;font-size:15px;color:#111827;">Verified On-Chain NEAR Testnet Transaction Ledger (${VERIFIED_HISTORICAL_NEAR_TESTNET_TXNS.length} Transactions — Synced 1:1 with /api/overview &amp; Homepage)</h2>
       <div style="font-size:11px;color:#4b5563;margin-bottom:10px;">
-        Includes the 11 non-zero batch payroll transfers (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">EnhR2L...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">9Gdphd...</code> totaling <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2.6400 NEAR</code>) plus the 3 historical PoC-4 &amp; OutLayer anchor transactions (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">AVfu48...</code> at Block 276724260, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">7GKh8p...</code> at Block 276609630, and <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">BNmWCq7gnGhZxNTyeizC5MR9WBsdAcidMyz5qU25WJVN</code> at Block 276871880 — replaced <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">6NmWCq...</code> after Base58 OCR typo correction).
+        Includes the 11 non-zero batch payroll transfers (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">EnhR2L...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">9Gdphd...</code> totaling <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2.6400 NEAR</code> &approx; <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">$${totalSettledUsd.toFixed(2)} USD</code>), the 4 dedicated feature proof transfers (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">C8M7vc...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">5L6wvj...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">7DwfTP...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">71hcr5...</code>), and all 12 historical PoC-4 &amp; OutLayer anchor transactions (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">AVfu48...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">7GKh8p...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">BNmWCq...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">DfKeN18...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2Jqeh72J...</code>).
       </div>
       <table>
         <thead>

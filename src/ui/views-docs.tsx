@@ -114,12 +114,14 @@ const API_SPECS: ApiEndpointSpec[] = [
       status: "OK",
       treasuryAccount: "jubayir69.testnet",
       feeRecipient: "asma90.testnet",
-      balanceFormatted: "22.2202 NEAR",
-      spendableBalanceFormatted: "22.0184 NEAR",
-      totalNearBalance: 22.2203,
-      spendableNearBalance: 22.0185,
+      balanceFormatted: "37.2202 NEAR",
+      spendableBalanceFormatted: "37.0184 NEAR",
+      totalNearBalance: 37.2203,
+      spendableNearBalance: 37.0185,
       storageLockedNear: 0.0018,
       walletGasReserveNear: 0.2,
+      liveAccountRpcVerified: true,
+      balanceSource: "live_near_testnet_rpc",
       poc4MasterHash: "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
       poc4Valid: true,
       nep611Lanes: 4,
@@ -184,10 +186,13 @@ const API_SPECS: ApiEndpointSpec[] = [
     },
     sampleResponse: {
       status: "OK",
+      quoteMode: "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE",
+      mcaHealthFactor: 3.13,
       routeResult: {
         winningVenue: "ONECLICK_CONFIDENTIAL_INTENTS",
         expectedAmountOutFormatted: "248.975000",
         totalFeeBps: 41,
+        oneClickQuoteMode: "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE",
       },
     },
   },
@@ -235,7 +240,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     sampleResponse: {
       status: "OK",
       invoiceResult: { netSettledFormatted: "250.000000 USDC", grossInputFormatted: "251.029220 USDC" },
-      batchResult: { totalRowsImported: 12, totalSettledCount: 11, totalIsolatedFailedCount: 1 },
+      batchResult: { totalRowsImported: 12, totalSettledCount: 11, totalIsolatedFailedCount: 1, totalSettledNear: 2.64 },
     },
   },
   {
@@ -395,13 +400,13 @@ const API_SPECS: ApiEndpointSpec[] = [
       chainType: "near",
       address: "jubayir69.testnet",
       nativeSymbol: "NEAR",
-      nativeBalance: 22.0185,
-      totalNearBalance: 22.2203,
-      spendableNearBalance: 22.0185,
+      nativeBalance: 37.0185,
+      totalNearBalance: 37.2203,
+      spendableNearBalance: 37.0185,
       storageLockedNear: 0.0018,
       walletGasReserveNear: 0.2,
-      totalNearFormatted: "22.2202 NEAR",
-      spendableNearFormatted: "22.0184 NEAR",
+      totalNearFormatted: "37.2202 NEAR",
+      spendableNearFormatted: "37.0184 NEAR",
       usdcBalance: 0,
       usdtBalance: 0,
       liveRpcVerified: true,
@@ -498,7 +503,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   router:
     "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (1 bp fee + 40 bps app fee to `asma90.testnet`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON addresses.\n",
   payroll:
-    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit` and 11 distinct real non-zero on-chain NEAR Testnet payment transactions (`2.6400 NEAR` transferred across `asma90.testnet`, `v1.signer-prod.testnet`, `outlayer.testnet`, `worker.outlayer.testnet`, `ref-finance.testnet`, `wrap.testnet`, and `ref-farming.testnet`).\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
+    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit` and 11 distinct real non-zero on-chain NEAR Testnet payment transactions (`2.6400 NEAR ≈ $9.37 USD` at live rate transferred across `asma90.testnet`, `v1.signer-prod.testnet`, `outlayer.testnet`, `worker.outlayer.testnet`, `ref-finance.testnet`, `wrap.testnet`, and `ref-farming.testnet`).\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
   "api-overview":
     "# KratonOS REST API Overview (13 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
   "api-explorer":
@@ -510,7 +515,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   shipped:
     "# Shipped Feature Matrix, Verification Coverage & All 13 Official Track Specifications\n\nAll 8 core modules, 6 verification suites, and all 13 official hackathon track specifications (`01-defi.md`, `02-thesis.md`, `03-privacy.md`, `04-business.md`, `05-swarms.md`, `06-security.md`, `07-agents.md`, `08-realworld.md`, `09-games.md`, `10-nfts.md`, `11-memecoins.md`, `12-social.md`, `13-open.md`) are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
-    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub), 15 real non-zero on-chain NEAR Testnet value transfers (`EnhR2L...` through `71hcr5...`), `GET /api/onchain/receipt` & `POST /api/wallet/balances` live RPC endpoints, and Base58 OCR correction replacing `6NmWCq...` with verified tx `BNmWCq7gnGhZxNTyeizC5MR9WBsdAcidMyz5qU25WJVN` (Block `276871880`).\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
+    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub), 27 verified on-chain NEAR Testnet transactions (`EnhR2L...` through `9Gdphd...` 11 payroll payment txs totaling `2.6400 NEAR ≈ $9.37 USD`, 4 dedicated feature proof txs `C8M7vc...` / `5L6wvj...` / `7DwfTP...` / `71hcr5...`, and 12 historical PoC-4 anchor txs `AVfu48...` through `2Jqeh7...`), `GET /api/onchain/receipt` & `POST /api/wallet/balances` live RPC endpoints.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
 };
 
 function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
@@ -555,12 +560,32 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
               </td>
             </tr>
             <tr>
-              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; 18 Real On-Chain Txs</td>
-              <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Live <code className="font-mono text-[var(--accent-emerald)]">view_account</code> &amp; <code className="font-mono text-[var(--accent-emerald)]">view_access_key_list</code> on <code className="font-mono">rpc.testnet.near.org</code>, <strong>11 real non-zero payment transfers totaling 2.6400 NEAR</strong> (<code className="font-mono">EnhR2L...</code> through <code className="font-mono">9Gdphd...</code> across <code className="font-mono">asma90.testnet</code>, <code className="font-mono">v1.signer-prod.testnet</code>, <code className="font-mono">outlayer.testnet</code>, <code className="font-mono">worker.outlayer.testnet</code>, <code className="font-mono">ref-finance.testnet</code>, <code className="font-mono">wrap.testnet</code>, <code className="font-mono">ref-farming.testnet</code>), <strong>4 dedicated non-zero proof transfers</strong> (<code className="font-mono">C8M7vc...</code> Swarm 0.05 NEAR, <code className="font-mono">5L6wvj...</code> VRF Limit Order 0.04 NEAR, <code className="font-mono">7DwfTP...</code> x402 Escrow 0.025 NEAR, <code className="font-mono">71hcr5...</code> RHEA Sweep 0.02 NEAR), plus historical PoC-4 anchor txs <code className="font-mono">AVfu48...</code> (#276724260), <code className="font-mono">7GKh8p...</code> (#276724344), and <code className="font-mono">BNmWCq7gnGhZxNTyeizC5MR9WBsdAcidMyz5qU25WJVN</code> (#276871880, replacing earlier Base58 OCR typo <code className="font-mono">6NmWCq...</code>).
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; All 27 Real On-Chain Txs</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)] space-y-1.5">
+                <div>
+                  Live multi-RPC failover (<code className="font-mono text-[var(--accent-emerald)]">test.rpc.fastnear.com</code>, <code className="font-mono text-[var(--accent-emerald)]">near-testnet-rpc.publicnode.com</code>, <code className="font-mono text-[var(--accent-emerald)]">rpc.testnet.near.org</code>) for <code className="font-mono">view_account</code> (<code className="font-mono">37.2202 NEAR</code> total / <code className="font-mono">37.0184 NEAR</code> spendable on <code className="font-mono">jubayir69.testnet</code>) and <code className="font-mono">EXPERIMENTAL_tx_status</code>.
+                </div>
+                <div>
+                  <strong>11 Real Non-Zero Payroll Payment Transfers (2.6400 NEAR total ≈ $9.37 USD at live rate)</strong>: <code className="font-mono">EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN</code> (#1 · 0.4500 NEAR · #276951868), <code className="font-mono">EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd</code> (#2 · 0.1850 NEAR · #276951890), <code className="font-mono">DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT</code> (#3 · 0.2400 NEAR · #276951910), <code className="font-mono">FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML</code> (#4 · 0.1500 NEAR · #276951929), <code className="font-mono">6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf</code> (#5 · 0.2200 NEAR · #276951949), <code className="font-mono">HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3</code> (#6 · 0.3000 NEAR · #276951968), <code className="font-mono">J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz</code> (#7 · 0.1975 NEAR · #276951987), <code className="font-mono">5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E</code> (#8 · 0.2800 NEAR · #276952006), <code className="font-mono">DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29</code> (#9 · 0.1225 NEAR · #276952025), <code className="font-mono">BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC</code> (#10 · 0.1450 NEAR · #276952045), <code className="font-mono">9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd</code> (#11 · 0.3500 NEAR · #276952064).
+                </div>
+                <div>
+                  <strong>4 Dedicated Feature Proof Transfers</strong>: <code className="font-mono">C8M7vcDtRZPNWnM7QJRvHQRPWe8ez1tQd5WicFep32uq</code> (Swarm 0.05 NEAR · #276952083), <code className="font-mono">5L6wvjds1XG56yEHmWADmmr1WsfG2kdYmZfR84gaqiYS</code> (VRF Limit Order 0.04 NEAR · #276952102), <code className="font-mono">7DwfTPZmn87X9MoBGnVibZAEnEdQVjJx9QQ6nTTdsA8z</code> (x402 Escrow 0.025 NEAR · #276952121), <code className="font-mono">71hcr5fPMjAuJPUYojzx2QKqVngMXME4eZzSxPPShqoQ</code> (RHEA Sweep 0.02 NEAR · #276952140).
+                </div>
+                <div>
+                  <strong>12 Historical PoC-4 Anchor Txs</strong>: <code className="font-mono">AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga</code> (#276724260), <code className="font-mono">7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt</code> (#276609630), <code className="font-mono">BNmWCq7gnGhZxNTyeizC5MR9WBsdAcidMyz5qU25WJVN</code> (#276871880), <code className="font-mono">DfKeN18XWxbssNe5sB9qkhYUsyRDKZUBUPdL432aWtNi</code> (#276910765), <code className="font-mono">EUooybCu4s8SjWestaJSyPizQS4x9zDRGyiKYmVdz1i4</code> (#276911212), <code className="font-mono">57Jf22dkERv47wXc3o83eC68NnoWg7CUrvDuuFAc1chQ</code> (#276911224), <code className="font-mono">CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j</code> (#276911236), <code className="font-mono">9h5ta1emJUcrWDzP4bN4CHfpfTmuZhMukgAGh4tGAPBB</code> (#276911249), <code className="font-mono">76gkhgcAy77Bqk3A6fYcHjmaojdV9XgwMo8UMy5yTpny</code> (#276911262), <code className="font-mono">BubLCp33vGEUMMpvnhb9TioVvATpdTtyX9QubKVcAKC4</code> (#276911275), <code className="font-mono">C8mSUpLnqzEBvtHxQg3cDmXBHrYDYSjqhtfKQFgHCCzb</code> (#276911288), <code className="font-mono">2Jqeh72J7S1EanL7Yk6hJYijCGvkCKWFqraTtxhadCne</code> (#276911301).
+                </div>
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 Every settled payroll row and proof badge links to a real non-zero <code className="font-mono">testnet.nearblocks.io/txns/...</code> transaction with verified <code className="font-mono">blockHash</code> and <code className="font-mono">receiptId</code>.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Mode A Sandbox Workflows (Swarm, Limit Order, 5-Stage Loop &amp; x402)</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Real on-chain NEAR Testnet value-transfer settlement receipts to <code className="font-mono text-[var(--accent-emerald)]">asma90.testnet</code> and <code className="font-mono text-[var(--accent-emerald)]">ref-farming.testnet</code> (<code className="font-mono">C8M7vc...</code>, <code className="font-mono">5L6wvj...</code>, <code className="font-mono">7DwfTP...</code>, <code className="font-mono">71hcr5...</code>) + live <code className="font-mono">market.near.ai</code> discovery and live RHEA <code className="font-mono">list_seeds_info</code> RPC probes.
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Explicit Mode A Sandbox Disclosure</strong>: In walletless Judge Sandbox Mode (<code className="font-mono">Mode A</code>), the 20x5 Sealed-Bid Swarm, Confidential GTC Limit Order (<code className="font-mono">/v0/orders</code>), 5-Stage Autonomous Master Loop, and A2A + x402 v2 Negotiation execute as <strong>deterministic API &amp; in-page sandbox simulations paired with real NEAR Testnet value-transfer receipts to <code className="font-mono">asma90.testnet</code></strong> rather than custom on-chain order-book/auction smart contracts.
               </td>
             </tr>
             <tr>
@@ -575,10 +600,10 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">1Click Cross-Chain Swaps (Q-007)</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Live authenticated <code className="font-mono text-[var(--accent-emerald)]">GET /v0/tokens</code> &amp; <code className="font-mono text-[var(--accent-emerald)]">POST /v0/quote</code> on <code className="font-mono">1click.chaindefuser.com</code> with inspectable pre-sign NEP-413 <code className="font-mono">token_diff</code> JSON payloads.
+                Live <code className="font-mono text-[var(--accent-emerald)]">GET /v0/tokens</code> (210 tokens) &amp; <code className="font-mono text-[var(--accent-emerald)]">POST /v0/quote</code> on <code className="font-mono">1click.chaindefuser.com</code> with inspectable pre-sign NEP-413 <code className="font-mono">token_diff</code> JSON payloads.
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                <strong><code className="font-mono">dry: true</code> by Design (Q-007)</strong>: Mainnet quote calls pass <code className="font-mono">dry: true</code> so judges and CI suites benchmark real routes without locking Mainnet capital in ephemeral deposit addresses.
+                <strong><code className="font-mono">DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE</code> (<code className="font-mono">dry: true</code> per Q-007)</strong>: Quote calls pass <code className="font-mono">dry: true</code> and combine verified 1Click fee tiers (1 bp stablecoin / 8 bps cross-asset + 40 bps app fee) with live Coinbase/1Click spot prices so judges and CI suites benchmark real routes without locking Mainnet capital in ephemeral deposit addresses.
               </td>
             </tr>
             <tr>
@@ -782,7 +807,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
   const [liveStatusData, setLiveStatusData] = useState<any | null>(() => {
     try {
       if (typeof window !== "undefined") {
-        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v3");
+        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v4");
         if (cached) return JSON.parse(cached);
       }
     } catch {
@@ -900,7 +925,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
           setLiveStatusData(data);
           setStatusLastUpdated(new Date().toLocaleTimeString());
           try {
-            window.sessionStorage?.setItem("kratonos_overview_cache_v3", JSON.stringify(data));
+            window.sessionStorage?.setItem("kratonos_overview_cache_v4", JSON.stringify(data));
           } catch {
             // Ignore sessionStorage quota error
           }
@@ -949,8 +974,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
       const data = await res.json();
       const isPass = Boolean(res.ok && data?.status !== "ERROR");
       const liveBlock = data?.liveJudgeCheckBlock ?? {
-        blockHeight: data?.blockHeight ?? activeTelemetry?.blockHeight ?? 276952149,
-        blockHash: data?.blockHash ?? activeTelemetry?.blockHash ?? "FZU59dd1v45PRejaWohkU7bRoScBs8X5mazzDJt6xiU6",
+        blockHeight: data?.blockHeight ?? activeTelemetry?.blockHeight ?? 276971767,
+        blockHash: data?.blockHash ?? activeTelemetry?.blockHash ?? "6t5dMjPndFVCMsDFiAgGN2EPAW7G5ZYDb1hwoUJuktAm",
         timestampIso: data?.timestamp ?? new Date().toISOString(),
         runVerificationDigest: data?.poc4MasterHash ?? "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
       };
@@ -1362,7 +1387,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   <div className="mt-2.5 space-y-1.5 rounded-lg border border-emerald-500/30 bg-[var(--bg-card)] p-2.5 font-mono text-[11px] leading-snug text-[var(--text-secondary)]">
                     <div>
                       <strong className="text-[var(--accent-emerald)]">Spendable vs Total On-Chain NEAR:</strong>{" "}
-                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "22.2202 NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "22.0184 NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
+                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "37.2202 NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "37.0184 NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
                     </div>
                     <div>
                       <strong className="text-[var(--accent-cyan)]">Meteor Wallet Permission Notice:</strong>{" "}
@@ -1395,7 +1420,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     BTC/USD: <strong className="text-[var(--text-primary)]">${Number(activeTelemetry?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                   </span>
                   <span>
-                    Block: <strong className="text-[var(--accent-emerald)]">#{activeTelemetry?.blockHeight ?? 276911301}</strong>
+                    Block: <strong className="text-[var(--accent-emerald)]">#{activeTelemetry?.blockHeight ?? 276971767}</strong>
                   </span>
                 </div>
               </div>
@@ -2773,7 +2798,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--accent-emerald)]">1Click Confidential Intents</td>
                       <td className="px-4 py-3 font-mono">1click.chaindefuser.com / intents.near</td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)]">1-bp stablecoin fee, Private Shard block/receipt commitments &amp; /v0/orders GTC limit orders</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)]">1-bp stablecoin fee, DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE (dry: true + live Coinbase/1Click spot rate), Private Shard block/receipt commitments &amp; /v0/orders GTC limit orders</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--text-primary)]">RHEA Finance V2 DCL</td>
@@ -2783,7 +2808,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--text-primary)]">RHEA Finance V1 &amp; Farming</td>
                       <td className="px-4 py-3 font-mono">v2.ref-finance.near / ref-farming.testnet</td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)]">On-chain list_seeds_info + get_unclaimed_rewards with single-tx withdraw_reward(&#123; amount: &quot;0&quot; &#125;) sweep (TX: 71hcr5fPMjAu...)</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)]">On-chain list_seeds_info + get_unclaimed_rewards with single-tx withdraw_reward(&#123; amount: &quot;0&quot; &#125;) sweep (TX: 71hcr5fPMjAu...) and MCA Lending Health Factor 3.13 (($12,500 * 0.80) / $3,200)</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--accent-cyan)]">Chain Signatures MPC</td>
@@ -2860,7 +2885,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     </text>
                     <rect x={354} y={60} width={252} height={43} rx={7} fill="rgba(0, 236, 151, 0.15)" stroke="#00EC97" strokeWidth="1.4" />
                     <text x={480} y={78} textAnchor="middle" fill="#00EC97" className="font-mono text-[9.5px] font-extrabold">
-                      Rows #1..#11: SETTLED ($264.00)
+                      Rows #1..#11: SETTLED (2.6400 NEAR)
                     </text>
                     <text x={480} y={94} textAnchor="middle" fill="currentColor" className="font-mono text-[8.5px]">
                       +0.00125 NEAR storage_deposit auto-injected
@@ -2909,7 +2934,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
                   <div className="font-mono text-xs font-bold text-[var(--accent-cyan)]">12-Row Fault-Isolated Payroll</div>
                   <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-                    Auto-injects <code className="font-mono">0.00125 NEAR</code> <code className="font-mono">storage_deposit</code> for unregistered accounts and quarantines Row #12 (<code className="font-mono">unverified-quarantine-row12.testnet</code>) while settling 11/12 legitimate rows (<code className="font-mono">$264.00 USDC</code>).
+                    Auto-injects <code className="font-mono">0.00125 NEAR</code> <code className="font-mono">storage_deposit</code> for unregistered accounts and quarantines Row #12 (<code className="font-mono">unverified-quarantine-row12.testnet</code>) while settling 11/12 legitimate rows (<code className="font-mono">2.6400 NEAR ≈ $9.37 USD</code> at live rate).
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
@@ -3194,15 +3219,15 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                                         "asma90.testnet",
                                       balanceFormatted:
                                         activeTelemetry.balanceFormatted ??
-                                        "22.2202 NEAR",
+                                        "37.2202 NEAR",
                                       spendableBalanceFormatted:
                                         activeTelemetry.spendableBalanceFormatted ??
-                                        "22.0184 NEAR",
+                                        "37.0184 NEAR",
                                       totalNearBalance:
-                                        activeTelemetry.totalNearBalance ?? 22.2203,
+                                        activeTelemetry.totalNearBalance ?? 37.2203,
                                       spendableNearBalance:
                                         activeTelemetry.spendableNearBalance ??
-                                        22.0185,
+                                        37.0185,
                                       poc4MasterHash:
                                         activeTelemetry.poc4MasterHash ??
                                         "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
@@ -3217,18 +3242,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                                       {
                                         ...ep.sampleResponse,
                                         nativeBalance:
-                                          activeTelemetry.spendableNearBalance ?? 22.0185,
+                                          activeTelemetry.spendableNearBalance ?? 37.0185,
                                         totalNearBalance:
-                                          activeTelemetry.totalNearBalance ?? 22.2203,
+                                          activeTelemetry.totalNearBalance ?? 37.2203,
                                         spendableNearBalance:
-                                          activeTelemetry.spendableNearBalance ?? 22.0185,
+                                          activeTelemetry.spendableNearBalance ?? 37.0185,
                                         storageLockedNear:
                                           activeTelemetry.storageLockedNear ?? 0.0018,
                                         totalNearFormatted:
-                                          activeTelemetry.balanceFormatted ?? "22.2202 NEAR",
+                                          activeTelemetry.balanceFormatted ?? "37.2202 NEAR",
                                         spendableNearFormatted:
                                           activeTelemetry.spendableBalanceFormatted ??
-                                          "22.0184 NEAR",
+                                          "37.0184 NEAR",
                                       },
                                       null,
                                       2
@@ -3430,7 +3455,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         ["06", "Predatory Fee Extraction", "Combined fee > 500 bps (5.00%)", "Rejected by config.yaml and Rust Policy Vault fee ceiling."],
                         ["07", "Unlisted Token Hallucination", "AYAN/USDT CURRENT MARKET PRICE", "Returns found: false, priceUsd: null, status: UNLISTED_TOKEN (never $1.00)."],
                         ["08", "Misspelled Ticker Spoof", "AVEX/USDT CURRENT MARKET PRICE", "Flags AVEX as UNLISTED_TOKEN and suggests AVAX via Levenshtein distance."],
-                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (quarantined)", "Quarantines Row #12 while settling 11/12 valid rows ($264.00 USDC)."],
+                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (quarantined)", "Quarantines Row #12 while settling 11/12 valid rows (2.6400 NEAR ≈ $9.37 USD)."],
                         ["10", "NEP-611 DeleteKey Gas Burn", "DeleteKey on funded NEP-611 Gas Key", "Auto-prepends WithdrawFromGasKey before DeleteKey so 0 NEAR is burned."],
                         ["11", "Protocol v87 Gas-Key Meta-Tx", "signerKeyIsGasKey: true on NEP-366 inner tx", "Blocked per nearcore v87+; enforces standard ed25519 key on inner delegate."],
                         ["12", "External AddKey allowance: 0", "RPC AddKey with allowance: '0'", "Rejected (sets literal 0 yoctoNEAR lockout); requires allowance: null."],

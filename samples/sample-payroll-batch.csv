@@ -1,13 +1,13 @@
-recipient_id,role,origin_asset,destination_asset,amount_usdc,invoice_ref
-asma90.testnet,Core Treasury Counterparty & Fee Vault,USDC,USDC,45.00,PAY-2026-101
-asma90.testnet,Swarm Discovery Counterparty,USDC,USDC,18.50,PAY-2026-102
-asma90.testnet,PoC-4 Intent Counterparty,USDC,USDC,24.00,PAY-2026-103
-asma90.testnet,Batch Settlement Counterparty,USDC,USDC,15.00,PAY-2026-104
-v1.signer-prod.testnet,MPC Chain Signatures Custodian,USDC,USDC,22.00,PAY-2026-105
-outlayer.testnet,WASI P2 Enclave Verifier,USDC,USDC,30.00,PAY-2026-106
-worker.outlayer.testnet,WASI P1 VRF Node,USDC,USDC,19.75,PAY-2026-107
-ref-finance.testnet,RHEA Liquidity Provider,USDC,USDC,28.00,PAY-2026-108
-wrap.testnet,wNEAR Wrapper Gateway,USDC,USDC,12.25,PAY-2026-109
-ref-farming.testnet,RHEA Farming Pool Contract,USDC,USDC,14.50,PAY-2026-110
-asma90.testnet,Hopper GPU Capacity Counterparty,USDC,USDC,35.00,PAY-2026-111
-unverified-quarantine-row12.testnet,Quarantined High-Risk Counterparty,USDC,USDC,99.00,PAY-2026-112-MALFORMED
+recipient_id,role,origin_asset,destination_asset,amount_near,invoice_ref
+asma90.testnet,Core Treasury Counterparty & Fee Vault,NEAR,NEAR,0.4500,PAY-2026-101
+asma90.testnet,Swarm Discovery Counterparty,NEAR,NEAR,0.1850,PAY-2026-102
+asma90.testnet,PoC-4 Intent Counterparty,NEAR,NEAR,0.2400,PAY-2026-103
+asma90.testnet,Batch Settlement Counterparty,NEAR,NEAR,0.1500,PAY-2026-104
+v1.signer-prod.testnet,MPC Chain Signatures Custodian,NEAR,NEAR,0.2200,PAY-2026-105
+outlayer.testnet,WASI P2 Enclave Verifier,NEAR,NEAR,0.3000,PAY-2026-106
+worker.outlayer.testnet,WASI P1 VRF Node,NEAR,NEAR,0.1975,PAY-2026-107
+ref-finance.testnet,RHEA Liquidity Provider,NEAR,NEAR,0.2800,PAY-2026-108
+wrap.testnet,wNEAR Wrapper Gateway,NEAR,NEAR,0.1225,PAY-2026-109
+ref-farming.testnet,RHEA Farming Pool Contract,NEAR,NEAR,0.1450,PAY-2026-110
+asma90.testnet,Hopper GPU Capacity Counterparty,NEAR,NEAR,0.3500,PAY-2026-111
+unverified-quarantine-row12.testnet,Quarantined High-Risk Counterparty,NEAR,NEAR,0.9900,PAY-2026-112-MALFORMED

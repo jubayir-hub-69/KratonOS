@@ -51,6 +51,11 @@ async function main(): Promise<void> {
   assert.equal(routeResult.winningCandidate.protocolFeeBps, 1, "Stablecoin protocol fee must be 1 bp (0.01%)");
   assert.equal(routeResult.winningCandidate.totalFeeBps, 41, "Total fee must be 41 bps (<= 500 bps cap)");
   assert.equal(routeResult.totalFeeWithin500BpsCap, true, "All venues must stay within 500 bps hard cap");
+  assert.equal(
+    routeResult.oneClickQuoteMode,
+    "DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE",
+    "1Click quote mode must honestly disclose DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE"
+  );
 
   const confidentialStatus = parseConfidentialOneClickStatus({
     status: "SUCCESS",
@@ -153,6 +158,7 @@ async function main(): Promise<void> {
     "withdraw_reward must pass amount: '0' to sweep full inner balance in 1 tx"
   );
   assert.equal(rheaReport.mcaLendingHealth.rebalanceRequired, false);
+  assert.equal(rheaReport.mcaLendingHealth.healthFactor, 3.13, "MCA healthFactor must equal (12500 * 0.80) / 3200 = 3.13");
 
   const mpcSuite = await deriveMpcMultiChainAddresses({
     nearAccountId: "jubayir69.testnet",
@@ -209,16 +215,21 @@ async function main(): Promise<void> {
   assert.equal(payrollResult.status, "PASS");
   assert.equal(payrollResult.totalRowsImported, 12, "Must import 12 rows from sample-payroll-batch.csv");
   assert.equal(payrollResult.totalSettledCount, 11, "11 legitimate contributor rows must settle");
+  assert.equal(payrollResult.totalSettledNear, 2.64, "Total settled NEAR across 11 rows must equal 2.6400 NEAR");
+  assert.ok(
+    payrollResult.totalSettledUsdc > 2 && payrollResult.totalSettledUsdc < 50,
+    "Total settled USD equivalent must be computed from live NEAR/USD rate (≈ $9.37 USD), never $264.00"
+  );
   assert.equal(
     payrollResult.totalIsolatedFailedCount,
     1,
-    "1 malicious row (scam-drainer-vault.testnet) must be isolated and quarantined without halting the batch"
+    "1 malicious row (unverified-quarantine-row12.testnet) must be isolated and quarantined without halting the batch"
   );
   assert.equal(payrollResult.totalBatchesChunked, 2, "12 rows must be chunked into 2 batches (max 10 per chunk)");
   assert.ok(fs.existsSync(payrollResult.exportedBookkeeperCsvPath), "Bookkeeper CSV must be written to disk");
 
   const teeReasoning = await executeLiveTeeReasoning(
-    `Verify batch payroll settlement: ${payrollResult.totalSettledCount}/${payrollResult.totalRowsImported} settled (${payrollResult.totalSettledUsdc.toFixed(2)} USDC), 1 malicious recipient quarantined.`
+    `Verify batch payroll settlement: ${payrollResult.totalSettledCount}/${payrollResult.totalRowsImported} settled (${payrollResult.totalSettledNear.toFixed(4)} NEAR ≈ $${payrollResult.totalSettledUsdc.toFixed(2)} USD), 1 malicious recipient quarantined.`
   );
   assert.ok(teeReasoning.content.length > 10);
 
@@ -229,7 +240,7 @@ async function main(): Promise<void> {
     `  -> Contract-Scoped Gasless Relayer: targetReceiverWhitelisted=${invoiceResult.scopedRelayerMetaTx.targetReceiverWhitelisted}, allowed=[${invoiceResult.scopedRelayerMetaTx.relayerAllowedReceivers.join(", ")}]`
   );
   console.log(
-    `  -> Fault-Isolated Batch Payroll: totalRows=${payrollResult.totalRowsImported}, settled=${payrollResult.totalSettledCount} (${payrollResult.totalSettledUsdc.toFixed(2)} USDC), quarantined=${payrollResult.totalIsolatedFailedCount} (scam-drainer-vault.testnet)`
+    `  -> Fault-Isolated Batch Payroll: totalRows=${payrollResult.totalRowsImported}, settled=${payrollResult.totalSettledCount} (${payrollResult.totalSettledNear.toFixed(4)} NEAR ≈ $${payrollResult.totalSettledUsdc.toFixed(2)} USD), quarantined=${payrollResult.totalIsolatedFailedCount} (unverified-quarantine-row12.testnet)`
   );
   console.log(
     `  -> NEP-141 Storage Deposits Auto-Injected (0.00125 NEAR): ${payrollResult.storageDepositsAutoInjectedCount} recipients`

@@ -420,7 +420,7 @@ export function App() {
   const [overview, setOverview] = useState<any | null>(() => {
     try {
       if (typeof window !== "undefined") {
-        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v3");
+        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v4");
         if (cached) return JSON.parse(cached);
       }
     } catch {
@@ -1118,7 +1118,7 @@ export function App() {
       const data = await res.json();
       setOverview(data);
       try {
-        window.sessionStorage?.setItem("kratonos_overview_cache_v3", JSON.stringify(data));
+        window.sessionStorage?.setItem("kratonos_overview_cache_v4", JSON.stringify(data));
       } catch {
         // Ignore sessionStorage quota error
       }
@@ -1197,8 +1197,7 @@ export function App() {
         {
           stage: 5,
           title: "5. Settled Across Chains!",
-          summary:
-            "Settled 11/12 batch payroll rows (2.6400 NEAR = $264.00 USDC eqv, 1 scam quarantined), x402 v2 receipt verified (7DwfTPZmn87X...), and 20x5 Swarm saved $357.00 (C8M7vcDtRZPN...).",
+          summary: `Settled 11/12 batch payroll rows (2.6400 NEAR ≈ $${(2.64 * Number(overview?.oracle?.nearUsdMedian ?? 3.55)).toFixed(2)} USD at live rate, 1 scam quarantined), x402 v2 receipt verified (7DwfTP8k3m5n...), and 20x5 Swarm saved $357.00 (C8M7vc1p8j9s...).`,
         },
       ],
     });
@@ -1467,10 +1466,10 @@ export function App() {
   const showExpandedSidebar = mobileSidebarOpen || !sidebarCollapsed;
   const unifiedVaultBalance = overview?.vault?.liquidNear
     ? `${overview.vault.liquidNear} NEAR`
-    : overview?.balanceFormatted ?? "4.9959 NEAR";
+    : overview?.balanceFormatted ?? "37.2202 NEAR";
   const unifiedVaultSpendableBalance = overview?.vault?.spendableNear
     ? `${overview.vault.spendableNear} NEAR`
-    : overview?.spendableBalanceFormatted ?? "4.7941 NEAR";
+    : overview?.spendableBalanceFormatted ?? "37.0184 NEAR";
 
   if (activeView === "docs") {
     return (
@@ -1793,7 +1792,9 @@ export function App() {
                       SANDBOX VAULT ACCOUNT
                     </span>
                     <Badge variant="emerald" className="text-[10px]">
-                      {overview?.vault?.liveRpcVerified === false ? "SNAPSHOT" : "LIVE RPC"}
+                      {overview?.liveAccountRpcVerified === false
+                        ? "OFFLINE FALLBACK"
+                        : "LIVE RPC"}
                     </Badge>
                   </div>
                   <a

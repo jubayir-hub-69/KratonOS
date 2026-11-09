@@ -613,6 +613,7 @@ export interface CounterpartyRiskVerdict {
 
 const PROTECTED_CANONICAL_ACCOUNTS = [
   "jubayir69.testnet",
+  "asma90.testnet",
   "jubayir33.near",
   "ref-finance.testnet",
   "ref-farming.testnet",
@@ -763,7 +764,7 @@ export async function evaluateCounterpartyRisk(
     if (KNOWN_SANDBOX_VERIFIED_ACCOUNTS.has(receiverId)) {
       existsOnChain = true;
       storageUsageBytes = 182;
-      balanceYocto = "4998000000000000000000000";
+      balanceYocto = "37220268529675000000000000";
       codeHash = SYSTEM_EMPTY_CODE_HASH;
     } else {
       existsOnChain = false;

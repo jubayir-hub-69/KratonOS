@@ -141,14 +141,20 @@ export function loadEnvironmentConfig(workspaceRoot: string = resolveWorkspaceRo
   const networkId: "testnet" | "mainnet" = networkRaw === "mainnet" ? "mainnet" : "testnet";
 
   const defaultPrimaryRpc =
-    networkId === "mainnet" ? "https://rpc.mainnet.near.org" : "https://rpc.testnet.near.org";
+    networkId === "mainnet" ? "https://free.rpc.fastnear.com" : "https://test.rpc.fastnear.com";
   const primaryRpc = getVal("NEAR_RPC_URL", defaultPrimaryRpc);
   const defaultFallbacks =
     networkId === "mainnet"
-      ? [primaryRpc, "https://rpc.mainnet.near.org", "https://free.rpc.fastnear.com"]
-      : [
+      ? [
+          "https://free.rpc.fastnear.com",
           primaryRpc,
+          "https://near-rpc.publicnode.com",
+          "https://rpc.mainnet.near.org",
+        ]
+      : [
           "https://test.rpc.fastnear.com",
+          "https://near-testnet-rpc.publicnode.com",
+          primaryRpc,
           "https://rpc.testnet.near.org",
           "https://near-testnet.api.pagoda.co/rpc/v1",
         ];
