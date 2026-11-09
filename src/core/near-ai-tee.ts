@@ -654,7 +654,7 @@ export async function verifyNearAiTeeAttestation(
         }
       }
     }
-    signingAddress = signingAddress ?? fallbackEnclaveAccount.address;
+    signingAddress = (signingAddress ?? fallbackEnclaveAccount.address).toLowerCase();
 
     const attOk = Boolean(attRes && attRes.ok);
     const modelsOk = Boolean(modelsRes && modelsRes.ok);
@@ -704,7 +704,7 @@ export async function verifyNearAiTeeAttestation(
       model,
       nonce,
       attestationId: `chatcmpl-det-${nonce.slice(0, 20)}`,
-      signingAddress: fallbackEnclaveAccount.address,
+      signingAddress: fallbackEnclaveAccount.address.toLowerCase(),
       gatewayStatus: `OFFLINE_SANDBOX_FALLBACK (${err instanceof Error ? err.message : String(err)})`,
       endpointProbed: modelsEndpoint,
     };
@@ -864,7 +864,9 @@ export async function executeLiveTeeReasoning(
         const resHash = crypto.createHash("sha256").update(rawText, "utf8").digest("hex");
         let signedText = `${model}:${reqHash}:${resHash}`;
         // Ensure signingAddress matches the attestation probe / enclave signer
-        let signingAddress: string = attProbe.signingAddress ?? fallbackEnclaveAccount.address;
+        let signingAddress: string = (
+          attProbe.signingAddress ?? fallbackEnclaveAccount.address
+        ).toLowerCase();
         let signature: string = await fallbackEnclaveAccount.signMessage({ message: signedText });
 
         const sigUrl = `${baseUrl}/signature/${encodeURIComponent(chatId)}?model=${encodeURIComponent(model)}&signing_algo=ecdsa`;
@@ -888,7 +890,7 @@ export async function executeLiveTeeReasoning(
             signing_address?: string;
           };
           if (sigJson.signature && sigJson.signing_address) {
-            signingAddress = sigJson.signing_address;
+            signingAddress = sigJson.signing_address.toLowerCase();
             signature = sigJson.signature;
             if (sigJson.text) {
               signedText = sigJson.text;
@@ -946,7 +948,7 @@ export async function executeLiveTeeReasoning(
       chatId: attProbe.attestationId,
       content,
       reasoningContent: `Live NEAR AI Cloud TEE gateway & attestation verified (${attProbe.gatewayStatus}).`,
-      signingAddress: attProbe.signingAddress ?? fallbackEnclaveAccount.address,
+      signingAddress: (attProbe.signingAddress ?? fallbackEnclaveAccount.address).toLowerCase(),
       signature,
       signedText,
       rateGuardRemainingPerMinute: Math.max(
@@ -974,7 +976,7 @@ export async function executeLiveTeeReasoning(
     chatId: attProbe.attestationId ?? `chatcmpl-det-${reqHash.slice(0, 20)}`,
     content,
     reasoningContent: "Deterministic TEE policy & attestation check passed.",
-    signingAddress: attProbe.signingAddress ?? fallbackEnclaveAccount.address,
+    signingAddress: (attProbe.signingAddress ?? fallbackEnclaveAccount.address).toLowerCase(),
     signature,
     signedText,
     rateGuardRemainingPerMinute: Math.max(
@@ -1033,7 +1035,7 @@ export async function runNearAiTee8StepVerification(options?: {
     .update("nearai-cloud-glm-5.1-fp8-tee-enclave-secp256k1-v1", "utf8")
     .digest("hex")}` as Hex;
   const teeEcdsaAccount = privateKeyToAccount(teeEcdsaPrivKey);
-  const signingAddress = teeEcdsaAccount.address;
+  const signingAddress = teeEcdsaAccount.address.toLowerCase() as Hex;
 
   const ed25519Seed = crypto
     .createHash("sha256")
@@ -1228,12 +1230,13 @@ export async function runNearAiTee8StepVerification(options?: {
   // --------------------------------------------------------------------------
   // STEP 8: Cryptographically Recover Signer Address (`viem` ECDSA + `node:crypto` Ed25519)
   // --------------------------------------------------------------------------
-  const recoveredEcdsaAddress = await recoverMessageAddress({
+  const recoveredEcdsaAddressRaw = await recoverMessageAddress({
     message: signaturePayload.text,
     signature: signaturePayload.signature,
   });
+  const recoveredEcdsaAddress = recoveredEcdsaAddressRaw.toLowerCase() as Hex;
   const ecdsaMatches =
-    recoveredEcdsaAddress.toLowerCase() === signaturePayload.signing_address.toLowerCase();
+    recoveredEcdsaAddress === signaturePayload.signing_address.toLowerCase();
 
   const verifyEd25519Pub = crypto.createPublicKey({
     key: Buffer.concat([

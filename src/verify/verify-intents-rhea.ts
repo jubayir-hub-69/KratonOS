@@ -160,7 +160,7 @@ async function main(): Promise<void> {
   });
   assert.equal(mpcSuite.mpcContractExistsOnChain, true, "v1.signer-prod.testnet must exist on NEAR Testnet");
   assert.ok(mpcSuite.addresses.evmAddress.startsWith("0x") && mpcSuite.addresses.evmAddress.length === 42);
-  assert.ok(mpcSuite.addresses.bitcoinSegwitAddress.startsWith("bc1q"));
+  assert.ok(mpcSuite.addresses.bitcoinSegwitAddress.startsWith("tb1q"));
   assert.ok(mpcSuite.addresses.zcashTransparentAddress.startsWith("t1"));
   assert.ok(mpcSuite.addresses.tonV5R1Address.startsWith("EQ"));
   assert.ok(mpcSuite.evmEip1559SignedTxHex.startsWith("0x02"));

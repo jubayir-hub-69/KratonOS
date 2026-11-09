@@ -1065,7 +1065,7 @@ export function App() {
       underTwoMinutesVerified: true,
       poc4HMaster:
         overview?.poc4MasterHash ??
-        "bd3a6c960153984366c029fe090127dee6cd9b437522b1071dfb6628791d7c2c",
+        "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
       stages: [
         {
           stage: 1,
@@ -1081,7 +1081,7 @@ export function App() {
         {
           stage: 3,
           title: "3. PoC-4 Master Hash",
-          summary: `Computed H_master=${String(overview?.poc4MasterHash ?? "bd3a6c960153984366c0").slice(0, 20)}... & dispatched 4 parallel NEP-611 gas-key lanes (0 nonce collisions).`,
+          summary: `Computed H_master=${String(overview?.poc4MasterHash ?? "a9ada695b7f0859fe205").slice(0, 20)}... & dispatched 4 parallel NEP-611 gas-key lanes (0 nonce collisions).`,
         },
         {
           stage: 4,
@@ -1380,13 +1380,13 @@ export function App() {
         {/* LEFT SIDEBAR: Off-Canvas Drawer on < 1024px, Sticky Rail >= 1024 */}
         {/* ================================================================ */}
         <aside
-          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[280px] shrink-0 flex-col justify-between overflow-y-auto border-r border-[var(--border-color)] bg-[var(--panel-solid)] transition-all duration-200 lg:sticky lg:top-0 lg:z-30 lg:translate-x-0 ${
+          className={`fixed inset-y-0 left-0 z-50 flex h-screen w-[280px] shrink-0 flex-col justify-between overflow-y-auto border-r border-[var(--border-color)] bg-[var(--panel-solid)] pb-3 transition-all duration-200 lg:sticky lg:top-0 lg:z-30 lg:translate-x-0 ${
             mobileSidebarOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"
           } ${sidebarCollapsed ? "lg:w-[74px]" : "lg:w-[282px]"}`}
         >
           {/* Brand Header */}
           <div>
-            <div className="flex h-16 items-center justify-between border-b border-[var(--border-color)] px-4">
+            <div className="flex h-14 items-center justify-between border-b border-[var(--border-color)] px-4">
               <div
                 role="button"
                 tabIndex={0}
@@ -1463,7 +1463,7 @@ export function App() {
             </div>
 
             {/* Desktop Collapse Toggle + Navigation Items */}
-            <nav className="space-y-1.5 p-3">
+            <nav className="space-y-1 px-2.5 py-2">
               <div
                 className={`mb-2 hidden lg:flex ${
                   sidebarCollapsed ? "justify-center" : "justify-start"
@@ -1488,7 +1488,7 @@ export function App() {
                     type="button"
                     onClick={() => navigateToView(item.id)}
                     title={`${item.label} — ${item.subtitle}`}
-                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left transition-all duration-200 cursor-pointer ${
+                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-all duration-200 cursor-pointer ${
                       isActive
                         ? "bg-emerald-500/14 text-[var(--accent-emerald)] ring-1 ring-emerald-500/35"
                         : "text-[var(--text-secondary)] hover:bg-[var(--bg-card-subtle)] hover:text-[var(--text-primary)]"
@@ -1519,7 +1519,7 @@ export function App() {
           </div>
 
           {/* Sidebar Footer: Dual-Mode Custody Card (Simultaneous Multi-Chain Hub vs Protocol Sandbox Vault) */}
-          <div className="border-t border-[var(--border-color)] p-3">
+          <div className="border-t border-[var(--border-color)] px-3 pt-2.5 pb-4">
             {showExpandedSidebar ? (
               walletContext.isPersonalWallet && connectedWalletList.length > 0 ? (
                 <div className="space-y-2 rounded-xl border border-emerald-500/45 bg-emerald-500/8 p-3">

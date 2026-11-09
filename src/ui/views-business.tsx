@@ -162,7 +162,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
 }) {
   const [freelancerAccountId, setFreelancerAccountId] = useState("alice-dev.testnet");
   const [requestedNetUsdc, setRequestedNetUsdc] = useState("250");
-  const [originChainLabel, setOriginChainLabel] = useState("Ethereum Mainnet (USDC)");
+  const [originChainLabel, setOriginChainLabel] = useState("Ethereum Sepolia Testnet (USDC)");
   const [customBatchRows, setCustomBatchRows] = useState<
     Array<{
       recipientId: string;
@@ -201,7 +201,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ? String(overview.latestLiveProofReceipt.txHash)
       : Array.isArray(overview?.recentOnChainTxns) && overview.recentOnChainTxns[0]?.txHash
         ? String(overview.recentOnChainTxns[0].txHash)
-        : "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
+        : "6NmWCq7gnGhZxNTyeizCSMR9WBsdAcidMyz5qU25WJVN";
   const activeAnchorExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(
     activeAnchorTxHash
   )}`;
@@ -879,10 +879,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                   onChange={(e) => setOriginChainLabel(e.target.value)}
                   className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 text-sm font-semibold text-[var(--text-primary)]"
                 >
-                  <option value="Ethereum Mainnet (USDC)">Ethereum Mainnet (USDC)</option>
-                  <option value="Arbitrum One (USDC)">Arbitrum One (USDC)</option>
-                  <option value="Base Mainnet (USDC)">Base Mainnet (USDC)</option>
-                  <option value="Solana Mainnet (USDC)">Solana Mainnet (USDC)</option>
+                  <option value="Ethereum Sepolia Testnet (USDC)">Ethereum Sepolia Testnet (USDC)</option>
+                  <option value="Solana Testnet (USDC)">Solana Testnet (USDC)</option>
+                  <option value="Arbitrum Sepolia Testnet (USDC)">Arbitrum Sepolia Testnet (USDC)</option>
+                  <option value="NEAR Testnet (USDC)">NEAR Testnet (USDC)</option>
                 </select>
               </div>
             </div>
@@ -2706,10 +2706,10 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
           chain: "Bitcoin (Testnet / SegWit)",
           standard: "Native SegWit BIP-173 P2WPKH Bech32",
           address: mpc.addresses.bitcoinSegwitAddress,
-          badge: "bc1q SegWit",
+          badge: "tb1q SegWit",
         },
         {
-          chain: "Solana (Devnet / Mainnet)",
+          chain: "Solana (Testnet / Devnet)",
           standard: "Ed25519 32-Byte Base58 Public Key",
           address: mpc.addresses.solanaAddress,
           badge: "SPL Base58",

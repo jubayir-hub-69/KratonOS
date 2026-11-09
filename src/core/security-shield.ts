@@ -867,7 +867,7 @@ export async function evaluateCounterpartyRisk(
         decision = "warn";
       }
       reasons.push(
-        `Tier 3 Governance Gate ($${input.requestedAmountUsd.toFixed(2)} > $${tier2MaxUsd.toFixed(2)} single-tx cap): requires Sputnik DAO V2 on-chain proposal (1 NEAR bond).`
+        `[GOVERNANCE GATE] Tier 3 Governance Gate ($${input.requestedAmountUsd.toFixed(2)} > $${tier2MaxUsd.toFixed(2)} single-tx cap): requires Sputnik DAO V2 on-chain proposal (1 NEAR bond).`
       );
     } else if (input.requestedAmountUsd > tier1MaxUsd) {
       governanceTier = "ONE_COUNCIL_FAST_TRACK";
@@ -875,7 +875,7 @@ export async function evaluateCounterpartyRisk(
         decision = "warn";
       }
       reasons.push(
-        `Tier 2 Governance Gate ($${input.requestedAmountUsd.toFixed(2)} in $${(tier1MaxUsd + 0.01).toFixed(2)}-$${tier2MaxUsd.toFixed(2)} band): requires 1-Council Fast-Track co-signature.`
+        `[GOVERNANCE GATE] Tier 2 Governance Gate ($${input.requestedAmountUsd.toFixed(2)} in $${(tier1MaxUsd + 0.01).toFixed(2)}-$${tier2MaxUsd.toFixed(2)} band): requires 1-Council Fast-Track co-signature.`
       );
     } else if (decision === "allow") {
       governanceTier = "AUTO_APPROVE";

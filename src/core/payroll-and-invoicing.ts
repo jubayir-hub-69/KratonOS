@@ -21,7 +21,7 @@ export const NEP141_STORAGE_DEPOSIT_YOCTO = "1250000000000000000000"; // 0.00125
 export const MAX_BATCH_CHUNK_SIZE = 10;
 export const MAX_RETRY_ATTEMPTS = 3;
 export const DEFAULT_VERIFIED_NEAR_TESTNET_TX_HASH =
-  "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
+  "6NmWCq7gnGhZxNTyeizCSMR9WBsdAcidMyz5qU25WJVN";
 
 export interface ExactOutputInvoiceInput {
   invoiceId?: string;
@@ -207,8 +207,12 @@ export function execute_ceil_exact_output_invoice(
   const grossFormatted = formatAtomicBigInt(grossInputCeiling, decimals);
   const netSettledFormatted = formatAtomicBigInt(netSettled, decimals);
 
-  const chainLabel = input.originChainLabel ?? "Ethereum Mainnet (USDC)";
+  const chainLabel = input.originChainLabel ?? "Ethereum Sepolia Testnet (USDC)";
   const originChainAssetMap: Record<string, string> = {
+    "Ethereum Sepolia Testnet (USDC)": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
+    "Solana Testnet (USDC)": "nep141:sol-epjfwdd5aufqssqem2qn1xzybapc8g4weggkzwytdt1v.omft.near",
+    "Arbitrum Sepolia Testnet (USDC)": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
+    "NEAR Testnet (USDC)": "nep141:usdc.fakes.testnet",
     "Ethereum Mainnet (USDC)": "nep141:eth-0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48.omft.near",
     "Arbitrum One (USDC)": "nep141:arb-0xaf88d065e77c8cc2239327c5edb3a432268e5831.omft.near",
     "Base Mainnet (USDC)": "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near",

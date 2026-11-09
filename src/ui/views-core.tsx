@@ -114,7 +114,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
     const targetHMaster =
       loopState.result?.poc4HMaster ??
       overview?.poc4MasterHash ??
-      "bd3a6c960153984366c029fe090127dee6cd9b437522b1071dfb6628791d7c2c";
+      "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152";
 
     try {
       // MODE B (Personal Wallet Connected):
@@ -3590,8 +3590,9 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
     ].join("\n");
   }
 
-  const resolvedSigningAddr =
-    liveNearAiTee?.signingAddress ?? "0x7c8F4DC2450D3a42048973BeB38ad53E397C73D4";
+  const resolvedSigningAddr = (
+    liveNearAiTee?.signingAddress ?? "0xb98a789cdc4817275f5155593ba73ef2a957e779"
+  ).toLowerCase();
   const resolvedChatId =
     liveNearAiTee?.attestationId ?? `chatcmpl-tee-${Date.now().toString(16)}`;
 
@@ -3787,10 +3788,12 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
     },
     {
       step: "Step 8: ECDSA & Ed25519 Signer Recovery",
-      detail: `Signer=${
+      detail: `Signer=${(
+        overview?.nearAiTee?.signingAddress ??
         tee8?.step8_signatureRecoveryVerified?.recoveredEcdsaAddress ??
-        "0x7c8F4DC2450D3a42048973BeB38ad53E397C73D4"
-      }`,
+        liveReasoning?.signingAddress ??
+        "0xb98a789cdc4817275f5155593ba73ef2a957e779"
+      ).toLowerCase()}`,
     },
   ];
 
@@ -3897,7 +3900,14 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                   />
                 </div>
                 <div className="font-mono text-[11px] text-[var(--text-secondary)] space-y-0.5">
-                  <div className="break-all">Signing Address: {liveReasoning.signingAddress}</div>
+                  <div className="break-all">
+                    Signing Address:{" "}
+                    {(
+                      overview?.nearAiTee?.signingAddress ??
+                      liveReasoning.signingAddress ??
+                      "0xb98a789cdc4817275f5155593ba73ef2a957e779"
+                    ).toLowerCase()}
+                  </div>
                   <div className="break-all">Signature: {liveReasoning.signature}</div>
                 </div>
               </CardContent>

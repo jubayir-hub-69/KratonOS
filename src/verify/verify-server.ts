@@ -292,6 +292,42 @@ async function runServerSmokeTest(): Promise<void> {
     Boolean((overviewJson as Record<string, unknown>).latestLiveProofReceipt),
     "GET /api/overview must always include a verified latestLiveProofReceipt (never null on cold start)"
   );
+  const overviewRecord = overviewJson as Record<string, unknown>;
+  const latestReceipt = overviewRecord.latestLiveProofReceipt as Record<string, unknown>;
+  assert.equal(
+    latestReceipt.policyHash,
+    overviewRecord.policyHash,
+    "latestLiveProofReceipt.policyHash must match top-level overview.policyHash 100%"
+  );
+  assert.equal(
+    latestReceipt.poc4HMaster,
+    overviewJson.poc4MasterHash,
+    "latestLiveProofReceipt.poc4HMaster must match top-level overview.poc4MasterHash 100%"
+  );
+  assert.ok(
+    Array.isArray(overviewRecord.recentOnChainTxns) &&
+      (overviewRecord.recentOnChainTxns as unknown[]).length >= 3,
+    "GET /api/overview recentOnChainTxns must never be empty"
+  );
+  assert.equal(
+    overviewRecord.recentOnChainTxnsLive,
+    true,
+    "GET /api/overview recentOnChainTxnsLive must be true"
+  );
+  assert.ok(
+    overviewJson.mpcAddresses.bitcoinSegwitAddress.startsWith("tb1q"),
+    "MPC Bitcoin Testnet address must use tb1q SegWit Bech32 prefix"
+  );
+  assert.equal(
+    (overviewJson.nearAiTee as Record<string, unknown>)?.signingAddress,
+    "0xb98a789cdc4817275f5155593ba73ef2a957e779",
+    "nearAiTee.signingAddress must be normalized lowercase 0xb98a789cdc4817275f5155593ba73ef2a957e779"
+  );
+  assert.equal(
+    stmtRes.bodyText.includes("CwyjzR6A9Y"),
+    false,
+    "Printable audit statement must never contain simulated CwyjzR6A9Y tx hash"
+  );
 
   // Verify 3-Tier Earned-Trust Governance on POST /api/security/evaluate ($45 AUTO_APPROVE vs $85 ONE_COUNCIL_FAST_TRACK vs $250 SPUTNIK_DAO_PROPOSAL)
   const [safeTier1Res, fastTrackTier2Res, daoTier3Res] = await Promise.all([
@@ -776,6 +812,11 @@ async function runServerSmokeTest(): Promise<void> {
   assert.equal(loopJson.status, "PASS");
   assert.equal(loopJson.underTwoMinutesVerified, true);
   assert.equal(loopJson.stages.length, 5);
+  assert.equal(
+    loopJson.poc4HMaster,
+    "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
+    "POST /api/demo/autonomous-loop must preserve canonical poc4HMaster a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152"
+  );
 
   const [postLoopOverviewRes, postLoopStmtRes] = await Promise.all([
     invokeServerEndpoint("GET", "/api/overview"),

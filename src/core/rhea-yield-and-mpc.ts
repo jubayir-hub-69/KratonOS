@@ -372,13 +372,13 @@ export async function deriveMpcMultiChainAddresses(params?: {
     value: 1_000_000_000_000_000n,
   });
 
-  // 2. Bitcoin Native SegWit (`bc1q...`) P2WPKH Address (RIPEMD160(SHA256(compressedSecp256k1PubKey33)))
+  // 2. Bitcoin Testnet Native SegWit (`tb1q...`) P2WPKH Address (RIPEMD160(SHA256(compressedSecp256k1PubKey33)))
   const secp256k1Ecdh = crypto.createECDH("secp256k1");
   secp256k1Ecdh.setPrivateKey(epsilonBuffer);
   const compressedPubKey33 = secp256k1Ecdh.getPublicKey(undefined, "compressed");
   const sha256Digest = crypto.createHash("sha256").update(compressedPubKey33).digest();
   const hash160 = crypto.createHash("ripemd160").update(sha256Digest).digest();
-  const bitcoinSegwitAddress = encodeSegwitBech32Address("bc", 0, hash160);
+  const bitcoinSegwitAddress = encodeSegwitBech32Address("tb", 0, hash160);
 
   // 3. Solana Base58 Ed25519 Address
   const solanaPub32 = crypto
