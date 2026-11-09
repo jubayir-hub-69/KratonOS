@@ -58,6 +58,8 @@ import {
   fetchLiveConnectedWalletBalances,
   formatShortWalletAddress,
   getWalletExplorerAccountUrl,
+  normalizeSuiAddress,
+  purgeStaleSuiFallbackStorage,
   requestBrowserWalletTestnetSwitch,
   sendNearTransactionWithPersonalWallet,
   signMessageWithPersonalWallet,
@@ -281,8 +283,10 @@ export function App() {
     useState<WalletChainType | null>(null);
   const [walletConnecting, setWalletConnecting] = useState<string | null>(null);
   const [walletCopied, setWalletCopied] = useState(false);
+  const [customSuiTestnetAddress, setCustomSuiTestnetAddress] = useState("");
   const [sessionKillSwitchArmed, setSessionKillSwitchArmed] = useState<boolean>(() => {
     try {
+      purgeStaleSuiFallbackStorage();
       return (
         typeof window !== "undefined" &&
         window.sessionStorage?.getItem("kratonos_kill_switch_armed") === "true"
@@ -2434,6 +2438,46 @@ export function App() {
                               </button>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {chain === "sui" && (
+                        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                          <input
+                            type="text"
+                            value={customSuiTestnetAddress}
+                            onChange={(e) => setCustomSuiTestnetAddress(e.target.value)}
+                            placeholder="Verify / Sync Slush Sui Testnet 0x... address"
+                            className="min-w-0 flex-1 rounded-md border border-[var(--border-color)] bg-[var(--bg-input)] px-2 py-1 font-mono text-[11px] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--accent-emerald)] focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const norm = normalizeSuiAddress(customSuiTestnetAddress);
+                              if (!norm) {
+                                pushNotification(
+                                  "[WARNING] Enter a valid 0x... Sui Testnet address from your Slush wallet.",
+                                  "shield",
+                                  "amber"
+                                );
+                                return;
+                              }
+                              void registerAndSyncChainWallet(
+                                "sui",
+                                norm,
+                                "Slush Wallet (Sui Testnet)"
+                              );
+                              setCustomSuiTestnetAddress("");
+                              pushNotification(
+                                `Synced Sui Testnet address ${formatShortWalletAddress(norm, "sui")} via fullnode.testnet.sui.io`,
+                                "shield",
+                                "emerald"
+                              );
+                            }}
+                            className="rounded-md border border-sky-500/45 bg-sky-500/15 px-2.5 py-1 font-mono text-[10px] font-extrabold text-[var(--accent-cyan)] hover:bg-sky-500/25 cursor-pointer"
+                          >
+                            Verify &amp; Sync RPC
+                          </button>
                         </div>
                       )}
                     </div>

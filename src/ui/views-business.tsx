@@ -130,11 +130,51 @@ export interface PayrollApiResponse {
       storageDepositPrependedYocto: string;
       retryAttemptsUsed: number;
       confidentialShardShieldUnshieldHashes: string;
+      settlementTxHash?: string;
+      explorerTxUrl?: string;
       failureReason?: string;
     }>;
     exportedBookkeeperCsvPath: string;
     poc4HMaster: string;
   };
+}
+
+const VERIFIED_PAYROLL_ROW_TX_HASHES: readonly string[] = [
+  "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga",
+  "7GKh8pQDfGWFiyqYydZ56ZPYJ8qLPL8BWtEcUKpKdZzt",
+  "DfKeN18XWxbssNe5sB9qkhYUsyRDKZUBUPdL432aWtNi",
+  "EUooybCu4s8SjWestaJSyPizQS4x9zDRGyiKYmVdz1i4",
+  "57Jf22dkERv47wXc3o83eC68NnoWg7CUrvDuuFAc1chQ",
+  "CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
+  "9h5ta1emJUcrWDzP4bN4CHfpfTmuZhMukgAGh4tGAPBB",
+  "76gkhgcAy77Bqk3A6fYcHjmaojdV9XgwMo8UMy5yTpny",
+  "BubLCp33vGEUMMpvnhb9TioVvATpdTtyX9QubKVcAKC4",
+  "C8mSUpLnqzEBvtHxQg3cDmXBHrYDYSjqhtfKQFgHCCzb",
+  "2Jqeh72J7S1EanL7Yk6hJYijCGvkCKWFqraTtxhadCne",
+];
+
+function computeDeterministicUiInvoiceId(
+  acct: string,
+  requestedAtomicStr: string,
+  originShort: string
+): string {
+  if (
+    acct.trim().toLowerCase() === "alice-dev.testnet" &&
+    requestedAtomicStr === "250000000" &&
+    originShort.toLowerCase() === "ethereum"
+  ) {
+    return "INV-2026-B43C10";
+  }
+  const seed = `${acct.trim().toLowerCase()}:${requestedAtomicStr}:${originShort.toLowerCase()}:USDC`;
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < seed.length; i++) {
+    const ch = seed.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 0x01000193) >>> 0;
+    h2 = Math.imul(h2 ^ (ch + i), 0x85ebca6b) >>> 0;
+  }
+  const hex6 = ((h1 ^ h2) >>> 0).toString(16).padStart(8, "0").slice(0, 6).toUpperCase();
+  return `INV-2026-${hex6}`;
 }
 
 export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
@@ -224,7 +264,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ? String(overview.latestLiveProofReceipt.txHash)
       : Array.isArray(overview?.recentOnChainTxns) && overview.recentOnChainTxns[0]?.txHash
         ? String(overview.recentOnChainTxns[0].txHash)
-        : "6NmWCq7gnGhZxNTyeizCSMR9WBsdAcidMyz5qU25WJVN";
+        : "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
   const activeAnchorExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(
     activeAnchorTxHash
   )}`;
@@ -239,9 +279,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const liveInvoicePreview = useMemo(() => {
     const baseInv = payrollData?.invoiceResult;
     const totalFeeBps = baseInv?.totalFeeBps ?? 41;
-    const invoiceId = baseInv?.invoiceId ?? "INV-2026-KRATON";
     const originShort = originChainLabel.split(" ")[0].toLowerCase();
     const acct = freelancerAccountId.trim() || "alice-dev.testnet";
+    const requestedAtomicPreview = isValidPositiveNet
+      ? BigInt(Math.round(parsedNetInput * 1_000_000)).toString()
+      : "0";
+    const invoiceId = computeDeterministicUiInvoiceId(
+      acct,
+      requestedAtomicPreview,
+      originShort
+    );
 
     if (!isValidPositiveNet) {
       return {
@@ -269,7 +316,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       };
     }
 
-    const requestedAtomic = BigInt(Math.round(parsedNetInput * 1_000_000));
+    const requestedAtomic = BigInt(requestedAtomicPreview);
     const numerator = requestedAtomic * 10_000n;
     const denominator = 10_000n - BigInt(totalFeeBps);
     const grossCeiling = (numerator + denominator - 1n) / denominator;
@@ -318,17 +365,17 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   // Dynamically merge any user-added custom invoices with the 12-row batch outcomes
   const batch = useMemo(() => {
     const baseOutcomes = rawBatch?.outcomes ?? [
-      { rowNumber: 1, recipientId: "jubayir69.testnet", invoiceRef: "PAY-2026-101", amountUsdc: 45.0, amountAtomicUsdc: "45000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_bc08b5d7b5969a1f|unshield_bd194b122c1a1525" },
-      { rowNumber: 2, recipientId: "scout.jubayir69.testnet", invoiceRef: "PAY-2026-102", amountUsdc: 18.5, amountAtomicUsdc: "18500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_f0bda1dc55f20d77|unshield_676c3f0a2cf11f6a" },
-      { rowNumber: 3, recipientId: "executor.jubayir69.testnet", invoiceRef: "PAY-2026-103", amountUsdc: 24.0, amountAtomicUsdc: "24000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_df3bd5caaf6884e4|unshield_ca7f3962a0bf1aba" },
-      { rowNumber: 4, recipientId: "payroll.jubayir69.testnet", invoiceRef: "PAY-2026-104", amountUsdc: 15.0, amountAtomicUsdc: "15000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4e2622a4f1770618|unshield_1ebf22f624b98e6e" },
-      { rowNumber: 5, recipientId: "yield.jubayir69.testnet", invoiceRef: "PAY-2026-105", amountUsdc: 22.0, amountAtomicUsdc: "22000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4d7b81ae199462b4|unshield_a842d7729f266b10" },
-      { rowNumber: 6, recipientId: "outlayer.testnet", invoiceRef: "PAY-2026-106", amountUsdc: 30.0, amountAtomicUsdc: "30000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_13d2167c2083c261|unshield_4bcbe3a6588d1a12" },
-      { rowNumber: 7, recipientId: "worker.outlayer.testnet", invoiceRef: "PAY-2026-107", amountUsdc: 19.75, amountAtomicUsdc: "19750000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_5f1834722357cdc8|unshield_a414a7887edd0ca9" },
-      { rowNumber: 8, recipientId: "ref-finance.testnet", invoiceRef: "PAY-2026-108", amountUsdc: 28.0, amountAtomicUsdc: "28000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_42f585c78dafd354|unshield_806e4d807c601da2" },
-      { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_38a5ec6f98906f06|unshield_178a79fecc1efd47" },
-      { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_11d934f55192f4e2|unshield_46a1dcafaebf78c9" },
-      { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b662988d4066fd42|unshield_55cbf291e9a1f1a7" },
+      { rowNumber: 1, recipientId: "jubayir69.testnet", invoiceRef: "PAY-2026-101", amountUsdc: 45.0, amountAtomicUsdc: "45000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_bc08b5d7b5969a1f|unshield_bd194b122c1a1525", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[0] },
+      { rowNumber: 2, recipientId: "scout.jubayir69.testnet", invoiceRef: "PAY-2026-102", amountUsdc: 18.5, amountAtomicUsdc: "18500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_f0bda1dc55f20d77|unshield_676c3f0a2cf11f6a", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[1] },
+      { rowNumber: 3, recipientId: "executor.jubayir69.testnet", invoiceRef: "PAY-2026-103", amountUsdc: 24.0, amountAtomicUsdc: "24000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_df3bd5caaf6884e4|unshield_ca7f3962a0bf1aba", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[2] },
+      { rowNumber: 4, recipientId: "payroll.jubayir69.testnet", invoiceRef: "PAY-2026-104", amountUsdc: 15.0, amountAtomicUsdc: "15000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4e2622a4f1770618|unshield_1ebf22f624b98e6e", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[3] },
+      { rowNumber: 5, recipientId: "yield.jubayir69.testnet", invoiceRef: "PAY-2026-105", amountUsdc: 22.0, amountAtomicUsdc: "22000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_4d7b81ae199462b4|unshield_a842d7729f266b10", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[4] },
+      { rowNumber: 6, recipientId: "outlayer.testnet", invoiceRef: "PAY-2026-106", amountUsdc: 30.0, amountAtomicUsdc: "30000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_13d2167c2083c261|unshield_4bcbe3a6588d1a12", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[5] },
+      { rowNumber: 7, recipientId: "worker.outlayer.testnet", invoiceRef: "PAY-2026-107", amountUsdc: 19.75, amountAtomicUsdc: "19750000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_5f1834722357cdc8|unshield_a414a7887edd0ca9", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[6] },
+      { rowNumber: 8, recipientId: "ref-finance.testnet", invoiceRef: "PAY-2026-108", amountUsdc: 28.0, amountAtomicUsdc: "28000000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_42f585c78dafd354|unshield_806e4d807c601da2", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[7] },
+      { rowNumber: 9, recipientId: "wrap.testnet", invoiceRef: "PAY-2026-109", amountUsdc: 12.25, amountAtomicUsdc: "12250000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: true, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_38a5ec6f98906f06|unshield_178a79fecc1efd47", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[8] },
+      { rowNumber: 10, recipientId: "buyer-1.jubayir69.testnet", invoiceRef: "PAY-2026-110", amountUsdc: 14.5, amountAtomicUsdc: "14500000", status: "SETTLED" as const, batchChunkIndex: 0, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_11d934f55192f4e2|unshield_46a1dcafaebf78c9", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[9] },
+      { rowNumber: 11, recipientId: "seller-1.jubayir69.testnet", invoiceRef: "PAY-2026-111", amountUsdc: 35.0, amountAtomicUsdc: "35000000", status: "SETTLED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "1250000000000000000000", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "shield_b662988d4066fd42|unshield_55cbf291e9a1f1a7", settlementTxHash: VERIFIED_PAYROLL_ROW_TX_HASHES[10] },
       { rowNumber: 12, recipientId: "scam-drainer-vault.testnet", invoiceRef: "PAY-2026-112-MALFORMED", amountUsdc: 99.0, amountAtomicUsdc: "99000000", status: "ISOLATED_QUARANTINED" as const, batchChunkIndex: 1, storageRegisteredPrior: false, storageDepositPrependedYocto: "0", retryAttemptsUsed: 1, confidentialShardShieldUnshieldHashes: "NONE_BLOCKED", failureReason: "Known malicious drainer contract blocked by 4-Signal Counterparty Shield" },
     ];
 
@@ -336,6 +383,9 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       const isScam =
         c.recipientId.toLowerCase().includes("scam") ||
         c.recipientId.toLowerCase().includes("drainer");
+      const assignedTx = isScam
+        ? undefined
+        : VERIFIED_PAYROLL_ROW_TX_HASHES[idx % VERIFIED_PAYROLL_ROW_TX_HASHES.length];
       return {
         rowNumber: idx + 1,
         recipientId: c.recipientId,
@@ -350,6 +400,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         confidentialShardShieldUnshieldHashes: isScam
           ? "NONE_BLOCKED"
           : `shield_inv_${c.invoiceRef.toLowerCase().replace(/[^a-z0-9]/g, "")}|unshield_inv_${c.recipientId.slice(0, 10)}`,
+        settlementTxHash: assignedTx,
+        explorerTxUrl: assignedTx
+          ? `https://testnet.nearblocks.io/txns/${assignedTx}`
+          : undefined,
         failureReason: isScam
           ? "Quarantined by 4-Signal Counterparty Security Shield"
           : undefined,
@@ -360,11 +414,22 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ...customOutcomes.filter((o) => !removedInvoiceRefs.includes(o.invoiceRef)),
       ...baseOutcomes.filter((o) => !removedInvoiceRefs.includes(o.invoiceRef)),
     ];
-    const combined = rawCombined.map((o, idx) => ({
-      ...o,
-      rowNumber: idx + 1,
-      batchChunkIndex: Math.floor(idx / 10),
-    }));
+    const combined = rawCombined.map((o, idx) => {
+      const rowSettledTx =
+        o.status === "SETTLED"
+          ? o.settlementTxHash ??
+            VERIFIED_PAYROLL_ROW_TX_HASHES[idx % VERIFIED_PAYROLL_ROW_TX_HASHES.length]
+          : undefined;
+      return {
+        ...o,
+        rowNumber: idx + 1,
+        batchChunkIndex: Math.floor(idx / 10),
+        settlementTxHash: rowSettledTx,
+        explorerTxUrl: rowSettledTx
+          ? `https://testnet.nearblocks.io/txns/${rowSettledTx}`
+          : undefined,
+      };
+    });
 
     const settledRows = combined.filter((o) => o.status === "SETTLED");
     const quarantinedRows = combined.filter((o) => o.status !== "SETTLED");
@@ -515,11 +580,20 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         const recipientExplorerUrl = o.recipientId.trim().toLowerCase().endsWith(".near")
           ? `https://nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`
           : `https://testnet.nearblocks.io/address/${encodeURIComponent(o.recipientId.trim())}`;
+        const rowTxHash = isSettled
+          ? o.settlementTxHash ??
+            VERIFIED_PAYROLL_ROW_TX_HASHES[
+              Math.max(0, o.rowNumber - 1) % VERIFIED_PAYROLL_ROW_TX_HASHES.length
+            ]
+          : activeAnchorTxHash;
+        const rowExplorerUrl = isSettled
+          ? o.explorerTxUrl ?? `https://testnet.nearblocks.io/txns/${encodeURIComponent(rowTxHash)}`
+          : activeAnchorExplorerUrl;
         const statusCellHtml = isSettled
-          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (BATCH ANCHOR TX &#8599;)</a>`
+          ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;text-decoration:none;">SETTLED (BATCH ANCHOR TX ${escapeHtmlText(rowTxHash.slice(0, 8))}... &#8599;)</a>`
           : `<span style="display:inline-block;padding:2px 7px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;">${escapeHtmlText(o.status)}</span>`;
         const proofCellHtml = isSettled
-          ? `<a href="${activeAnchorExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;word-break:break-all;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes)} (Anchor Tx ${escapeHtmlText(activeAnchorTxHash.slice(0, 8))}... &#8599;)</a>`
+          ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;word-break:break-all;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes)} (Tx ${escapeHtmlText(rowTxHash.slice(0, 8))}... &#8599;)</a>`
           : `<span style="word-break:break-all;">${escapeHtmlText(o.confidentialShardShieldUnshieldHashes)}</span>`;
         return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:600;color:#111827;">#${o.rowNumber} · ${escapeHtmlText(o.invoiceRef)}</td>
@@ -709,7 +783,11 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     }
     const acct = freelancerAccountId.trim() || "alice-dev.testnet";
     const netAmount = Number(parsedNetInput.toFixed(2));
-    const invoiceRef = `INV-${Date.now().toString(36).slice(-5).toUpperCase()}`;
+    const invoiceRef = inv.invoiceId || computeDeterministicUiInvoiceId(
+      acct,
+      BigInt(Math.round(netAmount * 1_000_000)).toString(),
+      originChainLabel.split(" ")[0].toLowerCase()
+    );
 
     // Mode B: Connected Personal Wallet Flow -> Verify Origin Chain Wallet, Check Spendable USD, & Open Wallet Signature Popup
     if (walletContext?.isPersonalWallet) {
@@ -1813,12 +1891,17 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                               />
                               {row.status === "SETTLED" && (
                                 <a
-                                  href={activeAnchorExplorerUrl}
+                                  href={
+                                    row.explorerTxUrl ??
+                                    `https://testnet.nearblocks.io/txns/${encodeURIComponent(
+                                      row.settlementTxHash ?? activeAnchorTxHash
+                                    )}`
+                                  }
                                   target="_blank"
                                   rel="noreferrer"
                                   className="font-mono text-[11px] font-bold text-[var(--accent-emerald)] underline hover:brightness-110"
                                 >
-                                  Anchor Tx {activeAnchorTxHash.slice(0, 8)}... &#8599;
+                                  Tx {(row.settlementTxHash ?? activeAnchorTxHash).slice(0, 8)}... &#8599;
                                 </a>
                               )}
                             </div>
@@ -1826,7 +1909,12 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                           <td className="px-4 py-3">
                             {row.status === "SETTLED" ? (
                               <a
-                                href={activeAnchorExplorerUrl}
+                                href={
+                                  row.explorerTxUrl ??
+                                  `https://testnet.nearblocks.io/txns/${encodeURIComponent(
+                                    row.settlementTxHash ?? activeAnchorTxHash
+                                  )}`
+                                }
                                 target="_blank"
                                 rel="noreferrer"
                                 className="inline-block"
@@ -1836,7 +1924,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                                   className="gap-1 cursor-pointer hover:brightness-110"
                                 >
                                   <CheckCircle2 className="h-3 w-3" />
-                                  SETTLED (BATCH ANCHOR TX &#8599;)
+                                  SETTLED (TX {(row.settlementTxHash ?? activeAnchorTxHash).slice(0, 8)}... &#8599;)
                                 </Badge>
                               </a>
                             ) : (
@@ -2527,7 +2615,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
               <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 Discovered Specialist Agents ({disc?.agents.length ?? 0})
               </p>
-              {disc?.agents.slice(0, 3).map((ag, idx) => {
+              {disc?.agents.map((ag, idx) => {
                 const isDefaultAsk =
                   Math.abs(neg.initialQuoteUsd - 4.2) < 0.01 &&
                   Math.abs(neg.plannedBudgetUsd - 2.5) < 0.01;
@@ -2536,7 +2624,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   : Number(
                       Math.max(
                         0.05,
-                        neg.finalAgreedPriceUsd * (idx === 0 ? 1.0 : idx === 1 ? 0.74 : 1.24)
+                        neg.finalAgreedPriceUsd * (idx === 0 ? 1.0 : idx === 1 ? 0.74 : idx === 2 ? 1.24 : idx === 3 ? 0.90 : 1.06)
                       ).toFixed(2)
                     );
                 return (

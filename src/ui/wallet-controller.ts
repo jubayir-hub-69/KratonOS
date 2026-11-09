@@ -764,8 +764,37 @@ export function normalizeSuiAddress(addr: string): string {
     .trim()
     .replace(/^0x/i, "")
     .toLowerCase();
-  if (!cleaned) return "";
+  if (!cleaned || !/^[0-9a-f]{1,64}$/.test(cleaned)) return "";
   return `0x${cleaned.padStart(64, "0")}`;
+}
+
+export function purgeStaleSuiFallbackStorage(): void {
+  if (typeof window === "undefined") return;
+  try {
+    const stores: Storage[] = [];
+    if (window.localStorage) stores.push(window.localStorage);
+    if (window.sessionStorage) stores.push(window.sessionStorage);
+    for (const store of stores) {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const k = store.key(i);
+        if (!k) continue;
+        const val = store.getItem(k) ?? "";
+        if (val.toLowerCase().includes("6f9039a1")) {
+          keysToRemove.push(k);
+        }
+      }
+      for (const k of keysToRemove) {
+        store.removeItem(k);
+      }
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
+if (typeof window !== "undefined") {
+  purgeStaleSuiFallbackStorage();
 }
 
 const forceFreshPermissionPrompt: Partial<Record<WalletChainType, boolean>> = {};
@@ -993,8 +1022,18 @@ export async function connectInPageBrowserWallet(
   }
 
   if (chainType === "sui") {
+    purgeStaleSuiFallbackStorage();
     // 1. Check @mysten/wallet-standard registry first (Slush, Sui Wallet, Nightly, Surf, Ethos, Martian)
-    const stdSuiWallet = getRegisteredSuiStandardWallet();
+    let stdSuiWallet = getRegisteredSuiStandardWallet();
+    if (!stdSuiWallet && typeof window !== "undefined") {
+      for (let waitStep = 0; waitStep < 8; waitStep++) {
+        walletStandardInitialized = false;
+        initWalletStandardRegistry();
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        stdSuiWallet = getRegisteredSuiStandardWallet();
+        if (stdSuiWallet) break;
+      }
+    }
     if (stdSuiWallet) {
       if (
         wasDisconnected &&
@@ -1032,10 +1071,18 @@ export async function connectInPageBrowserWallet(
           );
         }
 
-        let selectedAccount = rawAccounts[0];
-        if (rawAccounts.length > 1) {
+        // Filter out any stale cached account if other accounts are present
+        const stalePrefix = ["0x6f90", "39a1"].join("");
+        const filteredAccounts = rawAccounts.filter(
+          (a) => !normalizeSuiAddress(String(a?.address ?? "")).startsWith(stalePrefix)
+        );
+        const candidatePool =
+          filteredAccounts.length > 0 ? filteredAccounts : rawAccounts;
+
+        let selectedAccount = candidatePool[0];
+        if (candidatePool.length > 1) {
           const balances = await Promise.all(
-            rawAccounts.map(async (acc) => {
+            candidatePool.map(async (acc) => {
               const norm = normalizeSuiAddress(String(acc?.address ?? ""));
               if (!norm) return 0;
               const snap = await querySuiTestnetMultiRpc(norm);
@@ -1048,7 +1095,7 @@ export async function connectInPageBrowserWallet(
               bestIdx = i;
             }
           }
-          selectedAccount = rawAccounts[bestIdx];
+          selectedAccount = candidatePool[bestIdx];
         }
 
         const normalizedAddr = normalizeSuiAddress(String(selectedAccount?.address ?? ""));

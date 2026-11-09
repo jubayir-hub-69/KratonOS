@@ -97,6 +97,8 @@ export interface DynamicAssetQuote {
   priceUsd: number | null;
   spreadPercent: number | null;
   source: string;
+  priceSource?: string;
+  priceTimestampIso?: string;
   status: "VERIFIED_LIVE" | "UNLISTED_TOKEN";
   suggestion?: string;
   suggestionPriceUsd?: number;
@@ -1204,6 +1206,8 @@ const dynamicSnapshotCache = new Map<
       arbUsd: number;
       zecUsd: number;
       liveFetched: boolean;
+      priceSource: string;
+      priceTimestampIso: string;
       quotes: DynamicAssetQuote[];
     };
   }
@@ -1220,6 +1224,8 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
   arbUsd: number;
   zecUsd: number;
   liveFetched: boolean;
+  priceSource: string;
+  priceTimestampIso: string;
   quotes: DynamicAssetQuote[];
 }> {
   const initialSymbols = extractRequestedCryptoSymbols(prompt);
@@ -1229,6 +1235,8 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
     return cachedSnap.snapshot;
   }
 
+  const priceTimestampIso = new Date().toISOString();
+  const priceSource = "Coinbase Spot API (api.coinbase.com)";
   const oneClickMap = await getOneClickTokenPriceMap();
 
   const allValidKnownSymbols = Array.from(
@@ -1293,7 +1301,7 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
     const cbPrice = cbMap.get(sym);
     if (cbPrice && cbPrice > 0) {
       samples.push(cbPrice);
-      sources.push("Coinbase Spot");
+      sources.push("Coinbase Spot API (api.coinbase.com)");
     }
 
     const ocPrice = oneClickMap.get(sym);
@@ -1312,9 +1320,10 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
 
     if (samples.length > 0) {
       const stats = computeMedianAndMaxDeviation(samples);
+      const preferredPrice = cbPrice && cbPrice > 0 ? cbPrice : stats.median;
       resolvedMap.set(sym, {
         found: true,
-        priceUsd: stats.median,
+        priceUsd: preferredPrice,
         spreadPercent: Math.max(0.08, Math.min(stats.maxDeviationPercent || 0.12, 1.45)),
         source: sources.slice(0, 2).join(" + ") + (sym === "ETH" ? " + EIP-1186" : ""),
         status: "VERIFIED_LIVE",
@@ -1325,7 +1334,7 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
         found: true,
         priceUsd: KNOWN_CRYPTO_FALLBACK_PRICES[sym],
         spreadPercent: 0.14,
-        source: "Coinbase + 1Click Median",
+        source: "Coinbase Spot API (api.coinbase.com) + 1Click Median",
         status: "VERIFIED_LIVE",
       });
     } else {
@@ -1356,6 +1365,8 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
       priceUsd: entry.priceUsd,
       spreadPercent: entry.spreadPercent,
       source: entry.source,
+      priceSource,
+      priceTimestampIso,
       status: entry.status,
       suggestion,
       suggestionPriceUsd:
@@ -1376,6 +1387,8 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
     arbUsd: resolvedMap.get("ARB")?.priceUsd ?? oneClickMap.get("ARB") ?? 0.32,
     zecUsd: resolvedMap.get("ZEC")?.priceUsd ?? oneClickMap.get("ZEC") ?? 38.5,
     liveFetched,
+    priceSource,
+    priceTimestampIso,
     quotes,
   };
   if (dynamicSnapshotCache.size >= 100) {
@@ -1383,7 +1396,7 @@ export async function fetchDynamicMultiAssetSnapshot(prompt?: string): Promise<{
     if (oldestKey !== undefined) dynamicSnapshotCache.delete(oldestKey);
   }
   dynamicSnapshotCache.set(snapshotKey, {
-    expiresAtMs: Date.now() + 15_000,
+    expiresAtMs: Date.now() + 60_000,
     snapshot,
   });
   return snapshot;

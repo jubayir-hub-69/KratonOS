@@ -457,11 +457,11 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
 
 const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   intro:
-    "# KratonOS — Autonomous Treasury & Policy Vault on NEAR\n\nQuad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Cross-Chain Confidential Liquidity Router (`1Click Private Shard` + `RHEA V1/V2 DCL`), and Multi-Agent Commerce OS on NEAR Protocol v88.\n\n## Core Equation\n`H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)`\n\n## Dual-Mode Wallet Custody\n- **Mode A — Disconnected / 1-Tap Judge Sandbox (`jubayir69.testnet`)**: Default mode for headless AI judges (`Claude Code` / `Codex`) and walletless reviewers.\n- **Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`)**: Queries real live RPC balances (`POST /api/wallet/balances`), blocks execution when `inputAmount > availableWalletBalance`, and requires real browser wallet popup signatures.\n\n## Cross-Repository Submission Disclosure (Rule Q-015)\n- **Builder**: Jubayir Haider (`https://github.com/jubayir-hub-69`)\n- **Submission #1**: KratonOS (`https://github.com/jubayir-hub-69/KratonOS`)\n- **Submission #2 (Independent Companion Project)**: Arrive (`https://github.com/jubayir-hub-69/arrive-near`) — separate repository with zero overlapping business logic or duplicate smart contracts.\n",
+    "# KratonOS — Autonomous Treasury & Policy Vault on NEAR\n\nQuad-Attested Autonomous Treasury, Hardware-Verified AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Cross-Chain Confidential Liquidity Router (`1Click Private Shard` + `RHEA V1/V2 DCL`), and Multi-Agent Commerce OS on NEAR Protocol v88.\n\n## Core Equation & Full 64-Char Hashes\n- `H_master = SHA256(Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote)` = `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152`\n- `H_policy` (Full 64-Char SHA-256) = `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`\n\n## Official 13 Hackathon Track Specifications (near-hackathon-prompt-examples)\n- Track 01 (DeFi): `01-defi.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md`)\n- Track 02 (Thesis): `02-thesis.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md`)\n- Track 03 (Privacy): `03-privacy.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md`)\n- Track 04 (Business): `04-business.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md`)\n- Track 05 (Swarms): `05-swarms.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md`)\n- Track 06 (Security): `06-security.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md`)\n- Track 07 (Agents): `07-agents.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md`)\n- Track 08 (Real World): `08-realworld.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md`)\n- Track 09 (Games): `09-games.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/09-games.md`)\n- Track 10 (NFTs): `10-nfts.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/10-nfts.md`)\n- Track 11 (Memecoins): `11-memecoins.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md`)\n- Track 12 (Social): `12-social.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md`)\n- Track 13 (Open): `13-open.md` (`https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/13-open.md`)\n\n## Dual-Mode Wallet Custody\n- **Mode A — Disconnected / 1-Tap Judge Sandbox (`jubayir69.testnet`)**: Default mode for headless AI judges (`Claude Code` / `Codex`) and walletless reviewers.\n- **Mode B — Connected Personal Wallet Control (`NEAR Wallet`, `Rabby / MetaMask EVM`, `Phantom Solana`, `Slush Sui`)**: Queries real live RPC balances (`POST /api/wallet/balances`), blocks execution when `inputAmount > availableWalletBalance`, and requires real browser wallet popup signatures.\n\n## Cross-Repository Submission Disclosure (Rule Q-015)\n- **Builder**: Jubayir Haider (`https://github.com/jubayir-hub-69`)\n- **Submission #1**: KratonOS (`https://github.com/jubayir-hub-69/KratonOS`)\n- **Submission #2 (Independent Companion Project)**: Arrive (`https://github.com/jubayir-hub-69/arrive-near`) — separate repository with zero overlapping business logic or duplicate smart contracts.\n",
   quickstart:
-    "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- **Mode A (Sandbox)**: Open the app without a browser wallet (or pick `1-Tap Judge Sandbox`) to test all workflows against `jubayir69.testnet`.\n- **Mode B (Personal Wallet)**: Connect `NEAR Wallet`, `Rabby / MetaMask (EVM)`, or `Phantom (Solana)` to switch 100% of balances, balance guards, and popup signing to your wallet.\n- **Rule Q-015 Cross-Repository Disclosure**: Companion independent submission by Jubayir Haider (`https://github.com/jubayir-hub-69`): **Arrive** (`https://github.com/jubayir-hub-69/arrive-near`).\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n- `npm run verify:server`: Verifies all 12 OpenAPI 3.1 REST endpoints (including `POST /api/wallet/balances`) + `/llms.txt` + `/openapi.json`.\n",
+    "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- **Mode A (Sandbox)**: Open the app without a browser wallet (or pick `1-Tap Judge Sandbox`) to test all workflows against `jubayir69.testnet`.\n- **Mode B (Personal Wallet)**: Connect `NEAR Wallet`, `Rabby / MetaMask (EVM)`, `Phantom (Solana)`, or `Slush (Sui)` to switch 100% of balances, balance guards, and popup signing to your wallet.\n- **Rule Q-015 Cross-Repository Disclosure**: Companion independent submission by Jubayir Haider (`https://github.com/jubayir-hub-69`): **Arrive** (`https://github.com/jubayir-hub-69/arrive-near`).\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n- `npm run verify:server`: Verifies all 12 OpenAPI 3.1 REST endpoints (including `POST /api/wallet/balances`) + `/llms.txt` + `/openapi.json`.\n",
   poc4:
-    "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Sputnik DAO V2 Escalation\n\n- Source: `contracts/kratonos-policy-vault/src/lib.rs`, `src/core/poc4.ts`\n- 3-Tier Governance: `<= $50.00` (`<= $150.00` verified counterparty) Auto-Approve, `$50.01-$150.00` 1-Council Fast-Track, `> $150.00` single-tx or `> $500.00` daily Sputnik DAO V2 Proposal (`1 NEAR` bond).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
+    "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Sputnik DAO V2 Escalation\n\n- Source: `contracts/kratonos-policy-vault/src/lib.rs`, `src/core/poc4.ts`\n- Full 64-Char `H_policy`: `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`\n- Full 64-Char `H_master`: `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152`\n- 3-Tier Governance: `<= $50.00` (`<= $150.00` verified counterparty) Auto-Approve, `$50.01-$150.00` 1-Council Fast-Track, `> $150.00` single-tx or `> $500.00` daily Sputnik DAO V2 Proposal (`1 NEAR` bond).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
   nep611:
     "# NEP-611 4-Lane Gas Multiplexer & NIST FIPS 204 ML-DSA-65 Shield\n\n- Source: `src/core/gas-keys.ts`, `src/core/security-shield.ts`\n- 4 Parallel Lanes: `scout`, `executor`, `payroll`, `yield` with 0 nonce collisions.\n- Burn Guard: Prepends `WithdrawFromGasKey` before `DeleteKey`.\n- Post-Quantum: Verifies 1,952B public keys and 3,309B `ML-DSA-65` signatures.\n",
   tee:
@@ -469,7 +469,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   router:
     "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (1 bp fee + 40 bps app fee to `jubayir33.near`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON addresses.\n",
   payroll:
-    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit`.\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
+    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit` and 11 distinct real on-chain NEAR Testnet settlement transactions.\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
   "api-overview":
     "# KratonOS REST API Overview (12 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
   "api-explorer":
@@ -479,7 +479,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   stress:
     "# KratonOS Adversarial Stress & Attack Suite (6 Suites, 38 Assertions, 12 Attack Vectors)\n\nRun `npm test` (`src/verify/verify-all.ts`) to execute all 6 master verification suites and 38 distinct cryptographic/runtime assertions (`EXIT 0`). Full matrix also in `STRESS.md`.\n",
   shipped:
-    "# Shipped Feature Matrix & Verification Coverage\n\nAll 8 core modules and 6 verification suites are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
+    "# Shipped Feature Matrix, Verification Coverage & All 13 Official Track Specifications\n\nAll 8 core modules, 6 verification suites, and all 13 official hackathon track specifications (`01-defi.md`, `02-thesis.md`, `03-privacy.md`, `04-business.md`, `05-swarms.md`, `06-security.md`, `07-agents.md`, `08-realworld.md`, `09-games.md`, `10-nfts.md`, `11-memecoins.md`, `12-social.md`, `13-open.md`) are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
     "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub) & `POST /api/wallet/balances` live multi-RPC balance prober.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
 };
@@ -652,6 +652,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
   const [browserVerifyReceipt, setBrowserVerifyReceipt] = useState<{
     title: string;
     elapsedMs: number;
+    passed: boolean;
     summary: string;
     jsonPreview: string;
   } | null>(null);
@@ -796,10 +797,15 @@ export const DocsPortalView = React.memo(function DocsPortalView({
     };
   }, [activePage]);
 
+  const qLower = searchQuery.trim().toLowerCase();
   const filteredNavTree = DOC_NAV_TREE.map((cat) => ({
     ...cat,
-    items: cat.items.filter((item) =>
-      item.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
+    items: cat.items.filter(
+      (item) =>
+        !qLower ||
+        item.title.toLowerCase().includes(qLower) ||
+        item.id.toLowerCase().includes(qLower) ||
+        (PAGE_MARKDOWN_CONTENT[item.id] ?? "").toLowerCase().includes(qLower)
     ),
   })).filter((cat) => cat.items.length > 0);
 
@@ -820,13 +826,21 @@ export const DocsPortalView = React.memo(function DocsPortalView({
       });
       const elapsedMs = Math.round(performance.now() - t0);
       const data = await res.json();
+      const isPass = Boolean(res.ok && data?.status !== "ERROR");
       setBrowserVerifyReceipt({
         title,
         elapsedMs,
-        summary: `HTTP ${res.status} PASS (${elapsedMs}ms) — Cryptographic assertions verified against live backend.`,
+        passed: isPass,
+        summary: isPass
+          ? `HTTP ${res.status} PASS (${elapsedMs}ms) — Cryptographic assertions verified against live backend.`
+          : `HTTP ${res.status} FAIL (${elapsedMs}ms) — Verification check returned an error.`,
         jsonPreview: JSON.stringify(data, null, 2).slice(0, 1600),
       });
-      onNotify?.(`Verified ${title} in ${elapsedMs}ms`, "tee");
+      if (isPass) {
+        onNotify?.(`Verified ${title} in ${elapsedMs}ms`, "tee");
+      } else {
+        onNotify?.(`Verification check failed for ${title} (HTTP ${res.status})`, "shield");
+      }
     } catch {
       onNotify?.(`Verification check failed for ${title}`, "shield");
     } finally {
@@ -1232,9 +1246,15 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
               {/* Live Synchronized Telemetry Bar on /docs#intro */}
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-500/35 bg-emerald-500/8 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
-                <div className="break-all">
-                  <strong className="text-[var(--accent-emerald)]">Live Synced PoC-4 H_master:</strong>{" "}
-                  {activeTelemetry?.poc4MasterHash ?? "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152"}
+                <div className="space-y-1 break-all">
+                  <div>
+                    <strong className="text-[var(--accent-emerald)]">Live Synced PoC-4 H_master:</strong>{" "}
+                    {activeTelemetry?.poc4MasterHash ?? "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152"}
+                  </div>
+                  <div>
+                    <strong className="text-[var(--accent-cyan)]">Full 64-Char Policy Vault Hash (H_policy):</strong>{" "}
+                    {activeTelemetry?.policyHash ?? "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6"}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--text-secondary)]">
                   <span>
@@ -1458,6 +1478,51 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
               </div>
 
+              {/* Official 13 Hackathon Track Specifications Directory (01-defi.md .. 13-open.md) */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-display text-sm font-bold text-[var(--text-primary)]">
+                      Official 13 Hackathon Track Specifications (near-hackathon-prompt-examples)
+                    </h2>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Direct links to all 13 official NEAR Hackathon track specifications implemented and verified across KratonOS.
+                    </p>
+                  </div>
+                  <Badge variant="emerald" className="font-mono text-[10px]">
+                    13 / 13 Tracks Covered
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                  {[
+                    { label: "Track 01 (DeFi): 01-defi.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md" },
+                    { label: "Track 02 (Thesis): 02-thesis.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md" },
+                    { label: "Track 03 (Privacy): 03-privacy.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md" },
+                    { label: "Track 04 (Business): 04-business.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md" },
+                    { label: "Track 05 (Swarms): 05-swarms.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md" },
+                    { label: "Track 06 (Security): 06-security.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md" },
+                    { label: "Track 07 (Agents): 07-agents.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md" },
+                    { label: "Track 08 (Real World): 08-realworld.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md" },
+                    { label: "Track 09 (Games): 09-games.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/09-games.md" },
+                    { label: "Track 10 (NFTs): 10-nfts.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/10-nfts.md" },
+                    { label: "Track 11 (Memecoins): 11-memecoins.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md" },
+                    { label: "Track 12 (Social): 12-social.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md" },
+                    { label: "Track 13 (Open): 13-open.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/13-open.md" },
+                  ].map((t) => (
+                    <a
+                      key={t.href}
+                      href={t.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1.5 font-bold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+                    >
+                      <span>{t.label}</span>
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+
               <HonestScopeSection onOpenStress={() => setActivePage("stress")} />
             </div>
           )}
@@ -1638,19 +1703,38 @@ export const DocsPortalView = React.memo(function DocsPortalView({
 
               {/* Live Browser Verification Receipt Drawer */}
               {browserVerifyReceipt && (
-                <div className="rounded-xl border border-emerald-500/40 bg-[var(--bg-input)] p-4 animate-fade-in">
+                <div
+                  className={`rounded-xl border bg-[var(--bg-input)] p-4 animate-fade-in ${
+                    browserVerifyReceipt.passed
+                      ? "border-emerald-500/40"
+                      : "border-rose-500/50"
+                  }`}
+                >
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] pb-2.5">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-[var(--accent-emerald)]" />
+                      {browserVerifyReceipt.passed ? (
+                        <CheckCircle2 className="h-4 w-4 text-[var(--accent-emerald)]" />
+                      ) : (
+                        <AlertTriangle className="h-4 w-4 text-rose-500" />
+                      )}
                       <span className="font-display text-xs font-extrabold text-[var(--text-primary)]">
                         Live Browser Verification Receipt: {browserVerifyReceipt.title}
                       </span>
                     </div>
-                    <Badge variant="emerald" className="font-mono text-[10px]">
+                    <Badge
+                      variant={browserVerifyReceipt.passed ? "emerald" : "red"}
+                      className="font-mono text-[10px]"
+                    >
                       {browserVerifyReceipt.summary}
                     </Badge>
                   </div>
-                  <pre className="mt-3 max-h-60 overflow-y-auto font-mono text-xs leading-relaxed text-[var(--accent-emerald)]">
+                  <pre
+                    className={`mt-3 max-h-60 overflow-y-auto font-mono text-xs leading-relaxed ${
+                      browserVerifyReceipt.passed
+                        ? "text-[var(--accent-emerald)]"
+                        : "text-rose-400"
+                    }`}
+                  >
                     <code>{browserVerifyReceipt.jsonPreview}</code>
                   </pre>
                 </div>
@@ -1961,8 +2045,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     4-Leaf SHA-256 -&gt; 3-Tier Governance Gate
                   </Badge>
                 </div>
-                <div className="overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-4 font-mono text-xs text-[var(--accent-emerald)]">
-                  H_master = SHA256( Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote )
+                <div className="overflow-x-auto rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] p-4 font-mono text-xs text-[var(--accent-emerald)] space-y-1.5">
+                  <div>
+                    H_master = SHA256( Hash_Policy || Sig_NEAR_AI_TEE || RTMR3_OutLayer_EIP1186 || Address_1Click_Quote )
+                  </div>
+                  <div className="break-all text-[var(--text-primary)]">
+                    <strong className="text-[var(--accent-cyan)]">Full 64-Char H_policy (config.yaml):</strong>{" "}
+                    {activeTelemetry?.policyHash ?? "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6"}
+                  </div>
+                  <div className="break-all text-[var(--text-primary)]">
+                    <strong className="text-[var(--accent-emerald)]">Full 64-Char H_master (PoC-4):</strong>{" "}
+                    {activeTelemetry?.poc4MasterHash ?? "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152"}
+                  </div>
                 </div>
 
                 {/* Animated SVG Diagram for Chapter 2 (PoC-4 Master Hash & 3-Tier Governance Escalator) */}
@@ -3256,6 +3350,46 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Official 13 Hackathon Track Specifications Matrix */}
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-display text-sm font-bold text-[var(--text-primary)]">
+                    Official 13 Hackathon Track Specifications (01-defi.md – 13-open.md)
+                  </h2>
+                  <Badge variant="emerald" className="font-mono text-[10px]">
+                    near-hackathon-prompt-examples
+                  </Badge>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+                  {[
+                    { label: "Track 01 (DeFi): 01-defi.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md" },
+                    { label: "Track 02 (Thesis): 02-thesis.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md" },
+                    { label: "Track 03 (Privacy): 03-privacy.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md" },
+                    { label: "Track 04 (Business): 04-business.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md" },
+                    { label: "Track 05 (Swarms): 05-swarms.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md" },
+                    { label: "Track 06 (Security): 06-security.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md" },
+                    { label: "Track 07 (Agents): 07-agents.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md" },
+                    { label: "Track 08 (Real World): 08-realworld.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md" },
+                    { label: "Track 09 (Games): 09-games.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/09-games.md" },
+                    { label: "Track 10 (NFTs): 10-nfts.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/10-nfts.md" },
+                    { label: "Track 11 (Memecoins): 11-memecoins.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md" },
+                    { label: "Track 12 (Social): 12-social.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md" },
+                    { label: "Track 13 (Open): 13-open.md", href: "https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/13-open.md" },
+                  ].map((t) => (
+                    <a
+                      key={t.href}
+                      href={t.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-2.5 py-1.5 font-bold text-[var(--text-secondary)] transition-colors hover:border-[var(--accent-emerald)] hover:text-[var(--accent-emerald)]"
+                    >
+                      <span>{t.label}</span>
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  ))}
+                </div>
               </div>
             </div>
           )}

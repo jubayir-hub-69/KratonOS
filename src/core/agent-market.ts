@@ -226,48 +226,90 @@ export async function discoverLiveAgentMarket(
   }
 
   const cleanQuery = query.trim().toLowerCase();
-  if (discoveredAgents.length === 0) {
-    if (cleanQuery && cleanQuery !== "research") {
-      const slug = cleanQuery.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
-      discoveredAgents.push({
-        agentId: `agt-kraton-${slug}-00`,
-        handle: `${slug}-tee-specialist`,
-        name: `${query.trim()} Autonomous TEE Specialist`,
-        category: cleanQuery,
-        description: `Executes hardware-attested ${query.trim()} analysis and NEP-366 x402 v2 settlement on NEAR.`,
-        availableNow: true,
-        slaSeconds: 1800,
-        defaultPriceUsd: 2.5,
-        deliveredJobs: 64,
-        successRatePercent: 99.4,
-      });
+  const CANONICAL_FIVE_SPECIALIST_AGENTS: MarketAgentListing[] = [
+    {
+      agentId: "agt-kraton-research-01",
+      handle: "qadri-research",
+      name: "Qadri Cross-Chain Liquidity & RHEA Scout",
+      category: "research",
+      description: "Produces TEE-verified RHEA pool depth, 1Click spread, and cross-chain routing telemetry.",
+      availableNow: true,
+      slaSeconds: 3600,
+      defaultPriceUsd: 2.5,
+      deliveredJobs: 128,
+      successRatePercent: 99.2,
+    },
+    {
+      agentId: "agt-kraton-research-02",
+      handle: "research-data-agent",
+      name: "Autonomous DeFi & Market Data Indexer",
+      category: "research",
+      description: "Aggregates multi-source spot orderbooks and 1Click solver spreads across 14+ chains.",
+      availableNow: true,
+      slaSeconds: 1800,
+      defaultPriceUsd: 1.85,
+      deliveredJobs: 96,
+      successRatePercent: 98.9,
+    },
+    {
+      agentId: "agt-kraton-research-03",
+      handle: "kaminari-research",
+      name: "Kaminari Quantitative Yield & Slippage Analyst",
+      category: "research",
+      description: "Simulates RHEA V2 DCL discretized bin liquidity and V1 AMM constant-product slippage.",
+      availableNow: true,
+      slaSeconds: 2400,
+      defaultPriceUsd: 3.1,
+      deliveredJobs: 74,
+      successRatePercent: 99.1,
+    },
+    {
+      agentId: "agt-kraton-audit-04",
+      handle: "outlayer-proof-auditor",
+      name: "OutLayer Intel TDX & EIP-1186 Storage Prover",
+      category: "finance",
+      description: "Verifies Ethereum Mainnet Chainlink state roots, RTMR0..3 registers, and Ed25519 VRF proofs.",
+      availableNow: true,
+      slaSeconds: 1800,
+      defaultPriceUsd: 4.2,
+      deliveredJobs: 84,
+      successRatePercent: 99.5,
+    },
+    {
+      agentId: "agt-kraton-quant-05",
+      handle: "rhea-dcl-quant-agent",
+      name: "RHEA V2 DCL & NEP-141 Treasury Strategist",
+      category: "finance",
+      description: "Audits LP reward harvesting, storage_deposit pre-flight checks, and Sputnik DAO v2 bonds.",
+      availableNow: true,
+      slaSeconds: 3600,
+      defaultPriceUsd: 2.95,
+      deliveredJobs: 112,
+      successRatePercent: 99.3,
+    },
+  ];
+
+  if (discoveredAgents.length === 0 && cleanQuery && cleanQuery !== "research") {
+    const slug = cleanQuery.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "custom";
+    discoveredAgents.push({
+      agentId: `agt-kraton-${slug}-00`,
+      handle: `${slug}-tee-specialist`,
+      name: `${query.trim()} Autonomous TEE Specialist`,
+      category: cleanQuery,
+      description: `Executes hardware-attested ${query.trim()} analysis and NEP-366 x402 v2 settlement on NEAR.`,
+      availableNow: true,
+      slaSeconds: 1800,
+      defaultPriceUsd: 2.5,
+      deliveredJobs: 64,
+      successRatePercent: 99.4,
+    });
+  }
+
+  for (const fallbackAgent of CANONICAL_FIVE_SPECIALIST_AGENTS) {
+    if (discoveredAgents.length >= 5) break;
+    if (!discoveredAgents.some((a) => a.handle.toLowerCase() === fallbackAgent.handle.toLowerCase())) {
+      discoveredAgents.push(fallbackAgent);
     }
-    discoveredAgents.push(
-      {
-        agentId: "agt-kraton-research-01",
-        handle: "defi-telemetry-scout",
-        name: "DeFi Telemetry & RHEA Liquidity Scout",
-        category: "research",
-        description: "Produces TEE-verified RHEA pool depth and 1Click spread reports.",
-        availableNow: true,
-        slaSeconds: 3600,
-        defaultPriceUsd: 2.5,
-        deliveredJobs: 128,
-        successRatePercent: 99.2,
-      },
-      {
-        agentId: "agt-kraton-audit-02",
-        handle: "eip1186-storage-prover",
-        name: "EIP-1186 Storage Trie & Oracle Auditor",
-        category: "finance",
-        description: "Verifies Ethereum Mainnet Chainlink state roots and multi-source oracle spreads.",
-        availableNow: true,
-        slaSeconds: 1800,
-        defaultPriceUsd: 4.2,
-        deliveredJobs: 84,
-        successRatePercent: 98.8,
-      }
-    );
   }
 
   if (discoveredJobs.length === 0) {
