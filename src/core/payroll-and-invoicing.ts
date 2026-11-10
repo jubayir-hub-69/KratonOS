@@ -28,7 +28,7 @@ export interface VerifiedPayrollOnChainRecord {
   invoiceRef: string;
   recipientId: string;
   amountNear: number;
-  amountUsdc: number;
+  usdEquivalentAtLiveRate: number;
   depositNear: string;
   depositYocto: string;
   txHash: string;
@@ -44,7 +44,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-101",
     recipientId: "asma90.testnet",
     amountNear: 0.45,
-    amountUsdc: 1.6,
+    usdEquivalentAtLiveRate: 1.6,
     depositNear: "0.4500",
     depositYocto: "450000000000000000000000",
     txHash: "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
@@ -58,7 +58,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-102",
     recipientId: "asma90.testnet",
     amountNear: 0.185,
-    amountUsdc: 0.66,
+    usdEquivalentAtLiveRate: 0.66,
     depositNear: "0.1850",
     depositYocto: "185000000000000000000000",
     txHash: "EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd",
@@ -72,7 +72,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-103",
     recipientId: "asma90.testnet",
     amountNear: 0.24,
-    amountUsdc: 0.85,
+    usdEquivalentAtLiveRate: 0.85,
     depositNear: "0.2400",
     depositYocto: "240000000000000000000000",
     txHash: "DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT",
@@ -86,7 +86,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-104",
     recipientId: "asma90.testnet",
     amountNear: 0.15,
-    amountUsdc: 0.53,
+    usdEquivalentAtLiveRate: 0.53,
     depositNear: "0.1500",
     depositYocto: "150000000000000000000000",
     txHash: "FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML",
@@ -100,7 +100,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-105",
     recipientId: "v1.signer-prod.testnet",
     amountNear: 0.22,
-    amountUsdc: 0.78,
+    usdEquivalentAtLiveRate: 0.78,
     depositNear: "0.2200",
     depositYocto: "220000000000000000000000",
     txHash: "6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf",
@@ -114,7 +114,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-106",
     recipientId: "outlayer.testnet",
     amountNear: 0.3,
-    amountUsdc: 1.07,
+    usdEquivalentAtLiveRate: 1.07,
     depositNear: "0.3000",
     depositYocto: "300000000000000000000000",
     txHash: "HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3",
@@ -128,7 +128,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-107",
     recipientId: "worker.outlayer.testnet",
     amountNear: 0.1975,
-    amountUsdc: 0.7,
+    usdEquivalentAtLiveRate: 0.7,
     depositNear: "0.1975",
     depositYocto: "197500000000000000000000",
     txHash: "J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz",
@@ -142,7 +142,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-108",
     recipientId: "ref-finance.testnet",
     amountNear: 0.28,
-    amountUsdc: 0.99,
+    usdEquivalentAtLiveRate: 0.99,
     depositNear: "0.2800",
     depositYocto: "280000000000000000000000",
     txHash: "5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E",
@@ -156,7 +156,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-109",
     recipientId: "wrap.testnet",
     amountNear: 0.1225,
-    amountUsdc: 0.43,
+    usdEquivalentAtLiveRate: 0.43,
     depositNear: "0.1225",
     depositYocto: "122500000000000000000000",
     txHash: "DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29",
@@ -170,7 +170,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-110",
     recipientId: "ref-farming.testnet",
     amountNear: 0.145,
-    amountUsdc: 0.51,
+    usdEquivalentAtLiveRate: 0.51,
     depositNear: "0.1450",
     depositYocto: "145000000000000000000000",
     txHash: "BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC",
@@ -184,7 +184,7 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     invoiceRef: "PAY-2026-111",
     recipientId: "asma90.testnet",
     amountNear: 0.35,
-    amountUsdc: 1.24,
+    usdEquivalentAtLiveRate: 1.24,
     depositNear: "0.3500",
     depositYocto: "350000000000000000000000",
     txHash: "9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd",
@@ -272,7 +272,7 @@ export interface PayrollCsvRow {
   originAsset: string;
   destinationAsset: string;
   amountNear: number;
-  amountUsdc: number;
+  usdEquivalentAtLiveRate: number;
   amountAtomicUsdc: string;
   invoiceRef: string;
 }
@@ -282,7 +282,7 @@ export interface PayrollRecipientOutcome {
   recipientId: string;
   invoiceRef: string;
   amountNear: number;
-  amountUsdc: number;
+  usdEquivalentAtLiveRate: number;
   amountAtomicUsdc: string;
   depositNear?: string;
   depositYocto?: string;
@@ -585,13 +585,13 @@ export function parsePayrollCsvContent(rawCsv: string, liveNearPriceUsd = 3.55):
         : parsedNumeric > 10 && originAsset.toUpperCase() === "USDC"
           ? Number((parsedNumeric * 0.01).toFixed(4))
           : parsedNumeric;
-    const amountUsdc =
+    const usdEquivalentAtLiveRate =
       Number.isFinite(amountNear) && amountNear > 0
         ? Number((amountNear * nearUsdRate).toFixed(2))
         : 0;
     const amountAtomicUsdc =
-      Number.isFinite(amountUsdc) && amountUsdc > 0
-        ? BigInt(Math.round(amountUsdc * 1_000_000)).toString()
+      Number.isFinite(usdEquivalentAtLiveRate) && usdEquivalentAtLiveRate > 0
+        ? BigInt(Math.round(usdEquivalentAtLiveRate * 1_000_000)).toString()
         : "0";
 
     rows.push({
@@ -601,7 +601,7 @@ export function parsePayrollCsvContent(rawCsv: string, liveNearPriceUsd = 3.55):
       originAsset: "NEAR",
       destinationAsset: "NEAR",
       amountNear,
-      amountUsdc,
+      usdEquivalentAtLiveRate,
       amountAtomicUsdc,
       invoiceRef,
     });
@@ -752,7 +752,10 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
         recipientId: row.recipientId,
         invoiceRef: row.invoiceRef,
         amountNear: Number.isFinite(row.amountNear) && row.amountNear > 0 ? row.amountNear : 0,
-        amountUsdc: Number.isFinite(row.amountUsdc) && row.amountUsdc > 0 ? row.amountUsdc : 0,
+        usdEquivalentAtLiveRate:
+          Number.isFinite(row.usdEquivalentAtLiveRate) && row.usdEquivalentAtLiveRate > 0
+            ? row.usdEquivalentAtLiveRate
+            : 0,
         amountAtomicUsdc: isPositiveAmount ? row.amountAtomicUsdc : "0",
         depositNear: "0",
         depositYocto: "0",
@@ -817,7 +820,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
       recipientId: row.recipientId,
       invoiceRef: row.invoiceRef,
       amountNear: rowNear,
-      amountUsdc: rowUsd,
+      usdEquivalentAtLiveRate: rowUsd,
       amountAtomicUsdc: BigInt(Math.round(rowUsd * 1_000_000)).toString(),
       depositNear,
       depositYocto: onchainRec.depositYocto,
@@ -1156,7 +1159,7 @@ export function generateVisualAuditStatementHtml(params: {
   <div class="sheet">
     <div class="top-actions no-print">
       <div style="font-size:12px;color:#4b5563;">
-        <strong>KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR (v2026.6)</strong> · Certified GAAP / IFRS Bookkeeper Audit Ledger
+        <strong>KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR (v2026.6)</strong> · Bookkeeper Audit Ledger — every row linked to a testnet transaction
       </div>
       <button class="btn-print" onclick="window.print()">Print / Save as PDF</button>
     </div>

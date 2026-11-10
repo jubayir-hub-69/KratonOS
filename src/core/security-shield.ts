@@ -585,6 +585,8 @@ export interface CounterpartyRiskVerdict {
       existsOnChain: boolean;
       storageUsageBytes: number;
       balanceYocto: string;
+      liveAccountRpcVerified: boolean;
+      balanceSource: "live_near_testnet_rpc" | "offline_fallback_snapshot_disclosed";
       riskPenalty: number;
     };
     signal2_contractCode: {
@@ -614,7 +616,6 @@ export interface CounterpartyRiskVerdict {
 const PROTECTED_CANONICAL_ACCOUNTS = [
   "jubayir69.testnet",
   "asma90.testnet",
-  "jubayir33.near",
   "ref-finance.testnet",
   "ref-farming.testnet",
   "v2.ref-finance.near",
@@ -737,6 +738,9 @@ export async function evaluateCounterpartyRisk(
   let storageUsageBytes = 0;
   let balanceYocto = "0";
   let codeHash = SYSTEM_EMPTY_CODE_HASH;
+  let liveAccountRpcVerified = false;
+  let balanceSource: "live_near_testnet_rpc" | "offline_fallback_snapshot_disclosed" =
+    "offline_fallback_snapshot_disclosed";
   let s1Penalty = 0;
   let s2Penalty = 0;
 
@@ -745,13 +749,14 @@ export async function evaluateCounterpartyRisk(
     "bob-rust.testnet",
     "carol-audit.testnet",
     "jubayir69.testnet",
-    "jubayir33.near",
     ...PROTECTED_CANONICAL_ACCOUNTS,
   ]);
 
   try {
     const accountView = await rpc.viewAccount(receiverId);
     existsOnChain = true;
+    liveAccountRpcVerified = true;
+    balanceSource = "live_near_testnet_rpc";
     storageUsageBytes = accountView.storage_usage;
     balanceYocto = accountView.amount;
     codeHash = accountView.code_hash;
@@ -761,6 +766,8 @@ export async function evaluateCounterpartyRisk(
       reasons.push(`Low on-chain storage history (${storageUsageBytes} bytes).`);
     }
   } catch {
+    liveAccountRpcVerified = false;
+    balanceSource = "offline_fallback_snapshot_disclosed";
     if (KNOWN_SANDBOX_VERIFIED_ACCOUNTS.has(receiverId)) {
       existsOnChain = true;
       storageUsageBytes = 182;
@@ -901,6 +908,8 @@ export async function evaluateCounterpartyRisk(
         existsOnChain,
         storageUsageBytes,
         balanceYocto,
+        liveAccountRpcVerified,
+        balanceSource,
         riskPenalty: s1Penalty,
       },
       signal2_contractCode: {

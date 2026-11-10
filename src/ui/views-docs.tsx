@@ -247,7 +247,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     method: "GET",
     path: "/api/payroll/export-csv",
     summary:
-      "Downloads the reconciled GAAP/IFRS Bookkeeper CSV ledger (with UTF-8 BOM for Excel / Google Sheets).",
+      "Downloads the Bookkeeper Audit Ledger — every row linked to a testnet transaction (with UTF-8 BOM for Excel / Google Sheets).",
     auth: "Public Read",
     curlExample: `curl -O https://kraton-os-taupe.vercel.app/api/payroll/export-csv`,
     tsExample: `window.open("/api/payroll/export-csv", "_blank");`,
@@ -503,7 +503,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   router:
     "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (1 bp fee + 40 bps app fee to `asma90.testnet`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON addresses.\n",
   payroll:
-    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit` and 11 distinct real non-zero on-chain NEAR Testnet payment transactions (`2.6400 NEAR ≈ $9.37 USD` at live rate transferred across `asma90.testnet`, `v1.signer-prod.testnet`, `outlayer.testnet`, `worker.outlayer.testnet`, `ref-finance.testnet`, `wrap.testnet`, and `ref-farming.testnet`).\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
+    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit` and 11 distinct real non-zero on-chain NEAR Testnet payment transactions (`2.6400 NEAR (USD equivalent computed dynamically at live NEAR/USD spot rate)` transferred across `asma90.testnet`, `v1.signer-prod.testnet`, `outlayer.testnet`, `worker.outlayer.testnet`, `ref-finance.testnet`, `wrap.testnet`, and `ref-farming.testnet`).\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
   "api-overview":
     "# KratonOS REST API Overview (13 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
   "api-explorer":
@@ -515,10 +515,18 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   shipped:
     "# Shipped Feature Matrix, Verification Coverage & All 13 Official Track Specifications\n\nAll 8 core modules, 6 verification suites, and all 13 official hackathon track specifications (`01-defi.md`, `02-thesis.md`, `03-privacy.md`, `04-business.md`, `05-swarms.md`, `06-security.md`, `07-agents.md`, `08-realworld.md`, `09-games.md`, `10-nfts.md`, `11-memecoins.md`, `12-social.md`, `13-open.md`) are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
-    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub), 27 verified on-chain NEAR Testnet transactions (`EnhR2L...` through `9Gdphd...` 11 payroll payment txs totaling `2.6400 NEAR ≈ $9.37 USD`, 4 dedicated feature proof txs `C8M7vc...` / `5L6wvj...` / `7DwfTP...` / `71hcr5...`, and 12 historical PoC-4 anchor txs `AVfu48...` through `2Jqeh7...`), `GET /api/onchain/receipt` & `POST /api/wallet/balances` live RPC endpoints.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
+    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub), 27 verified on-chain NEAR Testnet transactions (`EnhR2L...` through `9Gdphd...` 11 payroll payment txs totaling `2.6400 NEAR (USD equivalent computed dynamically at live NEAR/USD spot rate)`, 4 dedicated feature proof txs `C8M7vc...` / `5L6wvj...` / `7DwfTP...` / `71hcr5...`, and 12 historical PoC-4 anchor txs `AVfu48...` through `2Jqeh7...`), `GET /api/onchain/receipt` & `POST /api/wallet/balances` live RPC endpoints.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
 };
 
-function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
+function HonestScopeSection({
+  onOpenStress,
+  livePayrollTotalUsd,
+  teeGatewayStatusLabel,
+}: {
+  onOpenStress?: () => void;
+  livePayrollTotalUsd: string;
+  teeGatewayStatusLabel: string;
+}) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -566,7 +574,7 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
                   Live multi-RPC failover (<code className="font-mono text-[var(--accent-emerald)]">test.rpc.fastnear.com</code>, <code className="font-mono text-[var(--accent-emerald)]">near-testnet-rpc.publicnode.com</code>, <code className="font-mono text-[var(--accent-emerald)]">rpc.testnet.near.org</code>) for <code className="font-mono">view_account</code> (<code className="font-mono">37.2202 NEAR</code> total / <code className="font-mono">37.0184 NEAR</code> spendable on <code className="font-mono">jubayir69.testnet</code>) and <code className="font-mono">EXPERIMENTAL_tx_status</code>.
                 </div>
                 <div>
-                  <strong>11 Real Non-Zero Payroll Payment Transfers (2.6400 NEAR total ≈ $9.37 USD at live rate)</strong>: <code className="font-mono">EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN</code> (#1 · 0.4500 NEAR · #276951868), <code className="font-mono">EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd</code> (#2 · 0.1850 NEAR · #276951890), <code className="font-mono">DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT</code> (#3 · 0.2400 NEAR · #276951910), <code className="font-mono">FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML</code> (#4 · 0.1500 NEAR · #276951929), <code className="font-mono">6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf</code> (#5 · 0.2200 NEAR · #276951949), <code className="font-mono">HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3</code> (#6 · 0.3000 NEAR · #276951968), <code className="font-mono">J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz</code> (#7 · 0.1975 NEAR · #276951987), <code className="font-mono">5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E</code> (#8 · 0.2800 NEAR · #276952006), <code className="font-mono">DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29</code> (#9 · 0.1225 NEAR · #276952025), <code className="font-mono">BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC</code> (#10 · 0.1450 NEAR · #276952045), <code className="font-mono">9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd</code> (#11 · 0.3500 NEAR · #276952064).
+                  <strong>11 Real Non-Zero Payroll Payment Transfers (2.6400 NEAR total ≈ ${livePayrollTotalUsd} USD at live rate)</strong>: <code className="font-mono">EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN</code> (#1 · 0.4500 NEAR · #276951868), <code className="font-mono">EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd</code> (#2 · 0.1850 NEAR · #276951890), <code className="font-mono">DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT</code> (#3 · 0.2400 NEAR · #276951910), <code className="font-mono">FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML</code> (#4 · 0.1500 NEAR · #276951929), <code className="font-mono">6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf</code> (#5 · 0.2200 NEAR · #276951949), <code className="font-mono">HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3</code> (#6 · 0.3000 NEAR · #276951968), <code className="font-mono">J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz</code> (#7 · 0.1975 NEAR · #276951987), <code className="font-mono">5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E</code> (#8 · 0.2800 NEAR · #276952006), <code className="font-mono">DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29</code> (#9 · 0.1225 NEAR · #276952025), <code className="font-mono">BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC</code> (#10 · 0.1450 NEAR · #276952045), <code className="font-mono">9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd</code> (#11 · 0.3500 NEAR · #276952064).
                 </div>
                 <div>
                   <strong>4 Dedicated Feature Proof Transfers</strong>: <code className="font-mono">C8M7vcDtRZPNWnM7QJRvHQRPWe8ez1tQd5WicFep32uq</code> (Swarm 0.05 NEAR · #276952083), <code className="font-mono">5L6wvjds1XG56yEHmWADmmr1WsfG2kdYmZfR84gaqiYS</code> (VRF Limit Order 0.04 NEAR · #276952102), <code className="font-mono">7DwfTPZmn87X9MoBGnVibZAEnEdQVjJx9QQ6nTTdsA8z</code> (x402 Escrow 0.025 NEAR · #276952121), <code className="font-mono">71hcr5fPMjAuJPUYojzx2QKqVngMXME4eZzSxPPShqoQ</code> (RHEA Sweep 0.02 NEAR · #276952140).
@@ -586,6 +594,15 @@ function HonestScopeSection({ onOpenStress }: { onOpenStress?: () => void }) {
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 <strong>Explicit Mode A Sandbox Disclosure</strong>: In walletless Judge Sandbox Mode (<code className="font-mono">Mode A</code>), the 20x5 Sealed-Bid Swarm, Confidential GTC Limit Order (<code className="font-mono">/v0/orders</code>), 5-Stage Autonomous Master Loop, and A2A + x402 v2 Negotiation execute as <strong>deterministic API &amp; in-page sandbox simulations paired with real NEAR Testnet value-transfer receipts to <code className="font-mono">asma90.testnet</code></strong> rather than custom on-chain order-book/auction smart contracts.
+              </td>
+            </tr>
+            <tr>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR AI Cloud TEE (GLM-5.1-FP8)</td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                Live cryptographic ECDSA (<code className="font-mono text-[var(--accent-emerald)]">secp256k1</code>) &amp; <code className="font-mono text-[var(--accent-emerald)]">Ed25519</code> signature recovery, 5x48B Intel TDX quote verification, and Zero-Retention in-place <code className="font-mono">0x00</code> memory wipe (<code className="font-mono">2,173 bytes</code>).
+              </td>
+              <td className="px-4 py-3 text-[var(--text-secondary)]">
+                <strong>Current Gateway Status</strong>: <code className="font-mono font-bold text-[var(--accent-cyan)]">{teeGatewayStatusLabel}</code>. When <code className="font-mono">NEARAI_CLOUD_API_KEY</code> is unconfigured, KratonOS cryptographically verifies the recorded enclave attestation sample and explicitly labels <code className="font-mono">liveApiUsed=false</code>.
               </td>
             </tr>
             <tr>
@@ -802,16 +819,27 @@ export const DocsPortalView = React.memo(function DocsPortalView({
     jsonText: string;
   } | null>(null);
 
-  // Live Status 10s Polling State (hydrated from sessionStorage cache so reloads never flip between snapshots)
+  // Live Status 10s Polling State (purge stale overview cache keys on mount so first load always renders latest live bundle)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [liveStatusData, setLiveStatusData] = useState<any | null>(() => {
     try {
       if (typeof window !== "undefined") {
-        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v4");
-        if (cached) return JSON.parse(cached);
+        for (const storage of [window.localStorage, window.sessionStorage]) {
+          if (!storage) continue;
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < storage.length; i++) {
+            const k = storage.key(i);
+            if (k && k.startsWith("kratonos_overview_cache")) {
+              keysToRemove.push(k);
+            }
+          }
+          for (const k of keysToRemove) {
+            storage.removeItem(k);
+          }
+        }
       }
     } catch {
-      // Ignore cache read error
+      // Ignore cache purge error
     }
     return null;
   });
@@ -919,13 +947,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
     let timer: ReturnType<typeof setInterval> | null = null;
     const fetchStatus = async () => {
       try {
-        const res = await fetch("/api/overview");
+        const res = await fetch("/api/overview", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setLiveStatusData(data);
           setStatusLastUpdated(new Date().toLocaleTimeString());
           try {
-            window.sessionStorage?.setItem("kratonos_overview_cache_v4", JSON.stringify(data));
+            window.sessionStorage?.setItem("kratonos_overview_cache_v5", JSON.stringify(data));
           } catch {
             // Ignore sessionStorage quota error
           }
@@ -1005,6 +1033,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
     ARCHITECTURE_STAGE_NODES.find((n) => n.stage === selectedArchStage) ??
     ARCHITECTURE_STAGE_NODES[0];
   const activeTelemetry = liveStatusData ?? overview;
+  const livePayrollTotalUsd = (
+    2.64 * Number(activeTelemetry?.oracle?.nearUsdMedian ?? 3.55)
+  ).toFixed(2);
+  const isDocsLiveNearAiUsed = Boolean(activeTelemetry?.nearAiTee?.liveApiUsed ?? false);
+  const teeGatewayStatusLabel = isDocsLiveNearAiUsed
+    ? "LIVE_TEE_API_VERIFIED (liveApiUsed=true)"
+    : "OFFLINE_SAMPLE_QUOTE_VERIFIED (liveApiUsed=false — Cryptographic Ed25519/ECDSA Verification of Recorded Enclave Sample)";
   const allDocItems = DOC_NAV_TREE.flatMap((g) => g.items);
   const activeChapterNum = Math.max(
     1,
@@ -1676,7 +1711,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
               </div>
 
-              <HonestScopeSection onOpenStress={() => selectDocPage("stress")} />
+              <HonestScopeSection
+                onOpenStress={() => selectDocPage("stress")}
+                livePayrollTotalUsd={livePayrollTotalUsd}
+                teeGatewayStatusLabel={teeGatewayStatusLabel}
+              />
             </div>
           )}
 
@@ -2190,7 +2229,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
               </div>
 
-              <HonestScopeSection onOpenStress={() => selectDocPage("stress")} />
+              <HonestScopeSection
+                onOpenStress={() => selectDocPage("stress")}
+                livePayrollTotalUsd={livePayrollTotalUsd}
+                teeGatewayStatusLabel={teeGatewayStatusLabel}
+              />
             </div>
           )}
 
@@ -2564,8 +2607,8 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   <span className="font-mono text-xs font-extrabold uppercase tracking-wider text-[var(--accent-emerald)]">
                     Live Motion-Graphics: Dual-TEE 8-Step Hardware Attestation &amp; EIP-1186 Merkle-Patricia Prover
                   </span>
-                  <Badge variant="emerald" className="font-mono text-[10px]">
-                    NVIDIA H100 NRAS + Intel TDX 5x48B + 0x00 Wipe
+                  <Badge variant={isDocsLiveNearAiUsed ? "emerald" : "sky"} className="font-mono text-[10px]">
+                    {teeGatewayStatusLabel}
                   </Badge>
                 </div>
                 <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
@@ -2934,7 +2977,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
                   <div className="font-mono text-xs font-bold text-[var(--accent-cyan)]">12-Row Fault-Isolated Payroll</div>
                   <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
-                    Auto-injects <code className="font-mono">0.00125 NEAR</code> <code className="font-mono">storage_deposit</code> for unregistered accounts and quarantines Row #12 (<code className="font-mono">unverified-quarantine-row12.testnet</code>) while settling 11/12 legitimate rows (<code className="font-mono">2.6400 NEAR ≈ $9.37 USD</code> at live rate).
+                    Auto-injects <code className="font-mono">0.00125 NEAR</code> <code className="font-mono">storage_deposit</code> for unregistered accounts and quarantines Row #12 (<code className="font-mono">unverified-quarantine-row12.testnet</code>) while settling 11/12 legitimate rows (<code className="font-mono">2.6400 NEAR ≈ ${livePayrollTotalUsd} USD</code> at live rate).
                   </p>
                 </div>
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-4">
@@ -3455,7 +3498,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         ["06", "Predatory Fee Extraction", "Combined fee > 500 bps (5.00%)", "Rejected by config.yaml and Rust Policy Vault fee ceiling."],
                         ["07", "Unlisted Token Hallucination", "AYAN/USDT CURRENT MARKET PRICE", "Returns found: false, priceUsd: null, status: UNLISTED_TOKEN (never $1.00)."],
                         ["08", "Misspelled Ticker Spoof", "AVEX/USDT CURRENT MARKET PRICE", "Flags AVEX as UNLISTED_TOKEN and suggests AVAX via Levenshtein distance."],
-                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (quarantined)", "Quarantines Row #12 while settling 11/12 valid rows (2.6400 NEAR ≈ $9.37 USD)."],
+                        ["09", "Poisoned Payroll CSV Row #12", "PAY-2026-112-MALFORMED (quarantined)", `Quarantines Row #12 while settling 11/12 valid rows (2.6400 NEAR ≈ $${livePayrollTotalUsd} USD).`],
                         ["10", "NEP-611 DeleteKey Gas Burn", "DeleteKey on funded NEP-611 Gas Key", "Auto-prepends WithdrawFromGasKey before DeleteKey so 0 NEAR is burned."],
                         ["11", "Protocol v87 Gas-Key Meta-Tx", "signerKeyIsGasKey: true on NEP-366 inner tx", "Blocked per nearcore v87+; enforces standard ed25519 key on inner delegate."],
                         ["12", "External AddKey allowance: 0", "RPC AddKey with allowance: '0'", "Rejected (sets literal 0 yoctoNEAR lockout); requires allowance: null."],

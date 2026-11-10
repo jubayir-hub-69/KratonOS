@@ -3956,10 +3956,17 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
   const resolvedChatId =
     liveNearAiTee?.attestationId ?? `chatcmpl-tee-${Date.now().toString(16)}`;
 
+  const isLiveUsed = Boolean(liveNearAiTee?.liveApiUsed ?? false);
+  const honestGatewayStatus = isLiveUsed
+    ? "LIVE_TEE_API_VERIFIED (liveApiUsed=true)"
+    : "OFFLINE_SAMPLE_QUOTE_VERIFIED (liveApiUsed=false — Cryptographic Ed25519/ECDSA Verification of Recorded Enclave Sample)";
+
   return {
     status: "OK",
     tee8Step: {
-      status: "TEE ATTESTATION VERIFIED",
+      status: honestGatewayStatus,
+      liveApiUsed: isLiveUsed,
+      liveGatewayStatus: honestGatewayStatus,
       step1_nonceGenerated: { nonce: "9c8b7a6f5e4d3c2b1a0987654321fedcba9876543210abcdef1234567890abcd" },
       step3_nvidiaNrasGpuVerified: { gpuArch: "hopper" },
       step6_privateInferenceAndZeroRetention: { wipedBufferByteLength: 2173 },
@@ -3968,7 +3975,9 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
       },
     },
     liveReasoning: {
-      usedLiveApi: Boolean(liveNearAiTee?.liveEndpointVerified ?? true),
+      usedLiveApi: isLiveUsed,
+      liveApiUsed: isLiveUsed,
+      gatewayStatus: honestGatewayStatus,
       model: liveNearAiTee?.model ?? "zai-org/GLM-5.1-FP8",
       chatId: resolvedChatId,
       content,
@@ -4155,6 +4164,9 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
   const isLiveNearAiUsed = Boolean(
     liveReasoning?.usedLiveApi || liveReasoning?.liveApiUsed || tee8?.liveApiUsed
   );
+  const honestTeeVerificationLabel = isLiveNearAiUsed
+    ? "LIVE_TEE_API_VERIFIED (liveApiUsed=true)"
+    : "OFFLINE_SAMPLE_QUOTE_VERIFIED (liveApiUsed=false — Cryptographic Ed25519/ECDSA Verification of Recorded Enclave Sample)";
 
   const checklist = [
     {
@@ -4163,9 +4175,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
     },
     {
       step: "Step 2: NEAR AI Cloud Gateway & Model",
-      detail: `${liveReasoning?.model ?? "zai-org/GLM-5.1-FP8"} (liveApiUsed=${String(
-        isLiveNearAiUsed
-      )})`,
+      detail: `${liveReasoning?.model ?? "zai-org/GLM-5.1-FP8"} — ${honestTeeVerificationLabel}`,
     },
     {
       step: "Step 3: NVIDIA NRAS Hopper H100 GPU JWT",
@@ -4214,8 +4224,8 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
             8-Step NEAR AI Cloud (GLM-5.1-FP8) Enclave Verifier, Zero-Retention Private Audit &amp; Ethereum Mainnet eth_getProof
           </p>
         </div>
-        <Badge variant="emerald" className="font-mono">
-          {tee8?.status ?? "TEE ATTESTATION VERIFIED"}
+        <Badge variant={isLiveNearAiUsed ? "emerald" : "sky"} className="font-mono">
+          {honestTeeVerificationLabel}
         </Badge>
       </div>
 
@@ -4289,10 +4299,10 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
           {liveReasoning && (
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-sm">Signed Enclave Reasoning &amp; Market Report</CardTitle>
                   <Badge variant={isLiveNearAiUsed ? "emerald" : "sky"} className="font-mono">
-                    liveApiUsed: {String(isLiveNearAiUsed)}
+                    {honestTeeVerificationLabel}
                   </Badge>
                 </div>
               </CardHeader>

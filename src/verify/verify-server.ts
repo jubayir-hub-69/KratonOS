@@ -378,8 +378,26 @@ async function runServerSmokeTest(): Promise<void> {
   );
   assert.ok(
     payrollRunJson.batchResult.totalSettledUsdc > 0 && payrollRunJson.batchResult.totalSettledUsdc < 50,
-    `POST /api/payroll/run totalSettledUsdc must reflect real live USD value of 2.64 NEAR (≈ $9.37), got ${payrollRunJson.batchResult.totalSettledUsdc}`
+    `POST /api/payroll/run totalSettledUsdc must reflect real live USD value of 2.64 NEAR, got ${payrollRunJson.batchResult.totalSettledUsdc}`
   );
+
+  // Verify 16-column alignment on every row of /api/payroll/export-csv (including Row 12 PAY-2026-112-MALFORMED)
+  const csvLines = csvRes.bodyText
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .split(/\r?\n/)
+    .filter((l) => l.trim().length > 0);
+  assert.equal(csvLines.length, 13, "Exported bookkeeper CSV must have 1 header row + 12 data rows");
+  const headerCols = csvLines[0].split(",");
+  assert.equal(headerCols.length, 16, "Exported bookkeeper CSV header must have 16 columns");
+  for (let idx = 1; idx < csvLines.length; idx++) {
+    const cols = csvLines[idx].split(",");
+    assert.equal(
+      cols.length,
+      headerCols.length,
+      `CSV row #${idx} must have exact same column count (${headerCols.length}) as header, got ${cols.length}`
+    );
+  }
 
   assert.equal(
     VERIFIED_PAYROLL_ONCHAIN_RECORDS.length,
@@ -701,7 +719,7 @@ async function runServerSmokeTest(): Promise<void> {
       chainType: "bitcoin",
     }),
     invokeServerEndpoint("POST", "/api/wallet/balances", {
-      address: "jubayir33.near",
+      address: "alice-mainnet.near",
       chainType: "near",
     }),
     invokeServerEndpoint("POST", "/api/wallet/balances", {

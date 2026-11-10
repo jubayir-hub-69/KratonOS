@@ -218,7 +218,7 @@ async function main(): Promise<void> {
   assert.equal(payrollResult.totalSettledNear, 2.64, "Total settled NEAR across 11 rows must equal 2.6400 NEAR");
   assert.ok(
     payrollResult.totalSettledUsdc > 2 && payrollResult.totalSettledUsdc < 50,
-    "Total settled USD equivalent must be computed from live NEAR/USD rate (≈ $9.37 USD), never $264.00"
+    "Total settled USD equivalent must be computed dynamically from live NEAR/USD rate, never $264.00"
   );
   assert.equal(
     payrollResult.totalIsolatedFailedCount,

@@ -126,7 +126,7 @@ export interface PayrollApiResponse {
       invoiceRef: string;
       amountNear?: number;
       amountYoctoNear?: string;
-      amountUsdc: number;
+      usdEquivalentAtLiveRate: number;
       amountAtomicUsdc: string;
       status: "SETTLED" | "ISOLATED_QUARANTINED";
       batchChunkIndex: number;
@@ -323,7 +323,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const [customBatchRows, setCustomBatchRows] = useState<
     Array<{
       recipientId: string;
-      amountUsdc: number;
+      usdEquivalentAtLiveRate: number;
       invoiceRef: string;
     }>
   >([]);
@@ -493,7 +493,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               BigInt(Math.round(rec.amountNear * 1_000_000)) *
               1_000_000_000_000_000_000n
             ).toString(),
-            amountUsdc: rowUsd,
+            usdEquivalentAtLiveRate: rowUsd,
             amountAtomicUsdc: Math.round(rowUsd * 1_000_000).toString(),
             status: "SETTLED" as const,
             batchChunkIndex: Math.floor(idx / 10),
@@ -517,7 +517,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           invoiceRef: "PAY-2026-112-MALFORMED",
           amountNear: 0.99,
           amountYoctoNear: "990000000000000000000000",
-          amountUsdc: Number((0.99 * liveNearPriceUsd).toFixed(2)),
+          usdEquivalentAtLiveRate: Number((0.99 * liveNearPriceUsd).toFixed(2)),
           amountAtomicUsdc: Math.round(0.99 * liveNearPriceUsd * 1_000_000).toString(),
           status: "ISOLATED_QUARANTINED" as const,
           batchChunkIndex: 1,
@@ -536,7 +536,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       const matchedRec =
         VERIFIED_PAYROLL_ROW_RECORDS[idx % VERIFIED_PAYROLL_ROW_RECORDS.length];
       const assignedTx = isQuarantined ? undefined : matchedRec.settlementTxHash;
-      const customNear = Number((c.amountUsdc / liveNearPriceUsd).toFixed(4));
+      const customNear = Number((c.usdEquivalentAtLiveRate / liveNearPriceUsd).toFixed(4));
       return {
         rowNumber: idx + 1,
         recipientId: c.recipientId,
@@ -546,8 +546,8 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           BigInt(Math.round(customNear * 1_000_000)) *
           1_000_000_000_000_000_000n
         ).toString(),
-        amountUsdc: c.amountUsdc,
-        amountAtomicUsdc: Math.round(c.amountUsdc * 1_000_000).toString(),
+        usdEquivalentAtLiveRate: c.usdEquivalentAtLiveRate,
+        amountAtomicUsdc: Math.round(c.usdEquivalentAtLiveRate * 1_000_000).toString(),
         status: isQuarantined ? ("ISOLATED_QUARANTINED" as const) : ("SETTLED" as const),
         batchChunkIndex: 0,
         storageRegisteredPrior: false,
@@ -596,16 +596,20 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           ? Number(o.amountNear ?? 0.99)
           : isCanonicalRow
             ? Number(o.amountNear ?? o.onChainTransferNear ?? matchedRec.amountNear)
-            : Number(o.amountNear ?? o.onChainTransferNear ?? Number((o.amountUsdc / liveNearPriceUsd).toFixed(4)));
+            : Number(
+                o.amountNear ??
+                  o.onChainTransferNear ??
+                  Number((o.usdEquivalentAtLiveRate / liveNearPriceUsd).toFixed(4))
+              );
       const resolvedTransferNearStr = resolvedNear.toFixed(4);
       const resolvedUsdc = isCanonicalRow
         ? Number((resolvedNear * liveNearPriceUsd).toFixed(2))
-        : Number(o.amountUsdc ?? (resolvedNear * liveNearPriceUsd).toFixed(2));
+        : Number(o.usdEquivalentAtLiveRate ?? (resolvedNear * liveNearPriceUsd).toFixed(2));
       return {
         ...o,
         recipientId: safeRecipientId,
         amountNear: resolvedNear,
-        amountUsdc: resolvedUsdc,
+        usdEquivalentAtLiveRate: resolvedUsdc,
         amountAtomicUsdc: Math.round(resolvedUsdc * 1_000_000).toString(),
         failureReason:
           o.status === "ISOLATED_QUARANTINED"
@@ -651,7 +655,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       settledRows.reduce((sum, r) => sum + Number(r.amountNear ?? 0), 0).toFixed(4)
     );
     const totalSettledUsdc = Number(
-      settledRows.reduce((sum, r) => sum + r.amountUsdc, 0).toFixed(2)
+      settledRows.reduce((sum, r) => sum + r.usdEquivalentAtLiveRate, 0).toFixed(2)
     );
 
     return {
@@ -675,20 +679,21 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
 
   const buildLiveBookkeeperCsvContent = () => {
     const header = [
-      "Timestamp_ISO",
+      "Timestamp",
       "Record_Type",
       "Reference_ID",
       "Counterparty_Account",
       "Origin_Asset",
       "Destination_Asset",
-      "On_Chain_Transfer_NEAR",
-      "Live_NEAR_Price_USD",
-      "USD_Equivalent_Settled",
+      "OnChain_Settled_NEAR",
+      "Deposit_YoctoNEAR",
       "Fee_Bps",
+      "Live_USD_Equivalent",
+      "OnChain_Tx_Hash",
+      "Block_Height",
       "Storage_Deposit_YoctoNEAR",
       "Status",
-      "Settlement_TxHash",
-      "On_Chain_Block_And_Receipt_Proof",
+      "OnChain_Block_And_Receipt_Proof",
       "PoC4_Master_Hash",
     ].join(",");
     const nowIso = new Date().toISOString();
@@ -701,6 +706,12 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         o.storageDepositPrependedYocto && o.storageDepositPrependedYocto !== "0"
           ? `0.00125 NEAR (${o.storageDepositPrependedYocto} yocto)`
           : "0 NEAR (Registered)";
+      const nearAmt = Number(o.amountNear ?? 0);
+      const depositYocto =
+        o.status === "SETTLED"
+          ? o.amountYoctoNear ??
+            (BigInt(Math.round(nearAmt * 1_000_000)) * 1_000_000_000_000_000_000n).toString()
+          : "0";
       lines.push(
         [
           nowIso,
@@ -709,13 +720,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           o.recipientId,
           "NEAR",
           "NEAR",
-          o.status === "SETTLED" ? `${Number(o.amountNear ?? 0).toFixed(4)} NEAR` : `0.0000 NEAR (Requested ${Number(o.amountNear ?? 0.99).toFixed(4)} NEAR)`,
-          batch.liveNearPriceUsd.toFixed(4),
-          o.status === "SETTLED" ? `$${o.amountUsdc.toFixed(2)} USD` : "$0.00 USD",
+          o.status === "SETTLED" ? `${nearAmt.toFixed(4)} NEAR` : "0.0000 NEAR",
+          depositYocto,
           "41",
+          o.status === "SETTLED" ? `$${o.usdEquivalentAtLiveRate.toFixed(2)} USD` : "$0.00 USD",
+          o.settlementTxHash ?? "NONE_BLOCKED",
+          o.status === "SETTLED" && o.settlementBlockHeight
+            ? String(o.settlementBlockHeight)
+            : "QUARANTINED",
           storageFormatted,
           o.status,
-          o.settlementTxHash ?? "NONE_BLOCKED",
           o.confidentialShardShieldUnshieldHashes,
           batch.poc4HMaster,
         ]
@@ -819,7 +833,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:600;color:#111827;">#${o.rowNumber} · ${escapeHtmlText(o.invoiceRef)}</td>
           <td style="padding:7px 8px;font-family:monospace;font-size:11px;color:#1f2937;"><a href="${recipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:${isSettled ? "#047857" : "#991b1b"};text-decoration:underline;font-weight:600;">${escapeHtmlText(o.recipientId)} &#8599;</a></td>
-          <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#111827;">${rowNearFormatted} NEAR <span style="color:#047857;font-weight:600;">(≈ $${o.amountUsdc.toFixed(2)} USD)</span></td>
+          <td style="padding:7px 8px;font-family:monospace;font-size:11px;font-weight:700;color:#111827;">${rowNearFormatted} NEAR <span style="color:#047857;font-weight:600;">(≈ $${o.usdEquivalentAtLiveRate.toFixed(2)} USD)</span></td>
           <td style="padding:7px 8px;">${storageTag}</td>
           <td style="padding:7px 8px;">
             ${statusCellHtml}
@@ -862,12 +876,12 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
 <body>
   <div class="sheet">
     <div class="top-actions no-print">
-      <div style="font-size:12px;color:#4b5563;"><strong>KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR</strong> · Certified GAAP / IFRS Bookkeeper Audit Statement (${batch.totalRowsImported} Rows)</div>
+      <div style="font-size:12px;color:#4b5563;"><strong>KratonOS — Autonomous Treasury &amp; Policy Vault on NEAR</strong> · Bookkeeper Audit Ledger — every row linked to a testnet transaction (${batch.totalRowsImported} Rows)</div>
       <button class="btn-print" onclick="window.print()">Print / Save as Single-Page PDF</button>
     </div>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
       <div>
-        <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.1em;">GAAP / IFRS Verified Treasury Statement</div>
+        <div style="font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:0.1em;">Bookkeeper Audit Ledger — every row linked to a testnet transaction</div>
         <h1 style="margin:4px 0 0;font-size:20px;font-weight:800;">Executive Bookkeeper Reconciliation Statement</h1>
         <p style="margin:4px 0 0;font-size:12px;color:#4b5563;">Treasury Vault: <a href="https://testnet.nearblocks.io/address/jubayir69.testnet" target="_blank" rel="noreferrer" style="color:#047857;"><code>jubayir69.testnet</code> &#8599;</a> · Protocol Fee Recipient: <a href="https://testnet.nearblocks.io/address/asma90.testnet" target="_blank" rel="noreferrer" style="color:#047857;"><code>asma90.testnet</code> &#8599;</a> (40 bps)</p>
       </div>
@@ -1097,10 +1111,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           );
           if (existingIdx >= 0) {
             const next = [...prev];
-            next[existingIdx] = { recipientId: acct, amountUsdc: netAmount, invoiceRef };
+            next[existingIdx] = { recipientId: acct, usdEquivalentAtLiveRate: netAmount, invoiceRef };
             return next;
           }
-          return [{ recipientId: acct, amountUsdc: netAmount, invoiceRef }, ...prev];
+          return [{ recipientId: acct, usdEquivalentAtLiveRate: netAmount, invoiceRef }, ...prev];
         });
 
         setSignedInvoiceReceipt({
@@ -1147,10 +1161,10 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       );
       if (existingIdx >= 0) {
         const next = [...prev];
-        next[existingIdx] = { recipientId: acct, amountUsdc: netAmount, invoiceRef };
+        next[existingIdx] = { recipientId: acct, usdEquivalentAtLiveRate: netAmount, invoiceRef };
         return next;
       }
-      return [{ recipientId: acct, amountUsdc: netAmount, invoiceRef }, ...prev];
+      return [{ recipientId: acct, usdEquivalentAtLiveRate: netAmount, invoiceRef }, ...prev];
     });
 
     onNotify?.(
@@ -2101,7 +2115,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                           <td className="px-4 py-3 font-mono text-xs font-extrabold text-[var(--text-primary)]">
                             <div>{Number(row.amountNear ?? row.onChainTransferNear ?? 0).toFixed(4)} NEAR</div>
                             <div className="mt-0.5 text-[10px] font-semibold text-[var(--accent-emerald)]">
-                              ≈ ${row.amountUsdc.toFixed(2)} USD (@ ${batch.liveNearPriceUsd.toFixed(2)}/NEAR)
+                              ≈ ${row.usdEquivalentAtLiveRate.toFixed(2)} USD (@ ${batch.liveNearPriceUsd.toFixed(2)}/NEAR)
                             </div>
                           </td>
                           <td className="px-4 py-3 font-mono text-xs text-[var(--text-secondary)]">

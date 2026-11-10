@@ -1161,9 +1161,14 @@ export async function handleKratonHttpRequest(
           liveReasoning.signingAddress ??
           "0xb98a789cdc4817275f5155593ba73ef2a957e779"
         ).toLowerCase() as `0x${string}`;
+        const honestTeeGatewayStatus = unifiedLiveApiUsed
+          ? "LIVE_TEE_API_VERIFIED (liveApiUsed=true)"
+          : "OFFLINE_SAMPLE_QUOTE_VERIFIED (liveApiUsed=false — Cryptographic Ed25519/ECDSA Verification of Recorded Enclave Sample)";
         const normalizedTee8Step = {
           ...tee8Step,
           liveApiUsed: unifiedLiveApiUsed,
+          liveGatewayStatus: honestTeeGatewayStatus,
+          gatewayStatus: honestTeeGatewayStatus,
           liveChatId: liveReasoning.chatId ?? tee8Step.liveChatId,
           recoveredEcdsaAddress: resolvedEcdsaAddr,
           step2_attestationReport: {
@@ -1181,6 +1186,7 @@ export async function handleKratonHttpRequest(
           signingAddress: resolvedEcdsaAddr,
           usedLiveApi: unifiedLiveApiUsed,
           liveApiUsed: unifiedLiveApiUsed,
+          gatewayStatus: honestTeeGatewayStatus,
         };
 
         const tdx5 = deriveDeterministicTdxFiveRegisters(oracleSnap.rtmr3MeasurementHex);
@@ -1859,7 +1865,7 @@ export async function handleKratonHttpRequest(
                 totalSettledUsdc: Number(
                   latestPayrollBatchCache.outcomes
                     .filter((o) => o.status === "SETTLED")
-                    .reduce((acc, o) => acc + o.amountUsdc, 0)
+                    .reduce((acc, o) => acc + o.usdEquivalentAtLiveRate, 0)
                     .toFixed(2)
                 ),
                 outcomes: latestPayrollBatchCache.outcomes,
@@ -2881,7 +2887,7 @@ export async function handleKratonHttpRequest(
           "- RHEA Finance (V1/V2 DCL & Farming): https://rhea.finance/ · https://guide.rhea.finance/ · https://testnet.nearblocks.io/address/ref-finance.testnet · https://testnet.nearblocks.io/address/ref-farming.testnet",
           "- HOT Connect Wallet Selector (`@hot-labs/near-connect`): https://docs.hotdao.ai/",
           "- Sputnik DAO V2 & Multi-Asset Treasury: https://github.com/near-daos/sputnik-dao-contract · https://trezu.org/",
-          "- Chain Signatures MPC & Vault Accounts: https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet · https://testnet.nearblocks.io/address/asma90.testnet · https://nearblocks.io/address/jubayir33.near",
+          "- Chain Signatures MPC & Vault Accounts: https://testnet.nearblocks.io/address/v1.signer-prod.testnet · https://testnet.nearblocks.io/address/jubayir69.testnet · https://testnet.nearblocks.io/address/asma90.testnet",
           "- Ethereum Mainnet Chainlink ETH/USD: https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
           "",
           "## Core Architecture & Source Modules",
@@ -2890,7 +2896,7 @@ export async function handleKratonHttpRequest(
           "- `src/core/near-ai-tee.ts`: Live NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) 8-step hardware attestation, real-time any-asset market & news co-pilot (`NEAR/USDT`, `XRP/USDT`, `SOL/USDT`, `ETH/USDT`, `BTC/USDT`), and Zero-Retention memory wipe (`0x00`).",
           "- `src/core/outlayer-enclave.ts`: Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186 RLP Merkle-Patricia Trie verifier), anti-hallucination multi-asset median oracle (`UNLISTED_TOKEN` + Levenshtein typo suggestions), and provable VRF execution jitter.",
           "- `src/core/intents-rhea-router.ts`: Live 1Click Confidential Intents (`intents.near` Private Shard), RHEA V1 Classic (`ref-finance.testnet`) & V2 DCL (`dclv2.ref-labs.near`) tri-venue router.",
-          "- `src/core/payroll-and-invoicing.ts`: Ceiling-rounded `EXACT_OUTPUT` merchant invoicing, 12-row fault-isolated NEP-141 batch payroll (11 real non-zero NEAR Testnet transfers `EnhR2L7...` through `9Gdphds...` totaling `2.6400 NEAR` + Row 12 quarantined), GAAP/IFRS Bookkeeper CSV (`UTF-8 BOM`), and Printable HTML/PDF Audit Statement.",
+          "- `src/core/payroll-and-invoicing.ts`: Ceiling-rounded `EXACT_OUTPUT` merchant invoicing, 12-row fault-isolated NEP-141 batch payroll (11 real non-zero NEAR Testnet transfers `EnhR2L7...` through `9Gdphds...` totaling `2.6400 NEAR` + Row 12 quarantined), Bookkeeper Audit Ledger — every row linked to a testnet transaction (`UTF-8 BOM`), and Printable HTML/PDF Audit Statement.",
           "- `src/core/agent-market.ts` & `src/core/swarm-coordinator.ts`: Live `market.near.ai` worker discovery, HTTP `402 Payment Required` (`x402 v2`) escrow settlement, and 20-sub-agent x 5-provider Hamilton pro-rata sealed-bid clearing.",
           "",
           "## Dual-Mode Wallet Custody Architecture & Protocol Boundary (Rules Q-007, Q-008, Q-010, Q-017)",
@@ -3024,7 +3030,7 @@ export async function handleKratonHttpRequest(
             },
             "/api/payroll/export-csv": {
               get: {
-                summary: "Download GAAP/IFRS Bookkeeper CSV ledger (UTF-8 BOM)",
+                summary: "Download Bookkeeper Audit Ledger — every row linked to a testnet transaction (UTF-8 BOM)",
                 responses: { "200": { description: "CSV file attachment" } },
               },
             },

@@ -415,16 +415,27 @@ export function App() {
     []
   );
 
-  // API State Slices (hydrated from sessionStorage cache so reloads never flip between snapshots)
+  // API State Slices (purge stale overview cache keys on mount so first load always renders latest live bundle)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [overview, setOverview] = useState<any | null>(() => {
     try {
       if (typeof window !== "undefined") {
-        const cached = window.sessionStorage?.getItem("kratonos_overview_cache_v4");
-        if (cached) return JSON.parse(cached);
+        for (const storage of [window.localStorage, window.sessionStorage]) {
+          if (!storage) continue;
+          const keysToRemove: string[] = [];
+          for (let i = 0; i < storage.length; i++) {
+            const k = storage.key(i);
+            if (k && k.startsWith("kratonos_overview_cache")) {
+              keysToRemove.push(k);
+            }
+          }
+          for (const k of keysToRemove) {
+            storage.removeItem(k);
+          }
+        }
       }
     } catch {
-      // Ignore cache read error
+      // Ignore cache purge error
     }
     return null;
   });
@@ -1113,12 +1124,12 @@ export function App() {
 
   // API Handlers
   const fetchOverview = useCallback(async () => {
-    const res = await fetch("/api/overview");
+    const res = await fetch("/api/overview", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       setOverview(data);
       try {
-        window.sessionStorage?.setItem("kratonos_overview_cache_v4", JSON.stringify(data));
+        window.sessionStorage?.setItem("kratonos_overview_cache_v5", JSON.stringify(data));
       } catch {
         // Ignore sessionStorage quota error
       }
