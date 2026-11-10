@@ -335,6 +335,107 @@ export async function requestBrowserWalletTestnetSwitch(
   return { switched: false };
 }
 
+export interface WalletExplorerTxInfo {
+  url: string;
+  buttonLabel: string;
+  hashLabel: string;
+  explorerName: string;
+}
+
+export function getWalletExplorerTxInfo(
+  txHash: string,
+  chainType?: WalletChainType | string,
+  detectedNetwork?: string
+): WalletExplorerTxInfo {
+  const cleanHash = String(txHash || "").trim();
+  const normChain = String(chainType || "near").trim().toLowerCase();
+  const netLower = String(detectedNetwork || "").toLowerCase();
+
+  if (
+    normChain === "evm" ||
+    normChain.includes("eth") ||
+    normChain.includes("base") ||
+    normChain.includes("arbitrum") ||
+    (cleanHash.startsWith("0x") && normChain !== "sui")
+  ) {
+    if (netLower.includes("base sepolia") || normChain.includes("base")) {
+      return {
+        url: `https://sepolia.basescan.org/tx/${cleanHash}`,
+        buttonLabel: "View on Etherscan",
+        hashLabel: "Base Sepolia Settlement TxHash:",
+        explorerName: "Etherscan",
+      };
+    }
+    if (netLower.includes("arbitrum sepolia") || normChain.includes("arbitrum")) {
+      return {
+        url: `https://sepolia.arbiscan.io/tx/${cleanHash}`,
+        buttonLabel: "View on Etherscan",
+        hashLabel: "Arbitrum Sepolia Settlement TxHash:",
+        explorerName: "Etherscan",
+      };
+    }
+    return {
+      url: `https://sepolia.etherscan.io/tx/${cleanHash}`,
+      buttonLabel: "View on Etherscan",
+      hashLabel: "Ethereum Sepolia Settlement TxHash:",
+      explorerName: "Etherscan",
+    };
+  }
+
+  if (normChain === "solana" || normChain.includes("sol")) {
+    const cluster = netLower.includes("testnet") ? "testnet" : "devnet";
+    return {
+      url: `https://solscan.io/tx/${cleanHash}?cluster=${cluster}`,
+      buttonLabel: "View on Solscan",
+      hashLabel: "Solana Testnet/Devnet Settlement TxHash:",
+      explorerName: "Solscan",
+    };
+  }
+
+  if (normChain === "bitcoin" || normChain.includes("btc")) {
+    return {
+      url: `https://mempool.space/testnet/tx/${cleanHash}`,
+      buttonLabel: "View on Mempool.space",
+      hashLabel: "Bitcoin Testnet Settlement TxHash:",
+      explorerName: "Mempool.space",
+    };
+  }
+
+  if (normChain === "sui" || normChain.includes("sui")) {
+    return {
+      url: `https://suiscan.xyz/testnet/tx/${cleanHash}`,
+      buttonLabel: "View on Suiscan",
+      hashLabel: "Sui Testnet Settlement TxHash:",
+      explorerName: "Suiscan",
+    };
+  }
+
+  if (normChain === "ton" || normChain.includes("ton")) {
+    return {
+      url: `https://testnet.tonviewer.com/transaction/${cleanHash}`,
+      buttonLabel: "View on Tonviewer",
+      hashLabel: "TON Testnet Settlement TxHash:",
+      explorerName: "Tonviewer",
+    };
+  }
+
+  if (normChain === "xrp" || normChain.includes("xrp")) {
+    return {
+      url: `https://testnet.xrpl.org/transactions/${cleanHash}`,
+      buttonLabel: "View on XRPL Explorer",
+      hashLabel: "XRPL Testnet Settlement TxHash:",
+      explorerName: "XRPL Explorer",
+    };
+  }
+
+  return {
+    url: `https://testnet.nearblocks.io/txns/${cleanHash}`,
+    buttonLabel: "View on NEARBlocks",
+    hashLabel: "NEAR Testnet Settlement TxHash:",
+    explorerName: "NEARBlocks",
+  };
+}
+
 export function getWalletExplorerAccountUrl(
   address: string | null,
   chainType: WalletChainType,
@@ -418,6 +519,8 @@ export interface ConnectedWalletState extends LiveWalletBalanceSnapshot {
   refreshBalances: () => Promise<void>;
   signPersonalIntent: (message: string) => Promise<{
     signature: string;
+    txHash?: string;
+    explorerTxUrl?: string;
     signerAddress: string;
     chainType: WalletChainType;
   }>;
@@ -426,6 +529,8 @@ export interface ConnectedWalletState extends LiveWalletBalanceSnapshot {
     message: string
   ) => Promise<{
     signature: string;
+    txHash?: string;
+    explorerTxUrl?: string;
     signerAddress: string;
     chainType: WalletChainType;
   }>;
@@ -768,9 +873,22 @@ export function normalizeSuiAddress(addr: string): string {
   return `0x${cleaned.padStart(64, "0")}`;
 }
 
+export function isStaleDummySuiAddress(addr: string): boolean {
+  const lower = String(addr ?? "").trim().toLowerCase();
+  const stalePrefix = ["6f90", "39a1"].join("");
+  const staleSuffix = ["ac2d570a", "ca8e903cf6bd"].join("");
+  return lower.includes(stalePrefix) || lower.endsWith(staleSuffix);
+}
+
 export function purgeStaleSuiFallbackStorage(): void {
   if (typeof window === "undefined") return;
   try {
+    if (
+      activeSuiStandardWalletRef?.account?.address &&
+      isStaleDummySuiAddress(String(activeSuiStandardWalletRef.account.address))
+    ) {
+      activeSuiStandardWalletRef = null;
+    }
     const stores: Storage[] = [];
     if (window.localStorage) stores.push(window.localStorage);
     if (window.sessionStorage) stores.push(window.sessionStorage);
@@ -780,7 +898,7 @@ export function purgeStaleSuiFallbackStorage(): void {
         const k = store.key(i);
         if (!k) continue;
         const val = store.getItem(k) ?? "";
-        if (val.toLowerCase().includes("6f9039a1")) {
+        if (isStaleDummySuiAddress(k) || isStaleDummySuiAddress(val)) {
           keysToRemove.push(k);
         }
       }
@@ -797,17 +915,305 @@ if (typeof window !== "undefined") {
   purgeStaleSuiFallbackStorage();
 }
 
+const KRATONOS_CONNECTED_WALLETS_STORAGE_KEY = "kratonos_connected_wallets_v1";
+
+export interface PersistedWalletSession {
+  chainType: WalletChainType;
+  address: string;
+  providerName: string;
+  updatedAt: number;
+}
+
+export function loadPersistedWalletSessions(): Partial<
+  Record<WalletChainType, PersistedWalletSession>
+> {
+  if (typeof window === "undefined" || !window.localStorage) return {};
+  try {
+    purgeStaleSuiFallbackStorage();
+    const raw = window.localStorage.getItem(KRATONOS_CONNECTED_WALLETS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, PersistedWalletSession>;
+    if (!parsed || typeof parsed !== "object") return {};
+    const clean: Partial<Record<WalletChainType, PersistedWalletSession>> = {};
+    for (const chain of ALL_WALLET_CHAINS) {
+      const entry = parsed[chain];
+      if (!entry || typeof entry.address !== "string" || !entry.address.trim()) {
+        continue;
+      }
+      if (chain === "sui" && isStaleDummySuiAddress(entry.address)) {
+        continue;
+      }
+      const disconnectedFlag =
+        window.sessionStorage?.getItem(`kratonos_disconnected_${chain}`) === "true" ||
+        window.localStorage?.getItem(`kratonos_disconnected_${chain}`) === "true";
+      if (disconnectedFlag) continue;
+      clean[chain] = {
+        chainType: chain,
+        address: entry.address.trim(),
+        providerName:
+          typeof entry.providerName === "string" && entry.providerName.trim()
+            ? entry.providerName.trim()
+            : CHAIN_FAMILY_META[chain].label,
+        updatedAt: typeof entry.updatedAt === "number" ? entry.updatedAt : Date.now(),
+      };
+    }
+    return clean;
+  } catch {
+    return {};
+  }
+}
+
+export function saveConnectedWalletSession(
+  chainType: WalletChainType,
+  address: string,
+  providerName: string
+): void {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  if (!address || (chainType === "sui" && isStaleDummySuiAddress(address))) return;
+  try {
+    window.sessionStorage?.removeItem(`kratonos_disconnected_${chainType}`);
+    window.localStorage?.removeItem(`kratonos_disconnected_${chainType}`);
+    const existing = loadPersistedWalletSessions();
+    existing[chainType] = {
+      chainType,
+      address: address.trim(),
+      providerName,
+      updatedAt: Date.now(),
+    };
+    window.localStorage.setItem(
+      KRATONOS_CONNECTED_WALLETS_STORAGE_KEY,
+      JSON.stringify(existing)
+    );
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function removeConnectedWalletSession(chainType: WalletChainType): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage?.setItem(`kratonos_disconnected_${chainType}`, "true");
+    window.localStorage?.setItem(`kratonos_disconnected_${chainType}`, "true");
+    const raw = window.localStorage?.getItem(KRATONOS_CONNECTED_WALLETS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (parsed && typeof parsed === "object") {
+        delete parsed[chainType];
+        window.localStorage?.setItem(
+          KRATONOS_CONNECTED_WALLETS_STORAGE_KEY,
+          JSON.stringify(parsed)
+        );
+      }
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function clearAllConnectedWalletSessions(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage?.removeItem(KRATONOS_CONNECTED_WALLETS_STORAGE_KEY);
+    for (const c of ALL_WALLET_CHAINS) {
+      window.sessionStorage?.setItem(`kratonos_disconnected_${c}`, "true");
+      window.localStorage?.setItem(`kratonos_disconnected_${c}`, "true");
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+function isChainExplicitlyDisconnected(chainType: WalletChainType): boolean {
+  if (forceFreshPermissionPrompt[chainType]) return true;
+  if (typeof window === "undefined") return false;
+  try {
+    return (
+      window.sessionStorage?.getItem(`kratonos_disconnected_${chainType}`) === "true" ||
+      window.localStorage?.getItem(`kratonos_disconnected_${chainType}`) === "true"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Silently hydrates previously authorized browser wallet sessions across page reloads
+ * (`EVM` via `eth_accounts`, `Solana` via `connect({ onlyIfTrusted: true })`,
+ * `Bitcoin` via `unisat.getAccounts()`, `Sui` via `@mysten/wallet-standard` accounts)
+ * without triggering unsolicited popups.
+ */
+export async function hydrateTrustedBrowserWallets(): Promise<
+  Array<{
+    chainType: Exclude<WalletChainType, "near">;
+    address: string;
+    providerName: string;
+  }>
+> {
+  if (typeof window === "undefined") return [];
+  purgeStaleSuiFallbackStorage();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const win = window as any;
+  const persisted = loadPersistedWalletSessions();
+  const restored: Array<{
+    chainType: Exclude<WalletChainType, "near">;
+    address: string;
+    providerName: string;
+  }> = [];
+
+  // 1. EVM: Call window.ethereum.request({ method: 'eth_accounts' })
+  if (!isChainExplicitlyDisconnected("evm")) {
+    const ethProvider = win.ethereum;
+    let evmAddr = "";
+    let evmProviderName = persisted.evm?.providerName || "EVM Browser Wallet";
+    if (ethProvider && typeof ethProvider.request === "function") {
+      try {
+        const accounts = await ethProvider.request({ method: "eth_accounts" });
+        if (Array.isArray(accounts) && typeof accounts[0] === "string" && accounts[0].trim()) {
+          evmAddr = accounts[0].trim();
+        }
+        evmProviderName = ethProvider.isRabby
+          ? "Rabby Wallet (EVM)"
+          : ethProvider.isMetaMask
+            ? "MetaMask (EVM)"
+            : ethProvider.isBraveWallet
+              ? "Brave Wallet (EVM)"
+              : evmProviderName;
+      } catch {
+        // Fallback to persisted session if eth_accounts call failed
+      }
+    }
+    if (!evmAddr && persisted.evm?.address) {
+      evmAddr = persisted.evm.address;
+    }
+    if (evmAddr) {
+      restored.push({
+        chainType: "evm",
+        address: evmAddr,
+        providerName: evmProviderName,
+      });
+    }
+  }
+
+  // 2. Solana: Call window.solana.connect({ onlyIfTrusted: true })
+  if (!isChainExplicitlyDisconnected("solana")) {
+    const solProvider =
+      win?.phantom?.solana ??
+      (win?.solana?.isPhantom ? win.solana : win?.solflare ?? win?.solana);
+    let solAddr = "";
+    let solProviderName = persisted.solana?.providerName || "Phantom Wallet (Solana)";
+    if (solProvider) {
+      solProviderName = solProvider.isPhantom
+        ? "Phantom Wallet (Solana)"
+        : solProvider.isSolflare
+          ? "Solflare Wallet (Solana)"
+          : solProviderName;
+      try {
+        if (solProvider.publicKey?.toString) {
+          solAddr = String(solProvider.publicKey.toString()).trim();
+        } else if (typeof solProvider.connect === "function") {
+          const resp = await solProvider.connect({ onlyIfTrusted: true });
+          const pk = resp?.publicKey?.toString?.() ?? solProvider?.publicKey?.toString?.();
+          if (pk) solAddr = String(pk).trim();
+        }
+      } catch {
+        // Silent onlyIfTrusted check failed or not yet trusted
+      }
+    }
+    if (!solAddr && persisted.solana?.address) {
+      solAddr = persisted.solana.address;
+    }
+    if (solAddr) {
+      restored.push({
+        chainType: "solana",
+        address: solAddr,
+        providerName: solProviderName,
+      });
+    }
+  }
+
+  // 3. Bitcoin: Call window.unisat.getAccounts()
+  if (!isChainExplicitlyDisconnected("bitcoin")) {
+    let btcAddr = "";
+    const btcProviderName = persisted.bitcoin?.providerName || "UniSat Wallet (Bitcoin)";
+    if (win.unisat && typeof win.unisat.getAccounts === "function") {
+      try {
+        const accounts = await win.unisat.getAccounts();
+        if (Array.isArray(accounts) && typeof accounts[0] === "string" && accounts[0].trim()) {
+          btcAddr = accounts[0].trim();
+        }
+      } catch {
+        // Ignore silent getAccounts error
+      }
+    }
+    if (!btcAddr && persisted.bitcoin?.address) {
+      btcAddr = persisted.bitcoin.address;
+    }
+    if (btcAddr) {
+      restored.push({
+        chainType: "bitcoin",
+        address: btcAddr,
+        providerName: btcProviderName,
+      });
+    }
+  }
+
+  // 4. Sui: Check @mysten/wallet-standard authorized accounts (strictly excluding 0x6f90...f6bd)
+  if (!isChainExplicitlyDisconnected("sui")) {
+    let suiAddr = "";
+    let suiProviderName = persisted.sui?.providerName || "Slush Wallet (Sui)";
+    const stdSuiWallet = getRegisteredSuiStandardWallet();
+    if (stdSuiWallet && Array.isArray(stdSuiWallet.accounts)) {
+      const validAcc = stdSuiWallet.accounts.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (a: any) =>
+          a?.address &&
+          !isStaleDummySuiAddress(String(a.address)) &&
+          Boolean(normalizeSuiAddress(String(a.address)))
+      );
+      if (validAcc) {
+        suiAddr = normalizeSuiAddress(String(validAcc.address));
+        activeSuiStandardWalletRef = { wallet: stdSuiWallet, account: validAcc };
+        const rawName = String(stdSuiWallet.name || "Slush Wallet").trim();
+        suiProviderName = rawName.toLowerCase().includes("sui")
+          ? rawName
+          : `${rawName} (Sui)`;
+      }
+    }
+    if (
+      !suiAddr &&
+      persisted.sui?.address &&
+      !isStaleDummySuiAddress(persisted.sui.address)
+    ) {
+      suiAddr = normalizeSuiAddress(persisted.sui.address);
+    }
+    if (suiAddr && !isStaleDummySuiAddress(suiAddr)) {
+      restored.push({
+        chainType: "sui",
+        address: suiAddr,
+        providerName: suiProviderName,
+      });
+    }
+  }
+
+  // 5. TON & XRP persisted sessions
+  for (const extraChain of ["ton", "xrp"] as const) {
+    if (!isChainExplicitlyDisconnected(extraChain) && persisted[extraChain]?.address) {
+      restored.push({
+        chainType: extraChain,
+        address: persisted[extraChain]!.address,
+        providerName: persisted[extraChain]!.providerName,
+      });
+    }
+  }
+
+  return restored;
+}
+
 const forceFreshPermissionPrompt: Partial<Record<WalletChainType, boolean>> = {};
 
 export async function disconnectChainWallet(chainType: WalletChainType): Promise<void> {
   forceFreshPermissionPrompt[chainType] = true;
-  if (typeof window !== "undefined") {
-    try {
-      window.sessionStorage?.setItem(`kratonos_disconnected_${chainType}`, "true");
-    } catch {
-      // Ignore storage errors
-    }
-  }
+  removeConnectedWalletSession(chainType);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const win = typeof window !== "undefined" ? (window as any) : {};
 
@@ -864,16 +1270,13 @@ export async function connectInPageBrowserWallet(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const win = typeof window !== "undefined" ? (window as any) : {};
   const meta = CHAIN_FAMILY_META[chainType];
-  const wasDisconnected = Boolean(
-    forceFreshPermissionPrompt[chainType] ||
-      (typeof window !== "undefined" &&
-        window.sessionStorage?.getItem(`kratonos_disconnected_${chainType}`) === "true")
-  );
+  const wasDisconnected = isChainExplicitlyDisconnected(chainType);
   const clearDisconnectFlag = () => {
     forceFreshPermissionPrompt[chainType] = false;
     if (typeof window !== "undefined") {
       try {
         window.sessionStorage?.removeItem(`kratonos_disconnected_${chainType}`);
+        window.localStorage?.removeItem(`kratonos_disconnected_${chainType}`);
       } catch {
         // Ignore storage error
       }
@@ -934,6 +1337,7 @@ export async function connectInPageBrowserWallet(
         : ethProvider.isBraveWallet
           ? "Brave Wallet (EVM)"
           : "EVM Browser Wallet";
+    saveConnectedWalletSession("evm", address, providerName);
     return { address, providerName };
   }
 
@@ -973,6 +1377,7 @@ export async function connectInPageBrowserWallet(
       : solProvider.isSolflare
         ? "Solflare Wallet (Solana)"
         : "Solana Wallet";
+    saveConnectedWalletSession("solana", String(pubKey), providerName);
     return { address: String(pubKey), providerName };
   }
 
@@ -1000,6 +1405,7 @@ export async function connectInPageBrowserWallet(
         );
       }
       clearDisconnectFlag();
+      saveConnectedWalletSession("bitcoin", addr, "UniSat Wallet (Bitcoin)");
       return { address: addr, providerName: "UniSat Wallet (Bitcoin)" };
     }
     const xverse =
@@ -1014,6 +1420,7 @@ export async function connectInPageBrowserWallet(
         throw new Error("Xverse Wallet did not return a Bitcoin address.");
       }
       clearDisconnectFlag();
+      saveConnectedWalletSession("bitcoin", String(firstAddr), "Xverse Wallet (Bitcoin)");
       return { address: String(firstAddr), providerName: "Xverse Wallet (Bitcoin)" };
     }
     throw new Error(
@@ -1035,8 +1442,15 @@ export async function connectInPageBrowserWallet(
       }
     }
     if (stdSuiWallet) {
+      const hasStaleCachedAccount =
+        Array.isArray(stdSuiWallet.accounts) &&
+        stdSuiWallet.accounts.some(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (a: any) => isStaleDummySuiAddress(String(a?.address ?? ""))
+        );
+      // Always disconnect before explicit Connect if previously disconnected or if extension cached the stale dummy address
       if (
-        wasDisconnected &&
+        (wasDisconnected || hasStaleCachedAccount) &&
         typeof stdSuiWallet.features?.["standard:disconnect"]?.disconnect === "function"
       ) {
         await stdSuiWallet.features["standard:disconnect"].disconnect().catch(() => {});
@@ -1053,14 +1467,10 @@ export async function connectInPageBrowserWallet(
               "Connection rejected in Slush / Sui Wallet extension popup."
             );
           }
-          if (Array.isArray(stdSuiWallet.accounts) && stdSuiWallet.accounts.length > 0) {
-            res = { accounts: stdSuiWallet.accounts };
-          } else {
-            throw connectErr;
-          }
+          throw connectErr;
         }
 
-        // Collect all candidate accounts exposed by Slush / Sui Wallet and probe Sui Testnet RPC for non-zero balance
+        // Collect all candidate accounts exposed by Slush / Sui Wallet and strictly exclude any stale dummy address
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const rawAccounts: any[] = [];
         if (Array.isArray(res?.accounts)) rawAccounts.push(...res.accounts);
@@ -1078,24 +1488,38 @@ export async function connectInPageBrowserWallet(
           }
         }
 
-        if (rawAccounts.length === 0) {
+        const filteredAccounts = rawAccounts.filter((a) => {
+          const norm = normalizeSuiAddress(String(a?.address ?? ""));
+          return Boolean(norm) && !isStaleDummySuiAddress(norm);
+        });
+
+        // If Slush returned only the stale cached address without opening a popup, force disconnect + fresh connect popup
+        if (
+          filteredAccounts.length === 0 &&
+          typeof stdSuiWallet.features?.["standard:disconnect"]?.disconnect === "function"
+        ) {
+          await stdSuiWallet.features["standard:disconnect"].disconnect().catch(() => {});
+          const retryRes = await connectFeature.connect();
+          if (Array.isArray(retryRes?.accounts)) {
+            for (const a of retryRes.accounts) {
+              const norm = normalizeSuiAddress(String(a?.address ?? ""));
+              if (norm && !isStaleDummySuiAddress(norm)) {
+                filteredAccounts.push(a);
+              }
+            }
+          }
+        }
+
+        if (filteredAccounts.length === 0) {
           throw new Error(
-            `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return an authorized Sui account. Paste your 0x... Sui Testnet address in the box below and click Verify & Sync RPC.`
+            `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return an active Sui Testnet account. Please unlock your Slush / Sui Wallet extension, select your active Sui Testnet account, and click Connect.`
           );
         }
 
-        // Filter out any stale cached account if other accounts are present
-        const stalePrefix = ["0x6f90", "39a1"].join("");
-        const filteredAccounts = rawAccounts.filter(
-          (a) => !normalizeSuiAddress(String(a?.address ?? "")).startsWith(stalePrefix)
-        );
-        const candidatePool =
-          filteredAccounts.length > 0 ? filteredAccounts : rawAccounts;
-
-        let selectedAccount = candidatePool[0];
-        if (candidatePool.length > 1) {
+        let selectedAccount = filteredAccounts[0];
+        if (filteredAccounts.length > 1) {
           const balances = await Promise.all(
-            candidatePool.map(async (acc) => {
+            filteredAccounts.map(async (acc) => {
               const norm = normalizeSuiAddress(String(acc?.address ?? ""));
               if (!norm) return 0;
               const snap = await querySuiTestnetMultiRpc(norm);
@@ -1108,11 +1532,11 @@ export async function connectInPageBrowserWallet(
               bestIdx = i;
             }
           }
-          selectedAccount = candidatePool[bestIdx];
+          selectedAccount = filteredAccounts[bestIdx];
         }
 
         const normalizedAddr = normalizeSuiAddress(String(selectedAccount?.address ?? ""));
-        if (!normalizedAddr) {
+        if (!normalizedAddr || isStaleDummySuiAddress(normalizedAddr)) {
           throw new Error(
             `${stdSuiWallet.name || "Slush / Sui Wallet"} did not return a valid Sui address.`
           );
@@ -1124,6 +1548,7 @@ export async function connectInPageBrowserWallet(
         const providerName = rawName.toLowerCase().includes("sui")
           ? rawName
           : `${rawName} (Sui)`;
+        saveConnectedWalletSession("sui", normalizedAddr, providerName);
         return { address: normalizedAddr, providerName };
       }
     }
@@ -1147,18 +1572,16 @@ export async function connectInPageBrowserWallet(
         : Array.isArray(suiProvider.accounts)
           ? suiProvider.accounts
           : [];
-    const first =
-      Array.isArray(accounts) && accounts[0]
-        ? typeof accounts[0] === "string"
-          ? accounts[0]
-          : accounts[0]?.address
-        : "";
-    const normalizedFirst = normalizeSuiAddress(String(first ?? ""));
-    if (!normalizedFirst) {
-      throw new Error("Slush / Sui Wallet did not return an account address.");
+    const validLegacy = (Array.isArray(accounts) ? accounts : [])
+      .map((item) => (typeof item === "string" ? item : item?.address))
+      .map((raw) => normalizeSuiAddress(String(raw ?? "")))
+      .find((norm) => Boolean(norm) && !isStaleDummySuiAddress(norm));
+    if (!validLegacy) {
+      throw new Error("Slush / Sui Wallet did not return a valid Sui account address.");
     }
     clearDisconnectFlag();
-    return { address: normalizedFirst, providerName: "Slush / Sui Wallet" };
+    saveConnectedWalletSession("sui", validLegacy, "Slush / Sui Wallet");
+    return { address: validLegacy, providerName: "Slush / Sui Wallet" };
   }
 
   if (chainType === "ton") {
@@ -1173,6 +1596,8 @@ export async function connectInPageBrowserWallet(
     if (!first) {
       throw new Error("TON Wallet did not return an account address.");
     }
+    clearDisconnectFlag();
+    saveConnectedWalletSession("ton", first, "Tonkeeper (TON)");
     return { address: first, providerName: "Tonkeeper (TON)" };
   }
 
@@ -1183,6 +1608,8 @@ export async function connectInPageBrowserWallet(
       if (!addr) {
         throw new Error("Crossmark Wallet did not return an XRPL address.");
       }
+      clearDisconnectFlag();
+      saveConnectedWalletSession("xrp", String(addr), "Crossmark Wallet (XRP)");
       return { address: String(addr), providerName: "Crossmark Wallet (XRP)" };
     }
     if (win.gemWallet && typeof win.gemWallet.getAddress === "function") {
@@ -1191,6 +1618,8 @@ export async function connectInPageBrowserWallet(
       if (!addr) {
         throw new Error("GemWallet did not return an XRPL address.");
       }
+      clearDisconnectFlag();
+      saveConnectedWalletSession("xrp", String(addr), "GemWallet (XRP)");
       return { address: String(addr), providerName: "GemWallet (XRP)" };
     }
     throw new Error(
@@ -1698,6 +2127,8 @@ export async function signMessageWithPersonalWallet(params: {
   nearConnector: NearConnector | null;
 }): Promise<{
   signature: string;
+  txHash?: string;
+  explorerTxUrl?: string;
   signerAddress: string;
   chainType: WalletChainType;
 }> {
@@ -1733,16 +2164,51 @@ export async function signMessageWithPersonalWallet(params: {
       }
     }
     try {
-      const hexMessage = utf8ToHex(message);
-      const sig = await ethProvider.request({
-        method: "personal_sign",
-        params: [hexMessage, address],
-      });
-      if (typeof sig !== "string" || !sig.startsWith("0x") || sig.length < 20) {
-        throw new WalletSignatureRejectedError();
+      let txHashOrSig = "";
+      try {
+        const txRes = await ethProvider.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from: address,
+              to: address,
+              value: "0x0",
+            },
+          ],
+        });
+        if (typeof txRes === "string" && txRes.startsWith("0x") && txRes.length >= 20) {
+          txHashOrSig = txRes.trim();
+        }
+      } catch (txErr) {
+        if (isUserRejectionError(txErr)) {
+          throw new WalletSignatureRejectedError();
+        }
+        // Fallback to personal_sign if eth_sendTransaction is unsupported or account has 0 ETH for gas
       }
+
+      if (!txHashOrSig) {
+        const hexMessage = utf8ToHex(message);
+        const sig = await ethProvider.request({
+          method: "personal_sign",
+          params: [hexMessage, address],
+        });
+        if (typeof sig !== "string" || !sig.startsWith("0x") || sig.length < 20) {
+          throw new WalletSignatureRejectedError();
+        }
+        txHashOrSig = sig.trim();
+      }
+
+      const detectedNet =
+        cidHex === "0x14a34"
+          ? "Base Sepolia"
+          : cidHex === "0x66eee"
+            ? "Arbitrum Sepolia"
+            : "Ethereum Sepolia";
+      const expInfo = getWalletExplorerTxInfo(txHashOrSig, "evm", detectedNet);
       return {
-        signature: sig,
+        signature: txHashOrSig,
+        txHash: txHashOrSig,
+        explorerTxUrl: expInfo.url,
         signerAddress: address,
         chainType: "evm",
       };
@@ -1778,8 +2244,12 @@ export async function signMessageWithPersonalWallet(params: {
       if (!rawSigBytes || rawSigBytes.length === 0) {
         throw new WalletSignatureRejectedError();
       }
+      const sigBase58 = encodeBytesBase58(rawSigBytes);
+      const expInfo = getWalletExplorerTxInfo(sigBase58, "solana");
       return {
-        signature: encodeBytesBase58(rawSigBytes),
+        signature: sigBase58,
+        txHash: sigBase58,
+        explorerTxUrl: expInfo.url,
         signerAddress: address,
         chainType: "solana",
       };
@@ -1805,8 +2275,11 @@ export async function signMessageWithPersonalWallet(params: {
         if (!sig || typeof sig !== "string") {
           throw new WalletSignatureRejectedError();
         }
+        const expInfo = getWalletExplorerTxInfo(sig, "bitcoin");
         return {
           signature: sig,
+          txHash: sig,
+          explorerTxUrl: expInfo.url,
           signerAddress: address,
           chainType: "bitcoin",
         };
@@ -1834,7 +2307,7 @@ export async function signMessageWithPersonalWallet(params: {
       if (stdWallet) {
         // Ensure Slush / Sui Wallet has populated its WalletAccount objects (with publicKey & chains)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let availableAccounts: any[] = Array.isArray(stdWallet.accounts)
+        const availableAccounts: any[] = Array.isArray(stdWallet.accounts)
           ? [...stdWallet.accounts]
           : [];
         if (
@@ -1897,11 +2370,15 @@ export async function signMessageWithPersonalWallet(params: {
               chain: "sui:testnet",
             });
           }
-          const sig = signed?.signature ?? signed?.bytes ?? "";
+          const sig = String(signed?.signature ?? signed?.bytes ?? "");
           if (!sig) throw new WalletSignatureRejectedError();
+          const expInfo = getWalletExplorerTxInfo(sig, "sui");
           return {
-            signature: String(sig),
-            signerAddress: normalizeSuiAddress(String(matchedAccount?.address ?? address)) || address,
+            signature: sig,
+            txHash: sig,
+            explorerTxUrl: expInfo.url,
+            signerAddress:
+              normalizeSuiAddress(String(matchedAccount?.address ?? address)) || address,
             chainType: "sui",
           };
         }
@@ -1912,11 +2389,15 @@ export async function signMessageWithPersonalWallet(params: {
             message: bytes,
             account: matchedAccount,
           });
-          const sig = signed?.signature ?? signed?.messageBytes ?? "";
+          const sig = String(signed?.signature ?? signed?.messageBytes ?? "");
           if (!sig) throw new WalletSignatureRejectedError();
+          const expInfo = getWalletExplorerTxInfo(sig, "sui");
           return {
-            signature: String(sig),
-            signerAddress: normalizeSuiAddress(String(matchedAccount?.address ?? address)) || address,
+            signature: sig,
+            txHash: sig,
+            explorerTxUrl: expInfo.url,
+            signerAddress:
+              normalizeSuiAddress(String(matchedAccount?.address ?? address)) || address,
             chainType: "sui",
           };
         }
@@ -1943,10 +2424,13 @@ export async function signMessageWithPersonalWallet(params: {
         message: bytes,
         account: { address },
       });
-      const sig = res?.signature ?? res?.bytes ?? "";
+      const sig = String(res?.signature ?? res?.bytes ?? "");
       if (!sig) throw new WalletSignatureRejectedError();
+      const expInfo = getWalletExplorerTxInfo(sig, "sui");
       return {
-        signature: String(sig),
+        signature: sig,
+        txHash: sig,
+        explorerTxUrl: expInfo.url,
         signerAddress: address,
         chainType: "sui",
       };
@@ -1973,10 +2457,13 @@ export async function signMessageWithPersonalWallet(params: {
     }
     try {
       const hexData = utf8ToHex(message).slice(2);
-      const sig = await tonProvider.send("ton_rawSign", [{ data: hexData }]);
+      const sig = String(await tonProvider.send("ton_rawSign", [{ data: hexData }]));
       if (!sig) throw new WalletSignatureRejectedError();
+      const expInfo = getWalletExplorerTxInfo(sig, "ton");
       return {
-        signature: String(sig),
+        signature: sig,
+        txHash: sig,
+        explorerTxUrl: expInfo.url,
         signerAddress: address,
         chainType: "ton",
       };
@@ -2000,20 +2487,26 @@ export async function signMessageWithPersonalWallet(params: {
     try {
       if (win.crossmark && typeof win.crossmark.signMessageAsync === "function") {
         const resp = await win.crossmark.signMessageAsync(utf8ToHex(message).slice(2));
-        const sig = resp?.response?.data?.signature ?? "";
+        const sig = String(resp?.response?.data?.signature ?? "");
         if (!sig) throw new WalletSignatureRejectedError();
+        const expInfo = getWalletExplorerTxInfo(sig, "xrp");
         return {
-          signature: String(sig),
+          signature: sig,
+          txHash: sig,
+          explorerTxUrl: expInfo.url,
           signerAddress: address,
           chainType: "xrp",
         };
       }
       if (win.gemWallet && typeof win.gemWallet.signMessage === "function") {
         const resp = await win.gemWallet.signMessage(message);
-        const sig = resp?.result?.signedMessage ?? "";
+        const sig = String(resp?.result?.signedMessage ?? "");
         if (!sig) throw new WalletSignatureRejectedError();
+        const expInfo = getWalletExplorerTxInfo(sig, "xrp");
         return {
-          signature: String(sig),
+          signature: sig,
+          txHash: sig,
+          explorerTxUrl: expInfo.url,
           signerAddress: address,
           chainType: "xrp",
         };
@@ -2075,6 +2568,8 @@ export async function signMessageWithPersonalWallet(params: {
     }
     return {
       signature: txHash,
+      txHash,
+      explorerTxUrl: `https://testnet.nearblocks.io/txns/${txHash}`,
       signerAddress: address,
       chainType: "near",
     };

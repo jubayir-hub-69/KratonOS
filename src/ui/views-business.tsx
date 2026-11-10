@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/interactive-buttons";
 import { TextAnimate } from "@/components/ui/text-animate";
 import {
+  getWalletExplorerTxInfo,
   WalletMainnetMismatchError,
   WalletSignatureRejectedError,
   type ConnectedWalletState,
@@ -332,6 +333,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const [batchSignError, setBatchSignError] = useState<string | null>(null);
   const [signedBatchReceipt, setSignedBatchReceipt] = useState<{
     signerAddress: string;
+    chainType?: string;
     signature: string;
     totalUsdcFormatted: string;
     settledRows: number;
@@ -344,6 +346,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const [invoiceSignError, setInvoiceSignError] = useState<string | null>(null);
   const [signedInvoiceReceipt, setSignedInvoiceReceipt] = useState<{
     signerAddress: string;
+    chainType?: string;
     chainLabel: string;
     signature: string;
     netAmountFormatted: string;
@@ -1073,9 +1076,15 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           chainKey,
           signMessage
         );
-        let anchorTxHash: string | undefined;
+        let anchorTxHash: string | undefined = sig.txHash ?? sig.signature;
         let anchorBlockHeight: number | undefined;
-        let explorerTxUrl: string | undefined;
+        let explorerTxUrl: string | undefined =
+          sig.explorerTxUrl ??
+          getWalletExplorerTxInfo(
+            sig.txHash ?? sig.signature,
+            sig.chainType,
+            connectedOriginWallet.detectedNetwork
+          ).url;
         try {
           const anchorRes = await fetch("/api/onchain/commit-proof", {
             method: "POST",
@@ -1089,16 +1098,21 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           });
           if (anchorRes.ok) {
             const anchorJson = await anchorRes.json();
-            if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
-              anchorTxHash = anchorJson.txHash;
+            if (
+              sig.chainType === "near" &&
+              typeof anchorJson?.txHash === "string" &&
+              anchorJson.txHash
+            ) {
+              anchorTxHash = sig.txHash ?? anchorJson.txHash;
               anchorBlockHeight =
                 typeof anchorJson.blockHeight === "number"
                   ? anchorJson.blockHeight
                   : undefined;
               explorerTxUrl =
-                typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+                sig.explorerTxUrl ??
+                (typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
                   ? anchorJson.explorerTxUrl
-                  : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                  : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`);
             }
           }
         } catch {
@@ -1119,6 +1133,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
 
         setSignedInvoiceReceipt({
           signerAddress: sig.signerAddress,
+          chainType: sig.chainType,
           chainLabel: chainShortLabel,
           signature: sig.signature,
           netAmountFormatted: `$${netAmount.toFixed(2)} USDC`,
@@ -1277,9 +1292,15 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         activeBatchChainKey,
         signPayload
       );
-      let anchorTxHash: string | undefined;
+      let anchorTxHash: string | undefined = signed.txHash ?? signed.signature;
       let anchorBlockHeight: number | undefined;
-      let explorerTxUrl: string | undefined;
+      let explorerTxUrl: string | undefined =
+        signed.explorerTxUrl ??
+        getWalletExplorerTxInfo(
+          signed.txHash ?? signed.signature,
+          signed.chainType,
+          activeBatchWallet.detectedNetwork
+        ).url;
       try {
         const anchorRes = await fetch("/api/onchain/commit-proof", {
           method: "POST",
@@ -1293,16 +1314,21 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
         });
         if (anchorRes.ok) {
           const anchorJson = await anchorRes.json();
-          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
-            anchorTxHash = anchorJson.txHash;
+          if (
+            signed.chainType === "near" &&
+            typeof anchorJson?.txHash === "string" &&
+            anchorJson.txHash
+          ) {
+            anchorTxHash = signed.txHash ?? anchorJson.txHash;
             anchorBlockHeight =
               typeof anchorJson.blockHeight === "number"
                 ? anchorJson.blockHeight
                 : undefined;
             explorerTxUrl =
-              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+              signed.explorerTxUrl ??
+              (typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
                 ? anchorJson.explorerTxUrl
-                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`);
           }
         }
       } catch {
@@ -1310,6 +1336,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       }
       setSignedBatchReceipt({
         signerAddress: signed.signerAddress,
+        chainType: signed.chainType,
         signature: signed.signature,
         totalUsdcFormatted: `$${requiredBatchUsdc.toFixed(2)} USDC`,
         settledRows: batch.totalSettledCount,
@@ -1454,11 +1481,16 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                   Requested Net Payout (USDC)
                 </label>
                 <input
-                  type="number"
-                  min="1"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={requestedNetUsdc}
-                  onChange={(e) => setRequestedNetUsdc(e.target.value)}
+                  onChange={(e) => {
+                    const sanitized = e.target.value
+                      .replace(/[^0-9.]/g, "")
+                      .replace(/(\..*)\./g, "$1");
+                    setRequestedNetUsdc(sanitized);
+                  }}
                   className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-bold text-[var(--text-primary)]"
                 />
               </div>
@@ -1605,29 +1637,36 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                   <div className="break-all text-[var(--accent-cyan)]">
                     <strong>Wallet Signature:</strong> {signedInvoiceReceipt.signature}
                   </div>
-                  {signedInvoiceReceipt.anchorTxHash && (
-                    <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
-                      <div className="break-all text-[var(--text-primary)]">
-                        <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
-                        {signedInvoiceReceipt.anchorTxHash}
-                        {signedInvoiceReceipt.anchorBlockHeight
-                          ? ` (Block #${signedInvoiceReceipt.anchorBlockHeight})`
-                          : ""}
-                      </div>
-                      <a
-                        href={
-                          signedInvoiceReceipt.explorerTxUrl ??
-                          `https://testnet.nearblocks.io/txns/${signedInvoiceReceipt.anchorTxHash}`
-                        }
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
-                      >
-                        <span>View On-Chain Transaction on NEARBlocks Explorer</span>
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  )}
+                  {signedInvoiceReceipt.anchorTxHash &&
+                    (() => {
+                      const invoiceExpInfo = getWalletExplorerTxInfo(
+                        signedInvoiceReceipt.anchorTxHash,
+                        signedInvoiceReceipt.chainType ?? signedInvoiceReceipt.chainLabel,
+                        originChainResolved.connectedOriginWallet?.detectedNetwork
+                      );
+                      return (
+                        <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                          <div className="break-all text-[var(--text-primary)]">
+                            <strong>{invoiceExpInfo.hashLabel}</strong>{" "}
+                            {signedInvoiceReceipt.anchorTxHash}
+                            {signedInvoiceReceipt.anchorBlockHeight
+                              ? ` (Block #${signedInvoiceReceipt.anchorBlockHeight})`
+                              : ""}
+                          </div>
+                          <a
+                            href={
+                              signedInvoiceReceipt.explorerTxUrl ?? invoiceExpInfo.url
+                            }
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                          >
+                            <span>{invoiceExpInfo.buttonLabel}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0" />
+                          </a>
+                        </div>
+                      );
+                    })()}
                 </div>
               )}
             </div>
@@ -1941,29 +1980,34 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <div className="break-all text-[11px] text-[var(--accent-cyan)]">
                 <strong>Wallet Signature:</strong> {signedBatchReceipt.signature}
               </div>
-              {signedBatchReceipt.anchorTxHash && (
-                <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
-                  <div className="break-all text-[var(--text-primary)]">
-                    <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
-                    {signedBatchReceipt.anchorTxHash}
-                    {signedBatchReceipt.anchorBlockHeight
-                      ? ` (Block #${signedBatchReceipt.anchorBlockHeight})`
-                      : ""}
-                  </div>
-                  <a
-                    href={
-                      signedBatchReceipt.explorerTxUrl ??
-                      `https://testnet.nearblocks.io/txns/${signedBatchReceipt.anchorTxHash}`
-                    }
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
-                  >
-                    <span>View On-Chain Transaction on NEARBlocks Explorer</span>
-                    <ExternalLink className="h-3 w-3 shrink-0" />
-                  </a>
-                </div>
-              )}
+              {signedBatchReceipt.anchorTxHash &&
+                (() => {
+                  const batchExpInfo = getWalletExplorerTxInfo(
+                    signedBatchReceipt.anchorTxHash,
+                    signedBatchReceipt.chainType ?? activeBatchChainKey,
+                    activeBatchWallet?.detectedNetwork
+                  );
+                  return (
+                    <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
+                      <div className="break-all text-[var(--text-primary)]">
+                        <strong>{batchExpInfo.hashLabel}</strong>{" "}
+                        {signedBatchReceipt.anchorTxHash}
+                        {signedBatchReceipt.anchorBlockHeight
+                          ? ` (Block #${signedBatchReceipt.anchorBlockHeight})`
+                          : ""}
+                      </div>
+                      <a
+                        href={signedBatchReceipt.explorerTxUrl ?? batchExpInfo.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                      >
+                        <span>{batchExpInfo.buttonLabel}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  );
+                })()}
             </div>
           )}
 
@@ -2348,6 +2392,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
   const [x402SignError, setX402SignError] = useState<string | null>(null);
   const [x402SignedReceipt, setX402SignedReceipt] = useState<{
     signerAddress: string;
+    chainType?: string;
     signature: string;
     agreedAmountUsd: string;
     timestamp: string;
@@ -2476,9 +2521,15 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
         quotedAmountUsd: Number(quotedAmountUsd) || 4.2,
         plannedBudgetUsd: Number(plannedBudgetUsd) || 2.5,
       });
-      let anchorTxHash: string | undefined;
+      let anchorTxHash: string | undefined = sig.txHash ?? sig.signature;
       let anchorBlockHeight: number | undefined;
-      let explorerTxUrl: string | undefined;
+      let explorerTxUrl: string | undefined =
+        sig.explorerTxUrl ??
+        getWalletExplorerTxInfo(
+          sig.txHash ?? sig.signature,
+          sig.chainType,
+          walletContext.detectedNetwork
+        ).url;
       try {
         const anchorRes = await fetch("/api/onchain/commit-proof", {
           method: "POST",
@@ -2491,16 +2542,21 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
         });
         if (anchorRes.ok) {
           const anchorJson = await anchorRes.json();
-          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
-            anchorTxHash = anchorJson.txHash;
+          if (
+            sig.chainType === "near" &&
+            typeof anchorJson?.txHash === "string" &&
+            anchorJson.txHash
+          ) {
+            anchorTxHash = sig.txHash ?? anchorJson.txHash;
             anchorBlockHeight =
               typeof anchorJson.blockHeight === "number"
                 ? anchorJson.blockHeight
                 : undefined;
             explorerTxUrl =
-              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+              sig.explorerTxUrl ??
+              (typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
                 ? anchorJson.explorerTxUrl
-                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`);
           }
         }
       } catch {
@@ -2508,6 +2564,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
       }
       setX402SignedReceipt({
         signerAddress: sig.signerAddress,
+        chainType: sig.chainType,
         signature: sig.signature,
         agreedAmountUsd: `$${neg.finalAgreedPriceUsd.toFixed(2)} USDC`,
         timestamp: new Date().toLocaleTimeString(),
@@ -2750,10 +2807,16 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   Initial Ask (USDC)
                 </label>
                 <input
-                  type="number"
-                  step="0.1"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={quotedAmountUsd}
-                  onChange={(e) => setQuotedAmountUsd(e.target.value)}
+                  onChange={(e) => {
+                    const sanitized = e.target.value
+                      .replace(/[^0-9.]/g, "")
+                      .replace(/(\..*)\./g, "$1");
+                    setQuotedAmountUsd(sanitized);
+                  }}
                   className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-bold text-[var(--text-primary)]"
                 />
               </div>
@@ -2762,10 +2825,16 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   Target Budget (USDC)
                 </label>
                 <input
-                  type="number"
-                  step="0.1"
+                  type="text"
+                  inputMode="decimal"
+                  autoComplete="off"
                   value={plannedBudgetUsd}
-                  onChange={(e) => setPlannedBudgetUsd(e.target.value)}
+                  onChange={(e) => {
+                    const sanitized = e.target.value
+                      .replace(/[^0-9.]/g, "")
+                      .replace(/(\..*)\./g, "$1");
+                    setPlannedBudgetUsd(sanitized);
+                  }}
                   className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-bold text-[var(--text-primary)]"
                 />
               </div>
@@ -2855,29 +2924,36 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                     <div className="break-all text-[11px] text-[var(--accent-cyan)]">
                       <strong>Wallet Signature:</strong> {x402SignedReceipt.signature}
                     </div>
-                    {x402SignedReceipt.anchorTxHash && (
-                      <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
-                        <div className="break-all text-[var(--text-primary)]">
-                          <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
-                          {x402SignedReceipt.anchorTxHash}
-                          {x402SignedReceipt.anchorBlockHeight
-                            ? ` (Block #${x402SignedReceipt.anchorBlockHeight})`
-                            : ""}
-                        </div>
-                        <a
-                          href={
-                            x402SignedReceipt.explorerTxUrl ??
-                            `https://testnet.nearblocks.io/txns/${x402SignedReceipt.anchorTxHash}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
-                        >
-                          <span>View On-Chain Transaction on NEARBlocks Explorer</span>
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                      </div>
-                    )}
+                    {x402SignedReceipt.anchorTxHash &&
+                      (() => {
+                        const x402ExpInfo = getWalletExplorerTxInfo(
+                          x402SignedReceipt.anchorTxHash,
+                          x402SignedReceipt.chainType ?? walletContext.chainType,
+                          walletContext.detectedNetwork
+                        );
+                        return (
+                          <div className="space-y-1 border-t border-emerald-500/30 pt-1.5 text-[11px]">
+                            <div className="break-all text-[var(--text-primary)]">
+                              <strong>{x402ExpInfo.hashLabel}</strong>{" "}
+                              {x402SignedReceipt.anchorTxHash}
+                              {x402SignedReceipt.anchorBlockHeight
+                                ? ` (Block #${x402SignedReceipt.anchorBlockHeight})`
+                                : ""}
+                            </div>
+                            <a
+                              href={
+                                x402SignedReceipt.explorerTxUrl ?? x402ExpInfo.url
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                            >
+                              <span>{x402ExpInfo.buttonLabel}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          </div>
+                        );
+                      })()}
                   </div>
                 )}
               </div>

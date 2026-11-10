@@ -39,6 +39,7 @@ import {
   getAvailablePayTokenBalance,
   getAvailablePayTokenBalanceForChainWallet,
   getTokenChainFamily,
+  getWalletExplorerTxInfo,
   WalletMainnetMismatchError,
   WalletSignatureRejectedError,
   type ConnectedWalletState,
@@ -172,6 +173,12 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         ].join("\n");
 
         const personalSig = await walletContext.signPersonalIntent(authMessage);
+        const foreignTxHash = personalSig.txHash ?? personalSig.signature;
+        const foreignExpInfo = getWalletExplorerTxInfo(
+          foreignTxHash,
+          personalSig.chainType,
+          walletContext.detectedNetwork
+        );
 
         const res = await fetch("/api/onchain/commit-proof", {
           method: "POST",
@@ -187,6 +194,15 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
           const data = await res.json();
           const enriched = {
             ...data,
+            liveBroadcast: true,
+            txHash:
+              personalSig.chainType !== "near"
+                ? foreignTxHash
+                : data.txHash ?? foreignTxHash,
+            explorerTxUrl:
+              personalSig.chainType !== "near"
+                ? personalSig.explorerTxUrl ?? foreignExpInfo.url
+                : data.explorerTxUrl ?? foreignExpInfo.url,
             connectedWalletAddress: personalSig.signerAddress,
             connectedWalletChain: personalSig.chainType,
             personalSignature: personalSig.signature,
@@ -750,15 +766,30 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                     </span>
                   </div>
                   {onChainReceipt.liveBroadcast ? (
-                    <a
-                      href={onChainReceipt.explorerTxUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25"
-                    >
-                      <span>Inspect Live Tx on NEARBlocks ({String(onChainReceipt.txHash).slice(0, 12)}...)</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                    (() => {
+                      const receiptExpInfo = onChainReceipt.connectedWalletChain
+                        ? getWalletExplorerTxInfo(
+                            onChainReceipt.txHash,
+                            onChainReceipt.connectedWalletChain,
+                            walletContext?.detectedNetwork
+                          )
+                        : null;
+                      return (
+                        <a
+                          href={receiptExpInfo?.url ?? onChainReceipt.explorerTxUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25"
+                        >
+                          <span>
+                            {receiptExpInfo
+                              ? `${receiptExpInfo.buttonLabel} (${String(onChainReceipt.txHash).slice(0, 12)}...)`
+                              : `Inspect Live Tx on NEARBlocks (${String(onChainReceipt.txHash).slice(0, 12)}...)`}
+                          </span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      );
+                    })()
                   ) : (
                     <a
                       href="https://testnet.nearblocks.io/address/jubayir69.testnet"
@@ -773,7 +804,15 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                 </div>
                 <div className="mt-2 grid grid-cols-1 gap-1.5 text-[11px] text-[var(--text-secondary)] sm:grid-cols-2">
                   <div className="break-all">
-                    <strong>NEAR Anchor Tx Hash:</strong> {onChainReceipt.txHash}
+                    <strong>
+                      {onChainReceipt.connectedWalletChain
+                        ? getWalletExplorerTxInfo(
+                            onChainReceipt.txHash,
+                            onChainReceipt.connectedWalletChain
+                          ).hashLabel
+                        : "NEAR Anchor Tx Hash:"}
+                    </strong>{" "}
+                    {onChainReceipt.txHash}
                   </div>
                   <div className="break-all">
                     <strong>Signer Key / Account:</strong> {onChainReceipt.signerPublicKey}
@@ -1414,9 +1453,15 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         originChainFamily,
         messageToSign
       );
-      let anchorTxHash: string | undefined;
+      let anchorTxHash: string | undefined = sig.txHash ?? sig.signature;
       let anchorBlockHeight: number | undefined;
-      let explorerTxUrl: string | undefined;
+      let explorerTxUrl: string | undefined =
+        sig.explorerTxUrl ??
+        getWalletExplorerTxInfo(
+          sig.txHash ?? sig.signature,
+          sig.chainType,
+          originChainWallet.detectedNetwork
+        ).url;
       try {
         const anchorRes = await fetch("/api/onchain/commit-proof", {
           method: "POST",
@@ -1430,16 +1475,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         });
         if (anchorRes.ok) {
           const anchorJson = await anchorRes.json();
-          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
-            anchorTxHash = anchorJson.txHash;
+          if (sig.chainType === "near" && typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+            anchorTxHash = sig.txHash ?? anchorJson.txHash;
             anchorBlockHeight =
               typeof anchorJson.blockHeight === "number"
                 ? anchorJson.blockHeight
                 : undefined;
             explorerTxUrl =
-              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+              sig.explorerTxUrl ??
+              (typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
                 ? anchorJson.explorerTxUrl
-                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`);
           }
         }
       } catch {
@@ -1529,9 +1575,15 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         ].join("\n")
       );
       await fetchQuote(false);
-      let anchorTxHash: string | undefined;
+      let anchorTxHash: string | undefined = sig.txHash ?? sig.signature;
       let anchorBlockHeight: number | undefined;
-      let explorerTxUrl: string | undefined;
+      let explorerTxUrl: string | undefined =
+        sig.explorerTxUrl ??
+        getWalletExplorerTxInfo(
+          sig.txHash ?? sig.signature,
+          sig.chainType,
+          walletContext.detectedNetwork
+        ).url;
       try {
         const anchorRes = await fetch("/api/onchain/commit-proof", {
           method: "POST",
@@ -1545,16 +1597,17 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         });
         if (anchorRes.ok) {
           const anchorJson = await anchorRes.json();
-          if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
-            anchorTxHash = anchorJson.txHash;
+          if (sig.chainType === "near" && typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
+            anchorTxHash = sig.txHash ?? anchorJson.txHash;
             anchorBlockHeight =
               typeof anchorJson.blockHeight === "number"
                 ? anchorJson.blockHeight
                 : undefined;
             explorerTxUrl =
-              typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
+              sig.explorerTxUrl ??
+              (typeof anchorJson.explorerTxUrl === "string" && anchorJson.explorerTxUrl
                 ? anchorJson.explorerTxUrl
-                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`);
           }
         }
       } catch {
@@ -1802,7 +1855,11 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                       {userAvailablePayTokenBalance > 0 && (
                         <button
                           type="button"
-                          onClick={() => setAmountIn(String(userAvailablePayTokenBalance))}
+                          onClick={() =>
+                            setAmountIn(
+                              Number(userAvailablePayTokenBalance.toFixed(6)).toString()
+                            )
+                          }
                           className="rounded border border-emerald-500/40 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-extrabold text-[var(--accent-emerald)] hover:bg-emerald-500/25 cursor-pointer"
                         >
                           MAX
@@ -1848,9 +1905,16 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     </span>
                   </div>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={amountIn}
-                    onChange={(e) => setAmountIn(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = e.target.value
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/(\..*)\./g, "$1");
+                      setAmountIn(sanitized);
+                    }}
                     className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-base font-bold text-[var(--text-primary)]"
                   />
                 </div>
@@ -2167,29 +2231,34 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     <div className="break-all text-[var(--accent-cyan)]">
                       <strong>Wallet Signature:</strong> {signedSwapReceipt.signature}
                     </div>
-                    {signedSwapReceipt.anchorTxHash && (
-                      <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
-                        <div className="break-all text-[var(--text-primary)]">
-                          <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
-                          {signedSwapReceipt.anchorTxHash}
-                          {signedSwapReceipt.anchorBlockHeight
-                            ? ` (Block #${signedSwapReceipt.anchorBlockHeight})`
-                            : ""}
-                        </div>
-                        <a
-                          href={
-                            signedSwapReceipt.explorerTxUrl ??
-                            `https://testnet.nearblocks.io/txns/${signedSwapReceipt.anchorTxHash}`
-                          }
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
-                        >
-                          <span>View On-Chain Transaction on NEARBlocks Explorer</span>
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </a>
-                      </div>
-                    )}
+                    {signedSwapReceipt.anchorTxHash &&
+                      (() => {
+                        const swapExpInfo = getWalletExplorerTxInfo(
+                          signedSwapReceipt.anchorTxHash,
+                          signedSwapReceipt.chainType,
+                          originChainWallet?.detectedNetwork
+                        );
+                        return (
+                          <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                            <div className="break-all text-[var(--text-primary)]">
+                              <strong>{swapExpInfo.hashLabel}</strong>{" "}
+                              {signedSwapReceipt.anchorTxHash}
+                              {signedSwapReceipt.anchorBlockHeight
+                                ? ` (Block #${signedSwapReceipt.anchorBlockHeight})`
+                                : ""}
+                            </div>
+                            <a
+                              href={signedSwapReceipt.explorerTxUrl ?? swapExpInfo.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                            >
+                              <span>{swapExpInfo.buttonLabel}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </a>
+                          </div>
+                        );
+                      })()}
                   </div>
                 )}
               </CardContent>
@@ -2460,9 +2529,16 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     Quantity to Sell (wNEAR)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={limitQtyWnear}
-                    onChange={(e) => setLimitQtyWnear(e.target.value)}
+                    onChange={(e) => {
+                      const sanitized = e.target.value
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/(\..*)\./g, "$1");
+                      setLimitQtyWnear(sanitized);
+                    }}
                     className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-bold text-[var(--text-primary)]"
                   />
                 </div>
@@ -2472,10 +2548,15 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   </label>
                   <input
                     type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
                     value={limitPrice}
                     onChange={(e) => {
                       limitPriceTouchedRef.current = true;
-                      setLimitPrice(e.target.value);
+                      const sanitized = e.target.value
+                        .replace(/[^0-9.]/g, "")
+                        .replace(/(\..*)\./g, "$1");
+                      setLimitPrice(sanitized);
                     }}
                     className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-bold text-[var(--text-primary)]"
                   />
@@ -2592,29 +2673,36 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                         <div className="break-all text-[var(--accent-cyan)]">
                           <strong>Wallet Signature:</strong> {signedLimitReceipt.signature}
                         </div>
-                        {signedLimitReceipt.anchorTxHash && (
-                          <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
-                            <div className="break-all text-[var(--text-primary)]">
-                              <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
-                              {signedLimitReceipt.anchorTxHash}
-                              {signedLimitReceipt.anchorBlockHeight
-                                ? ` (Block #${signedLimitReceipt.anchorBlockHeight})`
-                                : ""}
-                            </div>
-                            <a
-                              href={
-                                signedLimitReceipt.explorerTxUrl ??
-                                `https://testnet.nearblocks.io/txns/${signedLimitReceipt.anchorTxHash}`
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
-                            >
-                              <span>View On-Chain Transaction on NEARBlocks Explorer</span>
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          </div>
-                        )}
+                        {signedLimitReceipt.anchorTxHash &&
+                          (() => {
+                            const limitExpInfo = getWalletExplorerTxInfo(
+                              signedLimitReceipt.anchorTxHash,
+                              signedLimitReceipt.chainType,
+                              walletContext?.detectedNetwork
+                            );
+                            return (
+                              <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                                <div className="break-all text-[var(--text-primary)]">
+                                  <strong>{limitExpInfo.hashLabel}</strong>{" "}
+                                  {signedLimitReceipt.anchorTxHash}
+                                  {signedLimitReceipt.anchorBlockHeight
+                                    ? ` (Block #${signedLimitReceipt.anchorBlockHeight})`
+                                    : ""}
+                                </div>
+                                <a
+                                  href={
+                                    signedLimitReceipt.explorerTxUrl ?? limitExpInfo.url
+                                  }
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                                >
+                                  <span>{limitExpInfo.buttonLabel}</span>
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                </a>
+                              </div>
+                            );
+                          })()}
                       </div>
                     )}
 
@@ -3038,9 +3126,16 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                 Requested Payout Amount (USD)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
                 value={amountUsd}
-                onChange={(e) => setAmountUsd(e.target.value)}
+                onChange={(e) => {
+                  const sanitized = e.target.value
+                    .replace(/[^0-9.]/g, "")
+                    .replace(/(\..*)\./g, "$1");
+                  setAmountUsd(sanitized);
+                }}
                 className="h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)] px-4 font-mono text-sm font-semibold text-[var(--text-primary)]"
               />
             </div>
@@ -3259,9 +3354,16 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                                 JSON.stringify(payload, null, 2),
                               ].join("\n")
                             );
-                            let anchorTxHash: string | undefined;
+                            let anchorTxHash: string | undefined =
+                              sig.txHash ?? sig.signature;
                             let anchorBlockHeight: number | undefined;
-                            let explorerTxUrl: string | undefined;
+                            let explorerTxUrl: string | undefined =
+                              sig.explorerTxUrl ??
+                              getWalletExplorerTxInfo(
+                                sig.txHash ?? sig.signature,
+                                sig.chainType,
+                                walletContext.detectedNetwork
+                              ).url;
                             try {
                               const anchorRes = await fetch("/api/onchain/commit-proof", {
                                 method: "POST",
@@ -3275,17 +3377,22 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                               });
                               if (anchorRes.ok) {
                                 const anchorJson = await anchorRes.json();
-                                if (typeof anchorJson?.txHash === "string" && anchorJson.txHash) {
-                                  anchorTxHash = anchorJson.txHash;
+                                if (
+                                  sig.chainType === "near" &&
+                                  typeof anchorJson?.txHash === "string" &&
+                                  anchorJson.txHash
+                                ) {
+                                  anchorTxHash = sig.txHash ?? anchorJson.txHash;
                                   anchorBlockHeight =
                                     typeof anchorJson.blockHeight === "number"
                                       ? anchorJson.blockHeight
                                       : undefined;
                                   explorerTxUrl =
-                                    typeof anchorJson.explorerTxUrl === "string" &&
+                                    sig.explorerTxUrl ??
+                                    (typeof anchorJson.explorerTxUrl === "string" &&
                                     anchorJson.explorerTxUrl
                                       ? anchorJson.explorerTxUrl
-                                      : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`;
+                                      : `https://testnet.nearblocks.io/txns/${anchorJson.txHash}`);
                                 }
                               }
                             } catch {
@@ -3359,29 +3466,37 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                         <div className="break-all text-[var(--accent-cyan)]">
                           <strong>Wallet Signature:</strong> {signedVerdictReceipt.signature}
                         </div>
-                        {signedVerdictReceipt.anchorTxHash && (
-                          <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
-                            <div className="break-all text-[var(--text-primary)]">
-                              <strong>NEAR Testnet Settlement TxHash:</strong>{" "}
-                              {signedVerdictReceipt.anchorTxHash}
-                              {signedVerdictReceipt.anchorBlockHeight
-                                ? ` (Block #${signedVerdictReceipt.anchorBlockHeight})`
-                                : ""}
-                            </div>
-                            <a
-                              href={
-                                signedVerdictReceipt.explorerTxUrl ??
-                                `https://testnet.nearblocks.io/txns/${signedVerdictReceipt.anchorTxHash}`
-                              }
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
-                            >
-                              <span>View On-Chain Transaction on NEARBlocks Explorer</span>
-                              <ExternalLink className="h-3 w-3 shrink-0" />
-                            </a>
-                          </div>
-                        )}
+                        {signedVerdictReceipt.anchorTxHash &&
+                          (() => {
+                            const verdictExpInfo = getWalletExplorerTxInfo(
+                              signedVerdictReceipt.anchorTxHash,
+                              signedVerdictReceipt.chainType,
+                              walletContext?.detectedNetwork
+                            );
+                            return (
+                              <div className="space-y-1 border-t border-emerald-500/30 pt-1.5">
+                                <div className="break-all text-[var(--text-primary)]">
+                                  <strong>{verdictExpInfo.hashLabel}</strong>{" "}
+                                  {signedVerdictReceipt.anchorTxHash}
+                                  {signedVerdictReceipt.anchorBlockHeight
+                                    ? ` (Block #${signedVerdictReceipt.anchorBlockHeight})`
+                                    : ""}
+                                </div>
+                                <a
+                                  href={
+                                    signedVerdictReceipt.explorerTxUrl ??
+                                    verdictExpInfo.url
+                                  }
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
+                                >
+                                  <span>{verdictExpInfo.buttonLabel}</span>
+                                  <ExternalLink className="h-3 w-3 shrink-0" />
+                                </a>
+                              </div>
+                            );
+                          })()}
                       </div>
                     )}
                   </div>

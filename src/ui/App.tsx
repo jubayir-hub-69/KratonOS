@@ -53,14 +53,18 @@ import { DocsPortalView, type DocPageId } from "./views-docs";
 import {
   ALL_WALLET_CHAINS,
   CHAIN_FAMILY_META,
+  clearAllConnectedWalletSessions,
   connectInPageBrowserWallet,
   disconnectChainWallet,
   fetchLiveConnectedWalletBalances,
   formatShortWalletAddress,
   getWalletExplorerAccountUrl,
+  hydrateTrustedBrowserWallets,
+  isStaleDummySuiAddress,
   normalizeSuiAddress,
   purgeStaleSuiFallbackStorage,
   requestBrowserWalletTestnetSwitch,
+  saveConnectedWalletSession,
   sendNearTransactionWithPersonalWallet,
   signMessageWithPersonalWallet,
   type ConnectedChainWallet,
@@ -460,13 +464,25 @@ export function App() {
   const [killSwitchLoading, setKillSwitchLoading] = useState(false);
 
   const registerAndSyncChainWallet = useCallback(
-    async (chainType: WalletChainType, address: string, providerName: string) => {
+    async (
+      chainType: WalletChainType,
+      address: string,
+      providerName: string,
+      options?: { preservePrimary?: boolean }
+    ) => {
+      if (chainType === "sui" && isStaleDummySuiAddress(address)) {
+        purgeStaleSuiFallbackStorage();
+        return;
+      }
       const meta = CHAIN_FAMILY_META[chainType];
       const shortAddress = formatShortWalletAddress(address, chainType);
       const explorerAccountUrl = getWalletExplorerAccountUrl(address, chainType);
 
+      saveConnectedWalletSession(chainType, address, providerName);
       setSandboxExplicitSelected(false);
-      setPrimaryChainType(chainType);
+      if (!options?.preservePrimary) {
+        setPrimaryChainType(chainType);
+      }
       setConnectedWalletsByChain((prev) => ({
         ...prev,
         [chainType]: {
@@ -529,9 +545,36 @@ export function App() {
     [pushNotification]
   );
 
-  // Initialize @hot-labs/near-connect
+  // Initialize @hot-labs/near-connect and silently hydrate multi-chain browser wallets (EVM, Solana, BTC, Sui)
   useEffect(() => {
     let active = true;
+    purgeStaleSuiFallbackStorage();
+
+    const runMultiWalletHydration = async () => {
+      try {
+        const hydrated = await hydrateTrustedBrowserWallets();
+        if (!active) return;
+        for (const item of hydrated) {
+          void registerAndSyncChainWallet(
+            item.chainType,
+            item.address,
+            item.providerName,
+            { preservePrimary: true }
+          );
+        }
+      } catch {
+        // Ignore silent hydration errors
+      }
+    };
+
+    void runMultiWalletHydration();
+    const delayedHydrationTimer =
+      typeof window !== "undefined"
+        ? window.setTimeout(() => {
+            if (active) void runMultiWalletHydration();
+          }, 400)
+        : null;
+
     try {
       const connector = new NearConnector({
         network: "testnet",
@@ -540,7 +583,8 @@ export function App() {
       connectorRef.current = connector;
       const nearWasDisconnected =
         typeof window !== "undefined" &&
-        window.sessionStorage?.getItem("kratonos_disconnected_near") === "true";
+        (window.sessionStorage?.getItem("kratonos_disconnected_near") === "true" ||
+          window.localStorage?.getItem("kratonos_disconnected_near") === "true");
       if (!nearWasDisconnected) {
         void connector
           .wallet()
@@ -553,7 +597,8 @@ export function App() {
                 existing,
                 existing.endsWith(".near")
                   ? "NEAR Wallet (Mainnet)"
-                  : "NEAR Wallet (Testnet)"
+                  : "NEAR Wallet (Testnet)",
+                { preservePrimary: true }
               );
             }
           })
@@ -566,6 +611,7 @@ export function App() {
         if (active && acc) {
           try {
             window.sessionStorage?.removeItem("kratonos_disconnected_near");
+            window.localStorage?.removeItem("kratonos_disconnected_near");
           } catch {
             // Ignore storage errors
           }
@@ -603,6 +649,9 @@ export function App() {
     }
     return () => {
       active = false;
+      if (delayedHydrationTimer !== null && typeof window !== "undefined") {
+        window.clearTimeout(delayedHydrationTimer);
+      }
     };
   }, [pushNotification, registerAndSyncChainWallet]);
 
@@ -783,8 +832,9 @@ export function App() {
         return;
       }
       if (chainType === "sui") {
+        purgeStaleSuiFallbackStorage();
         const prefilledSui = normalizeSuiAddress(customSuiTestnetAddress);
-        if (prefilledSui) {
+        if (prefilledSui && !isStaleDummySuiAddress(prefilledSui)) {
           await registerAndSyncChainWallet("sui", prefilledSui, "Slush Wallet (Sui Testnet)");
           setCustomSuiTestnetAddress("");
           pushNotification(
@@ -890,6 +940,7 @@ export function App() {
 
   const handleDisconnectAllWallets = useCallback(async () => {
     setWalletMenuOpen(false);
+    clearAllConnectedWalletSessions();
     try {
       for (const c of ALL_WALLET_CHAINS) {
         await disconnectChainWallet(c);
