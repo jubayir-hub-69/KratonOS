@@ -1862,7 +1862,7 @@ export async function handleKratonHttpRequest(
                     .reduce((acc, o) => acc + (o.amountNear ?? 0), 0)
                     .toFixed(4)
                 ),
-                totalSettledUsdc: Number(
+                totalSettledUsd: Number(
                   latestPayrollBatchCache.outcomes
                     .filter((o) => o.status === "SETTLED")
                     .reduce((acc, o) => acc + o.usdEquivalentAtLiveRate, 0)
@@ -1882,7 +1882,7 @@ export async function handleKratonHttpRequest(
                 totalSettledCount: 11,
                 totalIsolatedFailedCount: 1,
                 totalSettledNear: 2.64,
-                totalSettledUsdc: Number((2.64 * (oracleSnap.nearUsdMedian || 3.55)).toFixed(2)),
+                totalSettledUsd: Number((2.64 * (oracleSnap.nearUsdMedian || 3.55)).toFixed(2)),
                 outcomes: [],
                 poc4HMaster: getActiveCanonicalPoc4MasterHash(runtime.constraints),
               })),
@@ -1971,7 +1971,7 @@ export async function handleKratonHttpRequest(
             {
               stage: 5,
               title: "5. Settled Across Chains!",
-              summary: `Settled ${payrollBatch.totalSettledCount}/12 batch payroll rows (2.6400 NEAR ≈ $${payrollBatch.totalSettledUsdc.toFixed(2)} USD eqv on-chain, 1 scam quarantined), x402 v2 receipt (${x402Hire.taskReceipt.receiptId}), Worker Auth=${marketDiscovery.workerAuth.liveApiUsed}, and 20x5 Swarm saved $${swarmRound.totalSwarmSavingsUsd.toFixed(2)}.`,
+              summary: `Settled ${payrollBatch.totalSettledCount}/12 batch payroll rows (2.6400 NEAR ≈ $${payrollBatch.totalSettledUsd.toFixed(2)} USD eqv on-chain, 1 scam quarantined), x402 v2 receipt (${x402Hire.taskReceipt.receiptId}), Worker Auth=${marketDiscovery.workerAuth.liveApiUsed}, and 20x5 Swarm saved $${swarmRound.totalSwarmSavingsUsd.toFixed(2)}.`,
               payrollSettledCount: payrollBatch.totalSettledCount,
               payrollQuarantinedCount: payrollBatch.totalIsolatedFailedCount,
               x402ReceiptId: x402Hire.taskReceipt.receiptId,

@@ -248,7 +248,10 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
     : [];
   const unifiedVaultBalance = overview?.vault?.liquidNear
     ? `${overview.vault.liquidNear} NEAR`
-    : overview?.balanceFormatted ?? "37.2202 NEAR";
+    : overview?.balanceFormatted ??
+      (overview?.totalNearBalance
+        ? `${Number(overview.totalNearBalance).toFixed(4)} NEAR`
+        : "LIVE RPC SYNCING");
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -663,7 +666,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
                 },
                 {
-                  label: "Fee Recipient: asma90.testnet",
+                  label: "Fee Recipient: asma90.testnet (DEV FEE VAULT, 25 bps)",
                   href: "https://testnet.nearblocks.io/address/asma90.testnet",
                 },
                 {
@@ -1451,7 +1454,8 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
 
       const sig = await walletContext.signIntentWithChainWallet(
         originChainFamily,
-        messageToSign
+        messageToSign,
+        amountIn
       );
       let anchorTxHash: string | undefined = sig.txHash ?? sig.signature;
       let anchorBlockHeight: number | undefined;
@@ -1572,7 +1576,8 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
         [
           "KratonOS Confidential GTC Limit Order (/v0/orders) Authorization",
           JSON.stringify(orderPayload, null, 2),
-        ].join("\n")
+        ].join("\n"),
+        limitQtyWnear
       );
       await fetchQuote(false);
       let anchorTxHash: string | undefined = sig.txHash ?? sig.signature;

@@ -29,7 +29,7 @@ KratonOS partitions autonomous treasury operations across 4 dedicated NEP-611 ga
 2. **Lane 1 — `executor.jubayir69.testnet` (PoC-4 Cross-Chain Intent Executor)**:
    - Verifies the Quad-Attested Proof of Constraint (`H_master`), benchmarks `1Click` Confidential Private Shard (`1 bp` stablecoin spread) against `RHEA V2 DCL` and `RHEA V1 AMM`, and submits confidential GTC limit orders (`/v0/orders`, `"confidentiality": "basic"`).
 3. **Lane 2 — `payroll.jubayir69.testnet` (EXACT_OUTPUT Invoicing & Batch Payroll Relayer)**:
-   - Computes `BigInt` ceiling gross-up invoices (`100.00%` net payout accuracy), probes `storage_balance_of`, auto-injects `0.00125 NEAR` `storage_deposit`, executes fault-isolated NEP-141 batch transfers (`<= 10` actions/chunk), and exports GAAP/IFRS `.csv` and HTML/PDF audit statements.
+   - Computes `BigInt` ceiling gross-up invoices (`100.00%` net payout accuracy), probes `storage_balance_of`, auto-injects `0.00125 NEAR` `storage_deposit`, executes fault-isolated NEP-141 batch transfers (`<= 10` actions/chunk), and exports Bookkeeper Audit Ledger `.csv` and HTML/PDF audit statements.
 4. **Lane 3 — `yield.jubayir69.testnet` (RHEA Farming & Multi-Chain MPC Custodian)**:
    - Harvests `ref-farming.testnet` LP rewards in 1 transaction via `withdraw_reward({ amount: "0" })` and derives `EVM`, `Bitcoin`, `Solana`, `Zcash`, and `TON` custody addresses via `v1.signer-prod.testnet`.
 

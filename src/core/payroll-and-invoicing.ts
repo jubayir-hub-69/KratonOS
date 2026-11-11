@@ -317,7 +317,7 @@ export interface FaultIsolatedPayrollBatchResult {
   maxRetryAttempts: number;
   storageDepositsAutoInjectedCount: number;
   totalSettledNear: number;
-  totalSettledUsdc: number;
+  totalSettledUsd: number;
   liveNearPriceUsd: number;
   outcomes: PayrollRecipientOutcome[];
   exportedBookkeeperCsvPath: string;
@@ -673,7 +673,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
 
   let storageDepositsAutoInjectedCount = 0;
   let totalSettledNear = 0;
-  let totalSettledUsdc = 0;
+  let totalSettledUsd = 0;
   let totalSettledCount = 0;
   let totalIsolatedFailedCount = 0;
 
@@ -813,7 +813,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     const rowUsd = Number((rowNear * nearPriceUsd).toFixed(2));
     totalSettledCount++;
     totalSettledNear = Number((totalSettledNear + rowNear).toFixed(4));
-    totalSettledUsdc = Number((totalSettledNear * nearPriceUsd).toFixed(2));
+    totalSettledUsd = Number((totalSettledUsd + rowUsd).toFixed(2));
 
     outcomes.push({
       rowNumber: row.rowNumber,
@@ -862,7 +862,7 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
     maxRetryAttempts: MAX_RETRY_ATTEMPTS,
     storageDepositsAutoInjectedCount,
     totalSettledNear,
-    totalSettledUsdc,
+    totalSettledUsd,
     liveNearPriceUsd: nearPriceUsd,
     outcomes,
     exportedBookkeeperCsvPath: csvOutputPath,
@@ -927,7 +927,7 @@ export function exportBookkeeperCsv(params: {
         "41",
         o.status === "SETTLED" ? `$${usdEqv.toFixed(2)} USD` : "$0.00 USD",
         o.settlementTxHash ?? "NONE_BLOCKED",
-        o.status === "SETTLED" && o.blockHeight ? String(o.blockHeight) : "QUARANTINED",
+        o.status === "SETTLED" && o.blockHeight ? String(o.blockHeight) : "",
         storageFormatted,
         o.status,
         o.confidentialShardShieldUnshieldHashes,
@@ -954,6 +954,8 @@ export function exportBookkeeperCsv(params: {
 
   return csvContent;
 }
+
+export const generateBookkeeperCsv = exportBookkeeperCsv;
 
 /**
  * Generates a self-contained, printable HTML/PDF Executive Bookkeeper Audit & Reconciliation Statement.
@@ -989,7 +991,15 @@ export function generateVisualAuditStatementHtml(params: {
       .reduce((acc, o) => acc + (o.amountNear ?? (Number(o.depositNear) || 0)), 0)
       .toFixed(4)
   );
-  const totalSettledUsd = Number((totalSettledNear * nearPriceUsd).toFixed(2));
+  const totalSettledUsd = Number(
+    settledRows
+      .reduce((acc, o) => {
+        const rowNearNum = o.amountNear ?? (Number(o.depositNear) || 0);
+        const rowUsd = Number((rowNearNum * nearPriceUsd).toFixed(2));
+        return acc + rowUsd;
+      }, 0)
+      .toFixed(2)
+  );
 
   const safeTreasuryAccount = escapeHtml(treasuryAccount);
   const safeFeeRecipient = escapeHtml(feeRecipient);

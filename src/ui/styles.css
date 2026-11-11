@@ -978,4 +978,10 @@ body {
   }
 }
 
+.poc4-diagram-container {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+
 

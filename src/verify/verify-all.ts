@@ -207,7 +207,10 @@ async function runMasterVerificationSuite(): Promise<void> {
   console.log("[SUITE 3/6] Pillar 2 & 4: NEAR AI Cloud 8-Step TEE, Zero-Retention, x402 v2 & 20x5 Swarm...");
   const teeResult = await runNearAiTee8StepVerification();
   assert.equal(teeResult.valid, true);
-  assert.equal(teeResult.status, "TEE ATTESTATION VERIFIED");
+  assert.equal(
+    teeResult.status,
+    teeResult.liveApiUsed ? "TEE ATTESTATION VERIFIED" : "OFFLINE_SAMPLE_QUOTE_VERIFIED"
+  );
   assert.equal(teeResult.step6_privateInferenceAndZeroRetention.zeroRetentionVerified, true);
   assert.equal(teeResult.step6_privateInferenceAndZeroRetention.nonZeroBytesRemainingAfterWipe, 0);
 

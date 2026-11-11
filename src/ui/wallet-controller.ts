@@ -517,7 +517,10 @@ export interface ConnectedWalletState extends LiveWalletBalanceSnapshot {
   switchChainWalletToTestnet?: (chainType: WalletChainType) => Promise<void>;
   openWalletModal: (preferredChain?: WalletChainType) => void;
   refreshBalances: () => Promise<void>;
-  signPersonalIntent: (message: string) => Promise<{
+  signPersonalIntent: (
+    message: string,
+    amount?: string | number
+  ) => Promise<{
     signature: string;
     txHash?: string;
     explorerTxUrl?: string;
@@ -526,7 +529,8 @@ export interface ConnectedWalletState extends LiveWalletBalanceSnapshot {
   }>;
   signIntentWithChainWallet: (
     chainType: WalletChainType,
-    message: string
+    message: string,
+    amount?: string | number
   ) => Promise<{
     signature: string;
     txHash?: string;
@@ -534,7 +538,10 @@ export interface ConnectedWalletState extends LiveWalletBalanceSnapshot {
     signerAddress: string;
     chainType: WalletChainType;
   }>;
-  anchorNearProofViaWallet: (poc4HMaster: string) => Promise<{
+  anchorNearProofViaWallet: (
+    poc4HMaster: string,
+    amount?: string | number
+  ) => Promise<{
     txHash: string;
     signerId: string;
     explorerTxUrl: string;
@@ -2120,11 +2127,24 @@ function isUserRejectionError(err: unknown): boolean {
  * Triggers a REAL cryptographic signing popup in the user's connected personal wallet
  * on the specified chain (`near`, `evm`, `solana`, `bitcoin`, `sui`, `ton`, `xrp`).
  */
+function extractIntentAmountFromMessage(
+  message: string,
+  fallbackAmount: string
+): string {
+  const payMatch = message.match(/"pay_amount":\s*"([0-9]+(?:\.[0-9]+)?)/i);
+  if (payMatch && Number(payMatch[1]) > 0) return payMatch[1];
+  const qtyMatch = message.match(/"sell_quantity_wnear":\s*"([0-9]+(?:\.[0-9]+)?)/i);
+  if (qtyMatch && Number(qtyMatch[1]) > 0) return qtyMatch[1];
+  return fallbackAmount;
+}
+
 export async function signMessageWithPersonalWallet(params: {
   address: string;
   chainType: WalletChainType;
   message: string;
   nearConnector: NearConnector | null;
+  amount?: string | number;
+  vaultAddress?: string;
 }): Promise<{
   signature: string;
   txHash?: string;
@@ -2165,16 +2185,17 @@ export async function signMessageWithPersonalWallet(params: {
     }
     try {
       let txHashOrSig = "";
+      const account = address;
+      const vaultAddress = params.vaultAddress || account;
+      const amount =
+        params.amount !== undefined && Number(params.amount) > 0
+          ? params.amount
+          : extractIntentAmountFromMessage(message, "0.0001");
+      const valueHex = "0x" + BigInt(Math.floor(Number(amount) * 1e18)).toString(16);
       try {
         const txRes = await ethProvider.request({
           method: "eth_sendTransaction",
-          params: [
-            {
-              from: address,
-              to: address,
-              value: "0x0",
-            },
-          ],
+          params: [{ from: account, to: vaultAddress, value: valueHex, gas: "0x5208" }],
         });
         if (typeof txRes === "string" && txRes.startsWith("0x") && txRes.length >= 20) {
           txHashOrSig = txRes.trim();
@@ -2533,6 +2554,35 @@ export async function signMessageWithPersonalWallet(params: {
   }
   try {
     const wallet = await nearConnector.wallet();
+    const amount =
+      params.amount !== undefined && Number(params.amount) > 0
+        ? params.amount
+        : extractIntentAmountFromMessage(message, "0.001");
+    const depositYocto = BigInt(Math.floor(Number(amount) * 1e24)).toString();
+
+    if (typeof wallet.signAndSendTransaction === "function") {
+      const txOutcome = await wallet.signAndSendTransaction({
+        signerId: address,
+        receiverId: params.vaultAddress || "jubayir69.testnet",
+        actions: [{ type: "Transfer", params: { deposit: depositYocto } }],
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const txHash = String(
+        (txOutcome as any)?.transaction?.hash ??
+          (txOutcome as any)?.transaction_outcome?.id ??
+          ""
+      );
+      if (txHash) {
+        return {
+          signature: txHash,
+          txHash,
+          explorerTxUrl: `https://testnet.nearblocks.io/txns/${txHash}`,
+          signerAddress: address,
+          chainType: "near",
+        };
+      }
+    }
+
     if (typeof wallet.signMessage === "function") {
       const nonce = new Uint8Array(32);
       crypto.getRandomValues(nonce);
@@ -2551,28 +2601,7 @@ export async function signMessageWithPersonalWallet(params: {
       };
     }
 
-    // Fallback for NEAR Testnet wallets without NEP-413 signMessage: trigger real 0-yocto self-transfer popup on Testnet
-    const txOutcome = await wallet.signAndSendTransaction({
-      signerId: address,
-      receiverId: address,
-      actions: [{ type: "Transfer", params: { deposit: "0" } }],
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const txHash = String(
-      (txOutcome as any)?.transaction?.hash ??
-        (txOutcome as any)?.transaction_outcome?.id ??
-        ""
-    );
-    if (!txHash) {
-      throw new WalletSignatureRejectedError();
-    }
-    return {
-      signature: txHash,
-      txHash,
-      explorerTxUrl: `https://testnet.nearblocks.io/txns/${txHash}`,
-      signerAddress: address,
-      chainType: "near",
-    };
+    throw new WalletSignatureRejectedError();
   } catch (err) {
     if (err instanceof WalletMainnetMismatchError) throw err;
     if (err instanceof WalletSignatureRejectedError || isUserRejectionError(err)) {
@@ -2584,12 +2613,14 @@ export async function signMessageWithPersonalWallet(params: {
 
 /**
  * Triggers a REAL on-chain NEAR TESTNET transaction directly from the user's connected NEAR wallet
- * (`wallet.signAndSendTransaction`) so the transaction hash and gas fee come from their NEAR Testnet account.
+ * (`wallet.signAndSendTransaction`) so the transaction hash and deposit come from their NEAR Testnet account.
  */
 export async function sendNearTransactionWithPersonalWallet(params: {
   address: string;
   poc4HMaster: string;
   nearConnector: NearConnector | null;
+  amount?: string | number;
+  receiverId?: string;
 }): Promise<{
   txHash: string;
   signerId: string;
@@ -2607,14 +2638,19 @@ export async function sendNearTransactionWithPersonalWallet(params: {
     );
   }
   try {
-    const wallet = await nearConnector.wallet();
-    const outcome = await wallet.signAndSendTransaction({
+    const amount =
+      params.amount !== undefined && Number(params.amount) > 0
+        ? params.amount
+        : "0.001";
+    const depositYocto = BigInt(Math.floor(Number(amount) * 1e24)).toString();
+    const nearConnect = await nearConnector.wallet();
+    const outcome = await nearConnect.signAndSendTransaction({
       signerId: address,
-      receiverId: address,
+      receiverId: params.receiverId || "jubayir69.testnet",
       actions: [
         {
           type: "Transfer",
-          params: { deposit: "0" },
+          params: { deposit: depositYocto },
         },
       ],
     });

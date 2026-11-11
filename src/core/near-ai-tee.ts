@@ -116,7 +116,7 @@ export interface ZeroRetentionPrivateAuditResult {
 }
 
 export interface NearAiTee8StepVerificationResult {
-  status: "TEE ATTESTATION VERIFIED" | "FAILED";
+  status: "TEE ATTESTATION VERIFIED" | "OFFLINE_SAMPLE_QUOTE_VERIFIED" | "FAILED";
   valid: boolean;
   liveApiUsed: boolean;
   liveChatId?: string;
@@ -1252,7 +1252,7 @@ export async function runNearAiTee8StepVerification(options?: {
     poc4Gate.valid;
 
   return {
-    status: allValid ? "TEE ATTESTATION VERIFIED" : "FAILED",
+    status: allValid ? (liveApiUsed ? "TEE ATTESTATION VERIFIED" : "OFFLINE_SAMPLE_QUOTE_VERIFIED") : "FAILED",
     valid: allValid,
     liveApiUsed,
     liveChatId,

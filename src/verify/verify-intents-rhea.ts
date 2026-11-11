@@ -217,7 +217,7 @@ async function main(): Promise<void> {
   assert.equal(payrollResult.totalSettledCount, 11, "11 legitimate contributor rows must settle");
   assert.equal(payrollResult.totalSettledNear, 2.64, "Total settled NEAR across 11 rows must equal 2.6400 NEAR");
   assert.ok(
-    payrollResult.totalSettledUsdc > 2 && payrollResult.totalSettledUsdc < 50,
+    payrollResult.totalSettledUsd > 2 && payrollResult.totalSettledUsd < 50,
     "Total settled USD equivalent must be computed dynamically from live NEAR/USD rate, never $264.00"
   );
   assert.equal(
@@ -229,7 +229,7 @@ async function main(): Promise<void> {
   assert.ok(fs.existsSync(payrollResult.exportedBookkeeperCsvPath), "Bookkeeper CSV must be written to disk");
 
   const teeReasoning = await executeLiveTeeReasoning(
-    `Verify batch payroll settlement: ${payrollResult.totalSettledCount}/${payrollResult.totalRowsImported} settled (${payrollResult.totalSettledNear.toFixed(4)} NEAR ≈ $${payrollResult.totalSettledUsdc.toFixed(2)} USD), 1 malicious recipient quarantined.`
+    `Verify batch payroll settlement: ${payrollResult.totalSettledCount}/${payrollResult.totalRowsImported} settled (${payrollResult.totalSettledNear.toFixed(4)} NEAR ≈ $${payrollResult.totalSettledUsd.toFixed(2)} USD), 1 malicious recipient quarantined.`
   );
   assert.ok(teeReasoning.content.length > 10);
 
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
     `  -> Contract-Scoped Gasless Relayer: targetReceiverWhitelisted=${invoiceResult.scopedRelayerMetaTx.targetReceiverWhitelisted}, allowed=[${invoiceResult.scopedRelayerMetaTx.relayerAllowedReceivers.join(", ")}]`
   );
   console.log(
-    `  -> Fault-Isolated Batch Payroll: totalRows=${payrollResult.totalRowsImported}, settled=${payrollResult.totalSettledCount} (${payrollResult.totalSettledNear.toFixed(4)} NEAR ≈ $${payrollResult.totalSettledUsdc.toFixed(2)} USD), quarantined=${payrollResult.totalIsolatedFailedCount} (unverified-quarantine-row12.testnet)`
+    `  -> Fault-Isolated Batch Payroll: totalRows=${payrollResult.totalRowsImported}, settled=${payrollResult.totalSettledCount} (${payrollResult.totalSettledNear.toFixed(4)} NEAR ≈ $${payrollResult.totalSettledUsd.toFixed(2)} USD), quarantined=${payrollResult.totalIsolatedFailedCount} (unverified-quarantine-row12.testnet)`
   );
   console.log(
     `  -> NEP-141 Storage Deposits Auto-Injected (0.00125 NEAR): ${payrollResult.storageDepositsAutoInjectedCount} recipients`

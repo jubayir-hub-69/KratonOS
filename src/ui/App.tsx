@@ -1094,7 +1094,7 @@ export function App() {
       usdtBalance: primarySnap?.usdtBalance ?? 0,
       tokenBalances: mergedTokenBalances,
       refreshBalances: refreshConnectedWalletBalances,
-      signPersonalIntent: async (message: string) => {
+      signPersonalIntent: async (message: string, amount?: string | number) => {
         if (!hasPersonalWallet || !primarySnap) {
           throw new Error("Connect a personal wallet before signing.");
         }
@@ -1103,11 +1103,13 @@ export function App() {
           chainType: primarySnap.chainType,
           message,
           nearConnector: connectorRef.current,
+          amount,
         });
       },
       signIntentWithChainWallet: async (
         targetChain: WalletChainType,
-        message: string
+        message: string,
+        amount?: string | number
       ) => {
         const targetWallet =
           connectedWalletsByChain[targetChain] ?? activePersonalWallet;
@@ -1121,9 +1123,13 @@ export function App() {
           chainType: targetWallet.chainType,
           message,
           nearConnector: connectorRef.current,
+          amount,
         });
       },
-      anchorNearProofViaWallet: async (poc4HMaster: string) => {
+      anchorNearProofViaWallet: async (
+        poc4HMaster: string,
+        amount?: string | number
+      ) => {
         const nearW = connectedWalletsByChain.near;
         if (!nearW) {
           throw new Error(
@@ -1134,6 +1140,7 @@ export function App() {
           address: nearW.address,
           poc4HMaster,
           nearConnector: connectorRef.current,
+          amount,
         });
       },
     };
@@ -1528,10 +1535,16 @@ export function App() {
   const showExpandedSidebar = mobileSidebarOpen || !sidebarCollapsed;
   const unifiedVaultBalance = overview?.vault?.liquidNear
     ? `${overview.vault.liquidNear} NEAR`
-    : overview?.balanceFormatted ?? "37.2202 NEAR";
+    : overview?.balanceFormatted ??
+      (overview?.totalNearBalance
+        ? `${Number(overview.totalNearBalance).toFixed(4)} NEAR`
+        : "LIVE RPC SYNCING");
   const unifiedVaultSpendableBalance = overview?.vault?.spendableNear
     ? `${overview.vault.spendableNear} NEAR`
-    : overview?.spendableBalanceFormatted ?? "37.0184 NEAR";
+    : overview?.spendableBalanceFormatted ??
+      (overview?.spendableNearBalance
+        ? `${Number(overview.spendableNearBalance).toFixed(4)} NEAR`
+        : "LIVE RPC SYNCING");
 
   if (activeView === "docs") {
     return (

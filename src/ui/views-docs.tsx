@@ -114,10 +114,8 @@ const API_SPECS: ApiEndpointSpec[] = [
       status: "OK",
       treasuryAccount: "jubayir69.testnet",
       feeRecipient: "asma90.testnet",
-      balanceFormatted: "37.2202 NEAR",
-      spendableBalanceFormatted: "37.0184 NEAR",
-      totalNearBalance: 37.2203,
-      spendableNearBalance: 37.0185,
+      balanceFormatted: "DYNAMIC_LIVE_RPC_NEAR",
+      spendableBalanceFormatted: "DYNAMIC_SPENDABLE_NEAR",
       storageLockedNear: 0.0018,
       walletGasReserveNear: 0.2,
       liveAccountRpcVerified: true,
@@ -156,7 +154,7 @@ const API_SPECS: ApiEndpointSpec[] = [
     },
     sampleResponse: {
       status: "OK",
-      tee8Step: { status: "TEE ATTESTATION VERIFIED" },
+      tee8Step: { status: "OFFLINE_SAMPLE_QUOTE_VERIFIED" },
       liveReasoning: {
         model: "zai-org/GLM-5.1-FP8",
         usedLiveApi: true,
@@ -400,13 +398,10 @@ const API_SPECS: ApiEndpointSpec[] = [
       chainType: "near",
       address: "jubayir69.testnet",
       nativeSymbol: "NEAR",
-      nativeBalance: 37.0185,
-      totalNearBalance: 37.2203,
-      spendableNearBalance: 37.0185,
       storageLockedNear: 0.0018,
       walletGasReserveNear: 0.2,
-      totalNearFormatted: "37.2202 NEAR",
-      spendableNearFormatted: "37.0184 NEAR",
+      totalNearFormatted: "DYNAMIC_LIVE_RPC_NEAR",
+      spendableNearFormatted: "DYNAMIC_SPENDABLE_NEAR",
       usdcBalance: 0,
       usdtBalance: 0,
       liveRpcVerified: true,
@@ -571,7 +566,7 @@ function HonestScopeSection({
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; All 27 Real On-Chain Txs</td>
               <td className="px-4 py-3 text-[var(--text-secondary)] space-y-1.5">
                 <div>
-                  Live multi-RPC failover (<code className="font-mono text-[var(--accent-emerald)]">test.rpc.fastnear.com</code>, <code className="font-mono text-[var(--accent-emerald)]">near-testnet-rpc.publicnode.com</code>, <code className="font-mono text-[var(--accent-emerald)]">rpc.testnet.near.org</code>) for <code className="font-mono">view_account</code> (<code className="font-mono">37.2202 NEAR</code> total / <code className="font-mono">37.0184 NEAR</code> spendable on <code className="font-mono">jubayir69.testnet</code>) and <code className="font-mono">EXPERIMENTAL_tx_status</code>.
+                  Live multi-RPC failover (<code className="font-mono text-[var(--accent-emerald)]">test.rpc.fastnear.com</code>, <code className="font-mono text-[var(--accent-emerald)]">near-testnet-rpc.publicnode.com</code>, <code className="font-mono text-[var(--accent-emerald)]">rpc.testnet.near.org</code>) for <code className="font-mono">view_account</code> (dynamic live total &amp; spendable NEAR on <code className="font-mono">jubayir69.testnet</code>) and <code className="font-mono">EXPERIMENTAL_tx_status</code>.
                 </div>
                 <div>
                   <strong>11 Real Non-Zero Payroll Payment Transfers (2.6400 NEAR total ≈ ${livePayrollTotalUsd} USD at live rate)</strong>: <code className="font-mono">EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN</code> (#1 · 0.4500 NEAR · #276951868), <code className="font-mono">EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd</code> (#2 · 0.1850 NEAR · #276951890), <code className="font-mono">DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT</code> (#3 · 0.2400 NEAR · #276951910), <code className="font-mono">FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML</code> (#4 · 0.1500 NEAR · #276951929), <code className="font-mono">6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf</code> (#5 · 0.2200 NEAR · #276951949), <code className="font-mono">HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3</code> (#6 · 0.3000 NEAR · #276951968), <code className="font-mono">J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz</code> (#7 · 0.1975 NEAR · #276951987), <code className="font-mono">5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E</code> (#8 · 0.2800 NEAR · #276952006), <code className="font-mono">DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29</code> (#9 · 0.1225 NEAR · #276952025), <code className="font-mono">BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC</code> (#10 · 0.1450 NEAR · #276952045), <code className="font-mono">9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd</code> (#11 · 0.3500 NEAR · #276952064).
@@ -1422,7 +1417,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   <div className="mt-2.5 space-y-1.5 rounded-lg border border-emerald-500/30 bg-[var(--bg-card)] p-2.5 font-mono text-[11px] leading-snug text-[var(--text-secondary)]">
                     <div>
                       <strong className="text-[var(--accent-emerald)]">Spendable vs Total On-Chain NEAR:</strong>{" "}
-                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "37.2202 NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "37.0184 NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
+                      Total On-Chain = <code className="text-[var(--text-primary)]">{activeTelemetry?.balanceFormatted ?? "live view_account NEAR"}</code>; minus <code className="text-[var(--text-primary)]">{activeTelemetry?.storageLockedNear ?? 0.0018} NEAR</code> (<code className="text-[var(--text-primary)]">storage_usage * 10^19 yoctoNEAR</code>) and <code className="text-[var(--text-primary)]">0.20 NEAR</code> wallet gas reserve = <strong className="text-[var(--accent-emerald)]">{activeTelemetry?.spendableBalanceFormatted ?? "live spendable NEAR"}</strong> Spendable (matching Meteor Wallet 1:1).
                     </div>
                     <div>
                       <strong className="text-[var(--accent-cyan)]">Meteor Wallet Permission Notice:</strong>{" "}
@@ -1473,7 +1468,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   </Badge>
                 </div>
 
-                <div className="overflow-x-auto pb-1">
+                <div className="poc4-diagram-container max-w-full overflow-x-auto pb-1" style={{ maxWidth: "100%", overflowX: "auto" }}>
                   <svg
                     viewBox="0 0 1040 148"
                     className="w-full min-w-[740px] h-auto block select-none"
@@ -2166,7 +2161,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
                       },
                       {
-                        label: "Fee Recipient: asma90.testnet",
+                        label: "Fee Recipient: asma90.testnet (DEV FEE VAULT, 25 bps)",
                         href: "https://testnet.nearblocks.io/address/asma90.testnet",
                       },
                       {
@@ -2278,7 +2273,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
 
                 {/* Animated SVG Diagram for Chapter 2 (PoC-4 Master Hash & 3-Tier Governance Escalator) */}
-                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <div className="poc4-diagram-container max-w-full overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4" style={{ maxWidth: "100%", overflowX: "auto" }}>
                   <svg
                     viewBox="0 0 960 214"
                     className="w-full min-w-[720px] h-auto block select-none"
@@ -2450,7 +2445,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     0 Nonce Collisions · ~1.2s Cross-Lane Finality
                   </Badge>
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <div className="poc4-diagram-container max-w-full overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4" style={{ maxWidth: "100%", overflowX: "auto" }}>
                   <svg
                     viewBox="0 0 940 218"
                     className="w-full min-w-[720px] h-auto block select-none"
@@ -2611,7 +2606,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     {teeGatewayStatusLabel}
                   </Badge>
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <div className="poc4-diagram-container max-w-full overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4" style={{ maxWidth: "100%", overflowX: "auto" }}>
                   <svg
                     viewBox="0 0 940 190"
                     className="w-full min-w-[720px] h-auto block select-none"
@@ -2746,7 +2741,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     1Click (41 bps) · RHEA V2 DCL (45 bps) · v1.signer-prod.testnet
                   </Badge>
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <div className="poc4-diagram-container max-w-full overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4" style={{ maxWidth: "100%", overflowX: "auto" }}>
                   <svg
                     viewBox="0 0 1020 212"
                     className="w-full min-w-[760px] h-auto block select-none"
@@ -2891,7 +2886,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     100.00% Net Payout · Row #12 Quarantined · 20x5 Swarm
                   </Badge>
                 </div>
-                <div className="overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <div className="poc4-diagram-container max-w-full overflow-x-auto rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4" style={{ maxWidth: "100%", overflowX: "auto" }}>
                   <svg
                     viewBox="0 0 960 195"
                     className="w-full min-w-[720px] h-auto block select-none"
@@ -3262,15 +3257,14 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                                         "asma90.testnet",
                                       balanceFormatted:
                                         activeTelemetry.balanceFormatted ??
-                                        "37.2202 NEAR",
+                                        "DYNAMIC_LIVE_RPC_NEAR",
                                       spendableBalanceFormatted:
                                         activeTelemetry.spendableBalanceFormatted ??
-                                        "37.0184 NEAR",
+                                        "DYNAMIC_SPENDABLE_NEAR",
                                       totalNearBalance:
-                                        activeTelemetry.totalNearBalance ?? 37.2203,
+                                        activeTelemetry.totalNearBalance,
                                       spendableNearBalance:
-                                        activeTelemetry.spendableNearBalance ??
-                                        37.0185,
+                                        activeTelemetry.spendableNearBalance,
                                       poc4MasterHash:
                                         activeTelemetry.poc4MasterHash ??
                                         "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
@@ -3285,18 +3279,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                                       {
                                         ...ep.sampleResponse,
                                         nativeBalance:
-                                          activeTelemetry.spendableNearBalance ?? 37.0185,
+                                          activeTelemetry.spendableNearBalance,
                                         totalNearBalance:
-                                          activeTelemetry.totalNearBalance ?? 37.2203,
+                                          activeTelemetry.totalNearBalance,
                                         spendableNearBalance:
-                                          activeTelemetry.spendableNearBalance ?? 37.0185,
+                                          activeTelemetry.spendableNearBalance,
                                         storageLockedNear:
                                           activeTelemetry.storageLockedNear ?? 0.0018,
                                         totalNearFormatted:
-                                          activeTelemetry.balanceFormatted ?? "37.2202 NEAR",
+                                          activeTelemetry.balanceFormatted ?? "DYNAMIC_LIVE_RPC_NEAR",
                                         spendableNearFormatted:
                                           activeTelemetry.spendableBalanceFormatted ??
-                                          "37.0184 NEAR",
+                                          "DYNAMIC_SPENDABLE_NEAR",
                                       },
                                       null,
                                       2

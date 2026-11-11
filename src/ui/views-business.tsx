@@ -119,7 +119,7 @@ export interface PayrollApiResponse {
     maxRetryAttempts: number;
     storageDepositsAutoInjectedCount: number;
     totalSettledNear?: number;
-    totalSettledUsdc: number;
+    totalSettledUsd: number;
     liveNearPriceUsd?: number;
     outcomes: Array<{
       rowNumber: number;
@@ -657,7 +657,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     const totalSettledNear = Number(
       settledRows.reduce((sum, r) => sum + Number(r.amountNear ?? 0), 0).toFixed(4)
     );
-    const totalSettledUsdc = Number(
+    const totalSettledUsd = Number(
       settledRows.reduce((sum, r) => sum + r.usdEquivalentAtLiveRate, 0).toFixed(2)
     );
 
@@ -671,7 +671,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       maxRetryAttempts: 3,
       storageDepositsAutoInjectedCount: storageInjected,
       totalSettledNear,
-      totalSettledUsdc,
+      totalSettledUsd,
       liveNearPriceUsd,
       outcomes: combined,
       exportedBookkeeperCsvPath:
@@ -730,7 +730,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           o.settlementTxHash ?? "NONE_BLOCKED",
           o.status === "SETTLED" && o.settlementBlockHeight
             ? String(o.settlementBlockHeight)
-            : "QUARANTINED",
+            : "",
           storageFormatted,
           o.status,
           o.confidentialShardShieldUnshieldHashes,
@@ -791,7 +791,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
     document.body.removeChild(link);
     window.setTimeout(() => URL.revokeObjectURL(url), 2000);
     onNotify?.(
-      `Downloaded Bookkeeper CSV (${batch.totalRowsImported} rows · ${batch.totalSettledNear.toFixed(4)} NEAR ≈ $${batch.totalSettledUsdc.toFixed(2)} USD settled)`,
+      `Downloaded Bookkeeper CSV (${batch.totalRowsImported} rows · ${batch.totalSettledNear.toFixed(4)} NEAR ≈ $${batch.totalSettledUsd.toFixed(2)} USD settled)`,
       "payroll"
     );
   };
@@ -900,7 +900,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       <div class="kpi-box"><div class="kpi-label">Total Rows Imported</div><div class="kpi-val">${batch.totalRowsImported}</div></div>
       <div class="kpi-box"><div class="kpi-label">Settled Cleanly</div><div class="kpi-val" style="color:#059669;">${batch.totalSettledCount} / ${batch.totalRowsImported}</div></div>
       <div class="kpi-box"><div class="kpi-label">Quarantined Scam Rows</div><div class="kpi-val" style="color:#dc2626;">${batch.totalIsolatedFailedCount}</div></div>
-      <div class="kpi-box"><div class="kpi-label">Total Settled Volume</div><div class="kpi-val" style="color:#059669;">${batch.totalSettledNear.toFixed(4)} NEAR (≈ $${batch.totalSettledUsdc.toFixed(2)} USD)</div></div>
+      <div class="kpi-box"><div class="kpi-label">Total Settled Volume</div><div class="kpi-val" style="color:#059669;">${batch.totalSettledNear.toFixed(4)} NEAR (≈ $${batch.totalSettledUsd.toFixed(2)} USD)</div></div>
     </div>
     <table>
       <thead>
@@ -928,7 +928,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       window.location.href = "/api/payroll/export-statement";
     }
     onNotify?.(
-      `Opened Printable Audit Statement (${batch.totalRowsImported} rows · ${batch.totalSettledNear.toFixed(4)} NEAR ≈ $${batch.totalSettledUsdc.toFixed(2)} USD)`,
+      `Opened Printable Audit Statement (${batch.totalRowsImported} rows · ${batch.totalSettledNear.toFixed(4)} NEAR ≈ $${batch.totalSettledUsd.toFixed(2)} USD)`,
       "payroll"
     );
   };
@@ -1221,7 +1221,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
   const userUsdcFormatted =
     activeBatchWallet?.usdcBalance != null ? activeBatchWallet.usdcBalance.toFixed(2) : "0.00";
   const requiredBatchUsdc =
-    batch?.totalSettledUsdc ?? Number((2.64 * liveNearPriceUsd).toFixed(2));
+    batch?.totalSettledUsd ?? Number((2.64 * liveNearPriceUsd).toFixed(2));
   const batchWalletMainnetMismatch = Boolean(
     walletContext?.isPersonalWallet && activeBatchWallet?.isMainnetMismatch
   );
@@ -1870,7 +1870,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                   label={
                     killSwitchActive
                       ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
-                      : `Hold to Execute ${batch.totalSettledNear.toFixed(4)} NEAR (≈ $${batch.totalSettledUsdc.toFixed(2)} USD) Batch Payroll`
+                      : `Hold to Execute ${batch.totalSettledNear.toFixed(4)} NEAR (≈ $${batch.totalSettledUsd.toFixed(2)} USD) Batch Payroll`
                   }
                   doneLabel={`${batch.totalSettledCount}/${batch.totalRowsImported} PAYROLL SETTLED`}
                   disabled={loading || Boolean(killSwitchActive)}
@@ -2049,7 +2049,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                     Total Settled Volume
                   </span>
                   <p className="font-display mt-1 text-lg font-extrabold text-[var(--text-primary)]">
-                    {batch.totalSettledNear.toFixed(4)} NEAR (≈ ${batch.totalSettledUsdc.toFixed(2)} USD)
+                    {batch.totalSettledNear.toFixed(4)} NEAR (≈ ${batch.totalSettledUsd.toFixed(2)} USD)
                   </p>
                 </div>
               </div>
@@ -2082,7 +2082,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/35 bg-sky-500/10 px-4 py-2.5 font-mono text-xs text-[var(--text-primary)]">
                 <span>
                   <strong className="text-[var(--accent-cyan)]">Batch Composition Notice:</strong>{" "}
-                  Default batch includes 11 valid contributor rows ({batch.totalSettledNear.toFixed(4)} NEAR ≈ ${batch.totalSettledUsdc.toFixed(2)} USD at live rate ${batch.liveNearPriceUsd.toFixed(2)}/NEAR transferred across 11 real non-zero on-chain payment transactions) + 1 simulated quarantined row (#12{" "}
+                  Default batch includes 11 valid contributor rows ({batch.totalSettledNear.toFixed(4)} NEAR ≈ ${batch.totalSettledUsd.toFixed(2)} USD at live rate ${batch.liveNearPriceUsd.toFixed(2)}/NEAR transferred across 11 real non-zero on-chain payment transactions) + 1 simulated quarantined row (#12{" "}
                   <code className="text-rose-400">unverified-quarantine-row12.testnet</code> · 0.9900 NEAR) to demonstrate
                   Fault-Isolated Batching. You can remove the quarantined row or reset the 12-row
                   batch anytime.
@@ -3782,11 +3782,17 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
             <strong className="text-[var(--text-primary)]">Active Custody (Sandbox Vault):</strong>{" "}
             <code className="text-[var(--accent-emerald)]">jubayir69.testnet</code> — Spendable:{" "}
             <strong className="text-[var(--accent-emerald)]">
-              {overview?.spendableBalanceFormatted ?? "37.0184 NEAR"}
+              {overview?.spendableBalanceFormatted ??
+                (overview?.spendableNearBalance
+                  ? `${Number(overview.spendableNearBalance).toFixed(4)} NEAR`
+                  : "LIVE RPC SYNCING")}
             </strong>{" "}
             | Total On-Chain:{" "}
             <strong className="text-[var(--text-primary)]">
-              {overview?.balanceFormatted ?? "37.2202 NEAR"}
+              {overview?.balanceFormatted ??
+                (overview?.totalNearBalance
+                  ? `${Number(overview.totalNearBalance).toFixed(4)} NEAR`
+                  : "LIVE RPC SYNCING")}
             </strong>
           </span>
           <Badge variant="sky">SANDBOX VAULT MODE</Badge>

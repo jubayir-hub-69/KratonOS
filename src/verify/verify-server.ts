@@ -367,7 +367,7 @@ async function runServerSmokeTest(): Promise<void> {
   const payrollRunJson = JSON.parse(payrollRunRes.bodyText) as {
     batchResult: {
       totalSettledNear: number;
-      totalSettledUsdc: number;
+      totalSettledUsd: number;
       outcomes: Array<{ txHash: string; blockHeight: number; amountNear: number }>;
     };
   };
@@ -377,8 +377,8 @@ async function runServerSmokeTest(): Promise<void> {
     "POST /api/payroll/run totalSettledNear must equal 2.64 NEAR"
   );
   assert.ok(
-    payrollRunJson.batchResult.totalSettledUsdc > 0 && payrollRunJson.batchResult.totalSettledUsdc < 50,
-    `POST /api/payroll/run totalSettledUsdc must reflect real live USD value of 2.64 NEAR, got ${payrollRunJson.batchResult.totalSettledUsdc}`
+    payrollRunJson.batchResult.totalSettledUsd > 0 && payrollRunJson.batchResult.totalSettledUsd < 50,
+    `POST /api/payroll/run totalSettledUsd must reflect real live USD value of 2.64 NEAR, got ${payrollRunJson.batchResult.totalSettledUsd}`
   );
 
   // Verify 16-column alignment on every row of /api/payroll/export-csv (including Row 12 PAY-2026-112-MALFORMED)

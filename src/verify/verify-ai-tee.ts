@@ -21,7 +21,10 @@ async function runPhase4AiTeeAndMarketVerification(): Promise<void> {
   const teeResult = await runNearAiTee8StepVerification();
 
   assert.equal(teeResult.valid, true, "All 8 steps of NEAR AI Cloud TEE verification must pass");
-  assert.equal(teeResult.status, "TEE ATTESTATION VERIFIED");
+  assert.equal(
+    teeResult.status,
+    teeResult.liveApiUsed ? "TEE ATTESTATION VERIFIED" : "OFFLINE_SAMPLE_QUOTE_VERIFIED"
+  );
   assert.equal(teeResult.step1_nonceGenerated.nonce.length, 64, "Nonce must be 64 hex chars (32B)");
   assert.equal(teeResult.step3_nvidiaNrasGpuVerified.eatNonceMatches, true, "NRAS eat_nonce must match nonce");
   assert.equal(teeResult.step4_intelTdxQuoteVerified.registers48ByteValid, true, "TDX registers must be 48B");
