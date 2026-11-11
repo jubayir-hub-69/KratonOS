@@ -175,10 +175,9 @@ npm run build
   - `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts` (`EXACT_OUTPUT` ceiling invoicing, 12-row fault-isolated NEP-141 batcher, `x402 v2` escrow, and 20x5 SHA-256 commit-reveal swarm)
 - **`src/server/server.ts` & `src/ui/*`**: Full-stack HTTP + Vercel Serverless API (`13` OpenAPI 3.1 endpoints + `/llms.txt` + `/openapi.json`), Dual-Mode Multi-Chain Wallet Controller (`src/ui/wallet-controller.ts`), 7-View KratonOS Web Dashboard (`src/ui/App.tsx`, `src/ui/views-core.tsx`, `src/ui/views-business.tsx`), and Standalone Documentation Portal (`/docs`) (`src/ui/views-docs.tsx`).
 
-### C. Cross-Repository Hackathon Submission Disclosure (Rule `Q-015`)
+### C. Hackathon Submission Disclosure (Rule `Q-015`)
 - **Builder / GitHub Account**: **Jubayir Haider** (https://github.com/jubayir-hub-69)
-- **Submission #1 (This Repository)**: **KratonOS** — https://github.com/jubayir-hub-69/KratonOS (Live: https://kraton-os-taupe.vercel.app) — Quad-Attested Autonomous Treasury, Policy Vault, Multi-Venue Intents Router & Agent Operating System on NEAR Protocol.
-- **Submission #2 (Companion Independent Submission)**: **Arrive** — https://github.com/jubayir-hub-69/arrive-near — An independent, separate NEAR Hackathon project built from scratch in its own distinct repository with zero overlapping business logic or duplicate smart contracts.
+- **Single Standalone Submission (`1 of 1` Project Submitted by This Builder)**: **KratonOS** — https://github.com/jubayir-hub-69/KratonOS (Live: https://kraton-os-taupe.vercel.app) — Quad-Attested Autonomous Treasury, Policy Vault, Multi-Venue Intents Router & Agent Operating System on NEAR Protocol. No companion or secondary project is submitted by this builder.
 
 ---
 
@@ -208,7 +207,7 @@ See [`STRESS.md`](./STRESS.md) (and `/docs#stress`) for the full **6-Suite, 38-A
 | **Live AI Judge Index (`/llms.txt`)** | https://kraton-os-taupe.vercel.app/llms.txt |
 | **Live OpenAPI 3.1 Specification (`/openapi.json`)** | https://kraton-os-taupe.vercel.app/openapi.json |
 | **Official GitHub Repository** | https://github.com/jubayir-hub-69/KratonOS |
-| **Companion Hackathon Submission (`Q-015`)** | https://github.com/jubayir-hub-69/arrive-near |
+| **Hackathon Submission Status (`Q-015`)** | Single Standalone Submission (`1 of 1` project submitted by Jubayir Haider) |
 | **Official NEAR Hackathon Rules** | https://nearhackathon.com/HACKATHON.md · https://nearhackathon.com |
 | **Official Track Prompts Repository** | https://github.com/nearai/near-hackathon-prompt-examples |
 | **Official 13 Track Specifications (`01`–`13`)** | [01-defi.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/01-defi.md) · [02-thesis.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/02-thesis.md) · [03-privacy.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/03-privacy.md) · [04-business.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/04-business.md) · [05-swarms.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md) · [06-security.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/06-security.md) · [07-agents.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/07-agents.md) · [08-realworld.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/08-realworld.md) · [09-games.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/09-games.md) · [10-nfts.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/10-nfts.md) · [11-memecoins.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/11-memecoins.md) · [12-social.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/12-social.md) · [13-open.md](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/13-open.md) |

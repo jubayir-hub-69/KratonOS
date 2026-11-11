@@ -513,8 +513,9 @@ async function runServerSmokeTest(): Promise<void> {
   );
   assert.ok(
     llmsRes.bodyText.includes("Q-015") &&
-      llmsRes.bodyText.includes("https://github.com/jubayir-hub-69/arrive-near"),
-    "/llms.txt must include Rule Q-015 cross-repository disclosure for arrive-near"
+      llmsRes.bodyText.includes("1 of 1") &&
+      llmsRes.bodyText.includes("https://github.com/jubayir-hub-69/KratonOS"),
+    "/llms.txt must include Rule Q-015 standalone submission disclosure for KratonOS"
   );
 
   const openApiJson = JSON.parse(openApiRes.bodyText) as {
