@@ -52,7 +52,7 @@ governance_tiers:
   tier_1_auto_approve_max_usd: 50.00
   tier_2_single_council_max_usd: 150.00
   tier_3_sputnik_dao_proposal_bond_near: "1.0"
-  sputnik_dao_contract_id: "kratonos-dao.sputnikv2.testnet"
+  sputnik_dao_contract_id: "jubayir69.testnet"
 
 # --- Protocol Runtime Constraints ---
 protocol_rules:

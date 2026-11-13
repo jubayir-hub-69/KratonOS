@@ -21,7 +21,7 @@ export const NEP141_STORAGE_DEPOSIT_YOCTO = "1250000000000000000000"; // 0.00125
 export const MAX_BATCH_CHUNK_SIZE = 10;
 export const MAX_RETRY_ATTEMPTS = 3;
 export const DEFAULT_VERIFIED_NEAR_TESTNET_TX_HASH =
-  "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga";
+  "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q";
 
 export interface VerifiedPayrollOnChainRecord {
   rowNumber: number;
@@ -47,11 +47,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 1.6,
     depositNear: "0.4500",
     depositYocto: "450000000000000000000000",
-    txHash: "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
-    blockHeight: 276951868,
-    blockHash: "J8mz55K5pqMzK2m584dtLyRh7RV8y1vgo2BsR9VQKpQT",
-    receiptId: "HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
-    timestampIso: "2026-11-09T17:38:27.276Z",
+    txHash: "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+    blockHeight: 277476128,
+    blockHash: "2EbVvPSMxFP6km1U6LUNFJDTNQVeH6AgPLWtNkpusbYm",
+    receiptId: "5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
+    timestampIso: "2026-11-13T06:55:49.795Z",
   },
   {
     rowNumber: 2,
@@ -61,11 +61,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.66,
     depositNear: "0.1850",
     depositYocto: "185000000000000000000000",
-    txHash: "EZ5JQNsV7Ub7K5sRWxhMR9XBbTDL3WvbDy1ziqndeKkd",
-    blockHeight: 276951890,
-    blockHash: "7oKk4bJK8vcX9aaD5xNyY6WG76wvSAGj2arQFL9Tkjet",
-    receiptId: "bpsHmbvaxNvcUDUVQpFhY87Bet14KXfMAGh3wCwuE2g",
-    timestampIso: "2026-11-09T17:38:38.609Z",
+    txHash: "CbyFXXpFcEd7kqSU5vwjqftkGbcV6xziQq9FFBtRCEfX",
+    blockHeight: 277476147,
+    blockHash: "CGUqvrzaNpK2MQdxDpz8miRWCGvS5aPqGumiU82vkhMB",
+    receiptId: "BfN8XVX1tkFq4qt2HHQDfxsyzVKgSL6M2ewQALyQrYf8",
+    timestampIso: "2026-11-13T06:56:01.407Z",
   },
   {
     rowNumber: 3,
@@ -75,11 +75,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.85,
     depositNear: "0.2400",
     depositYocto: "240000000000000000000000",
-    txHash: "DuJP13Cq8szi9CYQVvnVcWNno7oVij7USMFPWSqaREwT",
-    blockHeight: 276951910,
-    blockHash: "4qfKp8Vru9rwEXkPUZJi1cFEoLboJS8rtUxncQjjnx6e",
-    receiptId: "B9xDFPuJhPYHQYbNKC1ZXbtgV89YwpAXvHpM13kF9XUn",
-    timestampIso: "2026-11-09T17:38:49.605Z",
+    txHash: "Eu4er3o8j3mqMvJRf9r8vToejx1ZpVJMG3qx3b5HSL7w",
+    blockHeight: 277476166,
+    blockHash: "J7VMfV4PdxyFu2teZGVwDoBghzkdvRDc8KU1bE3vB9Sh",
+    receiptId: "CSW2YAMPMgGcthQq962eTsNdx6fXth4oGrai3ddrJHc4",
+    timestampIso: "2026-11-13T06:56:12.823Z",
   },
   {
     rowNumber: 4,
@@ -89,11 +89,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.53,
     depositNear: "0.1500",
     depositYocto: "150000000000000000000000",
-    txHash: "FgsFBCMJNhCXpDG8Z5nRRuSSwe5mUtCxWh4G5LNNXwML",
-    blockHeight: 276951929,
-    blockHash: "6DSh8uSw6f1WGj5owerEGBbGqs4WeiWuR4rZY67Twsfk",
-    receiptId: "DBwkPEnM6akXsjbEWf6RbcytCR5iiaur7tVxmjJtEQi4",
-    timestampIso: "2026-11-09T17:39:00.960Z",
+    txHash: "3VvVENtL1yA5wRroCdQLLXcop7XzoZs3h8S7XThJfj8E",
+    blockHeight: 277476184,
+    blockHash: "3YC7MEn6t3vwoFRDgJfg6zf68aBnkLKKurfXYVvCuAGG",
+    receiptId: "6VSn844EyErCPCG6dvmneiXWzXqoBpFDhGfnsVUqaeNX",
+    timestampIso: "2026-11-13T06:56:23.664Z",
   },
   {
     rowNumber: 5,
@@ -103,11 +103,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.78,
     depositNear: "0.2200",
     depositYocto: "220000000000000000000000",
-    txHash: "6gtoqGZxhZbb3bwDMXQgJxR1E2RFzjckUtZZmykT5yEf",
-    blockHeight: 276951949,
-    blockHash: "5d9ADaiTf2aEvDtuX1Dp4jYXUswT3vyMKViSCMvGpLSG",
-    receiptId: "B6LHR9522pnY7YqRr5s8g427bujquavputjZSBYPveZF",
-    timestampIso: "2026-11-09T17:39:12.946Z",
+    txHash: "4oEHKYyWPcEMa31WhHc57pBWkLneDCRdSY7GLXuijCQv",
+    blockHeight: 277476199,
+    blockHash: "vEgPQPhEoMppaqG7R8uYtvJ9CYf7dMdcT1SY4wwfuTb",
+    receiptId: "9JgXA1vhsHoVEfF1bhi9TCz8zRMx46fVdHJxKJnBAVm8",
+    timestampIso: "2026-11-13T06:56:32.858Z",
   },
   {
     rowNumber: 6,
@@ -117,11 +117,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 1.07,
     depositNear: "0.3000",
     depositYocto: "300000000000000000000000",
-    txHash: "HfTRasU3MXduekCsErNTtqBLcVHEnJNrFJhagc3dZjf3",
-    blockHeight: 276951968,
-    blockHash: "9LrU6qDzwZ8WAQuQeJTHvdStoi5ERfoksuA8e8mLaWbs",
-    receiptId: "DpSEDjS9P9rChxG8BH2iua24zgWGvr2hfXpWJBcaiw6X",
-    timestampIso: "2026-11-09T17:39:24.413Z",
+    txHash: "Bxh2vmBBbvS2bt6CwgQV7tJk2RtPDLsm96bf7juSb2UY",
+    blockHeight: 277476205,
+    blockHash: "CjgQL6Xt4VHSiM5xPZGrjpVXtowaJ2KtBFVgsmPYH2m4",
+    receiptId: "FZyfRCfzigHmPA3qQVKB912LNUXViPUxRE8XFLkhBdYz",
+    timestampIso: "2026-11-13T06:56:36.503Z",
   },
   {
     rowNumber: 7,
@@ -131,11 +131,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.7,
     depositNear: "0.1975",
     depositYocto: "197500000000000000000000",
-    txHash: "J8dxD4qbT1wPa4nJDbFhvjzaiBrReJd9vuQBiZASuWkz",
-    blockHeight: 276951987,
-    blockHash: "9dzoh3bUuXMm8u7SHczu78rY3cbdRkhTwS3iRLtaAmGP",
-    receiptId: "8ugpTRWNoVYrkHtvzgbKk9frD9yX9H1pCs96ys94Ls89",
-    timestampIso: "2026-11-09T17:39:35.900Z",
+    txHash: "5aALmWAX83BkYWrXF6ZrJnTLh7Wd5QcR3wPdiKrWAMNG",
+    blockHeight: 277476209,
+    blockHash: "HHTasuUdhYNDKoixveKXGSDRvDRHE7the9fcghWg9wac",
+    receiptId: "DiQW4mYdKjzL7Fs8X5YjhMg1bsZgrGaaELyMGcRne3aT",
+    timestampIso: "2026-11-13T06:56:38.916Z",
   },
   {
     rowNumber: 8,
@@ -145,11 +145,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.99,
     depositNear: "0.2800",
     depositYocto: "280000000000000000000000",
-    txHash: "5KTFih2RH4qtqpjjt2UZCXzuAgGoVL9w1Kb1pA1czm4E",
-    blockHeight: 276952006,
-    blockHash: "2bZUHDSNachugEEcGz9cak8JhEENkdFvE4KurMpTpk5q",
-    receiptId: "H3F8BBBYW58mQenJ1tHEdPKYE24Gak9VkDgduefXHMzg",
-    timestampIso: "2026-11-09T17:39:47.509Z",
+    txHash: "65fZbRCzCsPoGrxiPP5uK9m67AmriSyJggYxLBUtevqX",
+    blockHeight: 277476214,
+    blockHash: "35DR179n6A8A3EQkvMtixvLukjDj1CX3vxWacLShwPEW",
+    receiptId: "9erJT9FtrAVMv3AuCpCwqmPw1CWxjdXG7eLZACq9UcCo",
+    timestampIso: "2026-11-13T06:56:41.910Z",
   },
   {
     rowNumber: 9,
@@ -159,11 +159,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.43,
     depositNear: "0.1225",
     depositYocto: "122500000000000000000000",
-    txHash: "DdasZqnKiRx1KXUSV5hXLbnQtzpdWjAtMTHofSnWtg29",
-    blockHeight: 276952025,
-    blockHash: "D4ieHpunNvAQS5FpALF1y1rjtX7GU5PknpDC5SqX3oun",
-    receiptId: "AhGSjddAj2kmjcAhGqoD7Kj7Wgniuo8RDZoFV9EMbHpu",
-    timestampIso: "2026-11-09T17:39:58.975Z",
+    txHash: "3N9ioNEQdML3HUxPmp2bScDsDZnrYLXkNEu9sKzwUFZm",
+    blockHeight: 277476218,
+    blockHash: "DwCFa2nij8Q9vsmiHYX2EvsxPhQLsbosiNjCCqFh2Kdn",
+    receiptId: "Mb8woVFSFYZYEahek6ZEpbFxdNoiSsKr1WbGec6gtRq",
+    timestampIso: "2026-11-13T06:56:44.374Z",
   },
   {
     rowNumber: 10,
@@ -173,11 +173,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 0.51,
     depositNear: "0.1450",
     depositYocto: "145000000000000000000000",
-    txHash: "BWvKCZw8fFB8M9jwema61dGRHDVH3jyeWhjPsLUA19CC",
-    blockHeight: 276952045,
-    blockHash: "2o6pWRcSQLF3HxNYxPqa22qBAKbpkFdv5Ewn7tUMDD5X",
-    receiptId: "DNTCaow4rSZirWrzxuNdUJuN8tTvja1gd9McopuFkFnp",
-    timestampIso: "2026-11-09T17:40:11.183Z",
+    txHash: "GgJ6zcBnkVWhauubhPoGyity4fJSsjNrXsWbV2fc4jrE",
+    blockHeight: 277476222,
+    blockHash: "S3YcuopgMN8MZTGEdVkqC2JrTtzzDB2MTTdzLnZt9Xy",
+    receiptId: "CmbXGjGDeRA4yVHTxY9SEgBRyXAECLTtkaJQHg1BVnZF",
+    timestampIso: "2026-11-13T06:56:46.757Z",
   },
   {
     rowNumber: 11,
@@ -187,11 +187,11 @@ export const VERIFIED_PAYROLL_ONCHAIN_RECORDS: readonly VerifiedPayrollOnChainRe
     usdEquivalentAtLiveRate: 1.24,
     depositNear: "0.3500",
     depositYocto: "350000000000000000000000",
-    txHash: "9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd",
-    blockHeight: 276952064,
-    blockHash: "HBcSGzVpjS1Kmo1obTUjk3NXUw8YQALgJjcrn3J85ycW",
-    receiptId: "PuFzzBtW8gJzWP2d5yN1KrrPXnFQxx9rB9L6oqw5mzt",
-    timestampIso: "2026-11-09T17:40:22.617Z",
+    txHash: "4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q",
+    blockHeight: 277476226,
+    blockHash: "AyKkhG1fDNRgn18yjtWZDGdpUqFD81Kan3SvgCmASwts",
+    receiptId: "5sPBwad26JWRHk2BPpdTXTCUA82DHkgD9D92wJA6Cfr1",
+    timestampIso: "2026-11-13T06:56:49.261Z",
   },
 ];
 
@@ -1036,7 +1036,7 @@ export function generateVisualAuditStatementHtml(params: {
         ? `<a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};border:1px solid #86efac;font-size:10px;font-weight:700;letter-spacing:0.06em;text-decoration:none;">SETTLED (${escapeHtml(rowNearTransfer)} NEAR TX ${safeRowShortTxHash}... &#8599;)</a>`
         : `<span style="display:inline-block;padding:3px 8px;border-radius:999px;background:${badgeBg};color:${badgeColor};font-size:10px;font-weight:700;letter-spacing:0.06em;">${safeStatus}</span>`;
       const proofCellHtml = isSettled
-        ? `<span style="word-break:break-all;">${safeProofHashes}${o.blockHeight ? `|blockHeight:${o.blockHeight}` : ""}</span> <a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:600;white-space:nowrap;">(On-Chain Tx ${escapeHtml(rowTxHash)} · Block #${o.blockHeight ?? 276951868} &#8599;)</a>`
+        ? `<span style="word-break:break-all;">${safeProofHashes}${o.blockHeight ? `|blockHeight:${o.blockHeight}` : ""}</span> <a href="${rowExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:600;white-space:nowrap;">(On-Chain Tx ${escapeHtml(rowTxHash)} · Block #${o.blockHeight ?? 277476128} &#8599;)</a>`
         : `<span style="word-break:break-all;">${safeProofHashes}</span>`;
       return `<tr style="background:${rowBg};border-bottom:1px solid #e5e7eb;">
         <td style="padding:10px 12px;font-family:monospace;font-size:12px;font-weight:600;color:#111827;">#${o.rowNumber} · ${safeInvoiceRef}</td>
@@ -1235,7 +1235,7 @@ export function generateVisualAuditStatementHtml(params: {
     <div style="margin-top:28px;">
       <h2 style="margin:0 0 8px 0;font-size:15px;color:#111827;">Verified On-Chain NEAR Testnet Transaction Ledger (${VERIFIED_HISTORICAL_NEAR_TESTNET_TXNS.length} Transactions — Synced 1:1 with /api/overview &amp; Homepage)</h2>
       <div style="font-size:11px;color:#4b5563;margin-bottom:10px;">
-        Includes the 11 non-zero batch payroll transfers (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">EnhR2L...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">9Gdphd...</code> totaling <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2.6400 NEAR</code> &approx; <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">$${totalSettledUsd.toFixed(2)} USD</code>), the 4 dedicated feature proof transfers (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">C8M7vc...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">5L6wvj...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">7DwfTP...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">71hcr5...</code>), and all 12 historical PoC-4 &amp; OutLayer anchor transactions (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">AVfu48...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">7GKh8p...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">BNmWCq...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">DfKeN18...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2Jqeh72J...</code>).
+        Includes the 11 non-zero batch payroll <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">FunctionCall:execute_payroll_row</code> settlements (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">GLRZZp...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">4MaRm3...</code> totaling <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2.6400 NEAR</code> &approx; <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">$${totalSettledUsd.toFixed(2)} USD</code>), the 6 dedicated feature proof &amp; DAO escalation contract calls (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">DhPbV1...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">2yRJdS...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">3CH6o6...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">DLwMCD...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">FCbDwe...</code>, <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">wKfp2j...</code>), and all 12 <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">FunctionCall:anchor_poc4_batch</code> anchor transactions (<code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">GDvaQQ...</code> through <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">87G44q...</code>).
       </div>
       <table>
         <thead>

@@ -180,7 +180,7 @@ export function loadEnvironmentConfig(workspaceRoot: string = resolveWorkspaceRo
     OUTLAYER_WORKER_CONTRACT_ID: getVal("OUTLAYER_WORKER_CONTRACT_ID", "worker.outlayer.testnet"),
     RHEA_EXCHANGE_CONTRACT_ID: getVal("RHEA_EXCHANGE_CONTRACT_ID", "ref-finance.testnet"),
     RHEA_FARMING_CONTRACT_ID: getVal("RHEA_FARMING_CONTRACT_ID", "ref-farming.testnet"),
-    SPUTNIK_DAO_CONTRACT_ID: getVal("SPUTNIK_DAO_CONTRACT_ID", "kratonos-dao.sputnikv2.testnet"),
+    SPUTNIK_DAO_CONTRACT_ID: getVal("SPUTNIK_DAO_CONTRACT_ID", "jubayir69.testnet"),
     MPC_SIGNER_CONTRACT_ID: getVal("MPC_SIGNER_CONTRACT_ID", "v1.signer-prod.testnet"),
   };
 }
