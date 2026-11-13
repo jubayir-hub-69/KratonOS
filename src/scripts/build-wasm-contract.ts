@@ -805,8 +805,9 @@ if (isMain) {
   fs.writeFileSync(watPath, watText, "utf8");
   fs.writeFileSync(wasmPath, wasmBuffer);
 
-  assert.equal(WebAssembly.validate(wasmBuffer), true, "Generated WASM must be valid WebAssembly 1.0");
-  const mod = new WebAssembly.Module(wasmBuffer);
+  const wasmBytes = new Uint8Array(wasmBuffer) as Uint8Array<ArrayBuffer>;
+  assert.equal(WebAssembly.validate(wasmBytes), true, "Generated WASM must be valid WebAssembly 1.0");
+  const mod = new WebAssembly.Module(wasmBytes);
 
   // Verify against simulated NEAR VM host functions
   const registers = new Map<bigint, Buffer>();

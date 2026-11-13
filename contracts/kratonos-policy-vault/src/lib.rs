@@ -353,7 +353,7 @@ impl KratonPolicyVault {
     ///   AND within `daily_spend_limit_usd_cents` -> records spend, boosts reputation (`+5` up to 1000),
     ///   and emits NEP-297 `intent_approved` event.
     /// - Tier 2 (`ONE_COUNCIL_FAST_TRACK`) & Tier 3 (`SPUTNIK_DAO_PROPOSAL`): constructs a cross-contract
-    ///   `add_proposal` call on Sputnik DAO V2 (`1 NEAR` bond, `150 TGas`) with the SHA-256 operation hash.
+    ///   `escalate_dao_proposal` call on jubayir69.testnet (`1 NEAR` bond, `150 TGas`) with the SHA-256 operation hash.
     pub fn execute_or_escalate_intent(
         &mut self,
         agent_id: AccountId,
@@ -479,7 +479,7 @@ impl KratonPolicyVault {
             && env::account_balance() >= NearToken::from_near(2)
         {
             let _ = Promise::new(self.sputnik_dao_id.clone()).function_call(
-                "add_proposal".to_string(),
+                "escalate_dao_proposal".to_string(),
                 proposal_payload.to_string().into_bytes(),
                 NearToken::from_near(1),
                 Gas::from_tgas(150),
@@ -697,7 +697,7 @@ mod tests {
 
         KratonPolicyVault::new(
             "jubayir69.testnet".parse().unwrap(),
-            "kratonos-dao.sputnikv2.testnet".parse().unwrap(),
+            "jubayir69.testnet".parse().unwrap(),
             "outlayer.testnet".parse().unwrap(),
             "worker.outlayer.testnet".parse().unwrap(),
             "v1.signer-prod.testnet".parse().unwrap(),

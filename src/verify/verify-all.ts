@@ -287,8 +287,8 @@ async function runMasterVerificationSuite(): Promise<void> {
       status: "SUCCESS",
       swapDetails: {
         nearTxHashes: [
-          "block:276951868:J8mz55K5pqMzK2m584dtLyRh7RV8y1vgo2BsR9VQKpQT",
-          "receipt:HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
+          "block:277476128:2EbVvPSMxFP6km1U6LUNFJDTNQVeH6AgPLWtNkpusbYm",
+          "receipt:5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
         ],
       },
     }).settledOnNearPrivateShard,

@@ -110,7 +110,7 @@ Before any outbound transfer, bounty payout, or token swap is authorized, Kraton
 
 ## 3. 3-Tier Earned-Trust Governance & Bounty Escalation (Sputnik DAO V2 & Trezu)
 
-KratonOS combines high-velocity autonomous execution with institutional treasury safety via a **3-Tier Earned-Trust Governance Model** integrated with **Sputnik DAO V2** (`kratonos-dao.sputnikv2.testnet`) and **Trezu** multisig treasury workflows.
+KratonOS combines high-velocity autonomous execution with institutional treasury safety via a **3-Tier Earned-Trust Governance Model** integrated with **Sputnik DAO V2** (`jubayir69.testnet`) and **Trezu** multisig treasury workflows.
 
 ### Governance Tiers
 
@@ -120,9 +120,9 @@ KratonOS combines high-velocity autonomous execution with institutional treasury
 * **Tier 2 — Single-Council Fast-Track**:
   - **Criteria**: Transaction value between $\$50.01$ and $\$150.00$ (`max_single_tx_usd`), or a first-time verified named counterparty with a low-to-moderate risk score (`warn` threshold under review).
   - **Execution**: Generates a pre-verified PoC-4 execution package requiring a single council co-approval signature before broadcast.
-* **Tier 3 — Full Sputnik DAO V2 On-Chain Proposal (`add_proposal`)**:
+* **Tier 3 — Full DAO On-Chain Proposal (`escalate_dao_proposal` on `jubayir69.testnet`)**:
   - **Criteria**: Any transaction $> \$150.00$, any policy modification to `config.yaml`, any new token whitelist addition, or any escalated `warn` operation requiring full council consensus.
-  - **Execution**: Automatically constructs and submits a `sputnik-dao-v2` `add_proposal` call to `kratonos-dao.sputnikv2.testnet` with:
+  - **Execution**: Automatically constructs and submits `escalate_dao_proposal` on `jubayir69.testnet` with:
     - **Attached Bond**: `1 NEAR` (`1000000000000000000000000` yoctoNEAR)
     - **Deterministic Description**: Includes the human-readable intent summary, the 4-Signal Risk Report, and the canonical **SHA-256 Operation Hash** (`op_hash = SHA256(CanonicalJSON(ProposalPayload))`) + `H_master` commitment.
 
@@ -131,7 +131,7 @@ KratonOS combines high-velocity autonomous execution with institutional treasury
 ```text
 +-------------------+     +-----------------------+     +------------------------+     +---------------------------+
 |   Sub-Agent /     |     | 4-Signal Risk Engine  |     |  PoC-4 Policy Gate     |     | Sputnik DAO V2 / Trezu    |
-|  Bounty Request   |     | (Allow / Warn / Block)|     |  (Tier Classifier)     |     | (kratonos-dao.sputnikv2)  |
+|  Bounty Request   |     | (Allow / Warn / Block)|     |  (Tier Classifier)     |     | (jubayir69.testnet)  |
 +---------+---------+     +-----------+-----------+     +-----------+------------+     +-------------+-------------+
           |                           |                             |                                |
           | 1. Submit Payout/Swap Req |                             |                                |
@@ -150,7 +150,7 @@ KratonOS combines high-velocity autonomous execution with institutional treasury
           |                           |                             |   Queue Single-Council Signoff |
           |                           |                             |                                |
           |                           |                             |-- [If Tier 3: > $150 or Policy]|
-          |                           |                             | 4. Call add_proposal (1 NEAR)  |
+          |                           |                             | 4. Call escalate_dao_proposal (1 NEAR) |
           |                           |                             |------------------------------->|
           |                           |                             |    with SHA-256 Op Hash        |
 ```

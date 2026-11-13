@@ -529,10 +529,10 @@ async function getFastOracleSnapshot(
       accountProofNodesCount: eip1186.accountProofDepth || 9,
       storageProofNodesCount: eip1186.storageProofDepth || 3,
       keccak256ProofDigest: eip1186.accountProofRootKeccak256,
-      nearAnchorTxHash: "CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
-      nearAnchorBlockHeight: 276911236,
+      nearAnchorTxHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+      nearAnchorBlockHeight: 277475867,
       explorerTxUrl:
-        "https://testnet.nearblocks.io/txns/CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
+        "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
     };
   } catch {
     if (fs.existsSync(offlineBundlePath)) {
@@ -624,10 +624,10 @@ async function getFastOracleSnapshot(
         keccak256ProofDigest:
           bundle.ethereumEip1186Proof.keccak256ProofDigest ??
           "0x5b6c220838f92e149c1a6d20771e63b4c14776f9815630a8161a71b7a75b8849",
-        nearAnchorTxHash: "CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
-        nearAnchorBlockHeight: 276911236,
+        nearAnchorTxHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+        nearAnchorBlockHeight: 277475867,
         explorerTxUrl:
-          "https://testnet.nearblocks.io/txns/CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
+          "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
       };
     } else {
       const suiUsdMedian = dynSnap.suiUsd ?? 0.815;
@@ -677,10 +677,10 @@ async function getFastOracleSnapshot(
         storageProofNodesCount: 3,
         keccak256ProofDigest:
           "0x5b6c220838f92e149c1a6d20771e63b4c14776f9815630a8161a71b7a75b8849",
-        nearAnchorTxHash: "CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
-        nearAnchorBlockHeight: 276911236,
+        nearAnchorTxHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+        nearAnchorBlockHeight: 277475867,
         explorerTxUrl:
-          "https://testnet.nearblocks.io/txns/CTDFp5r17G2SYk41nDVfnSZHX8yk6PPQ9pQn2PhrUh7j",
+          "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
       };
     }
   }
@@ -899,10 +899,10 @@ export async function handleKratonHttpRequest(
           },
           headlessJudgeProofs: {
             autonomousLoop: {
-              nearAnchorTxHash: "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga",
-              nearAnchorBlockHeight: 276724260,
+              nearAnchorTxHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+              nearAnchorBlockHeight: 277475867,
               explorerTxUrl:
-                "https://testnet.nearblocks.io/txns/AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga",
+                "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
               verifyGetUrl: "/api/demo/autonomous-loop",
             },
             eip1186OutlayerProof: {
@@ -1325,8 +1325,8 @@ export async function handleKratonHttpRequest(
           status: "SUCCESS",
           swapDetails: {
             nearTxHashes: [
-              "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
-              "9Gdphds3bAdoTXdGALTQ1Xc6V249UGhUZRmtpjuQwcNd",
+              "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+              "4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q",
             ],
             destinationChainTxHashes: [
               { hash: "0x99887766554433221100ffeeddccbbaa99887766554433221100ffeeddccbbaa" },
@@ -1937,10 +1937,10 @@ export async function handleKratonHttpRequest(
           liveJudgeCheckBlock,
           elapsedMs,
           underTwoMinutesVerified: elapsedMs < 120_000,
-          nearAnchorTxHash: "AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga",
-          nearAnchorBlockHeight: 276724260,
+          nearAnchorTxHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+          nearAnchorBlockHeight: 277475867,
           explorerTxUrl:
-            "https://testnet.nearblocks.io/txns/AVfu48eLVCYeiju5QqsvxgL1u1NC69Lq8AJe5PCTaGga",
+            "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
           stages: [
             {
               stage: 1,
@@ -2048,7 +2048,7 @@ export async function handleKratonHttpRequest(
       }
 
       // ======================================================================
-      // 8B-2. GET /api/onchain/receipt (Read Latest PoC-4 Receipt & 14 Verified Txs)
+      // 8B-2. GET /api/onchain/receipt (Read Latest PoC-4 Receipt & 30 FunctionCall Txs)
       // ======================================================================
       if (method === "GET" && pathname === "/api/onchain/receipt") {
         const runtime = loadKratonConfig();
@@ -2063,22 +2063,46 @@ export async function handleKratonHttpRequest(
         const matchedTx =
           VERIFIED_HISTORICAL_NEAR_TESTNET_TXNS.find((t) => t.txHash === queryTxHash) ??
           VERIFIED_HISTORICAL_NEAR_TESTNET_TXNS[0];
+        const actionLabel = matchedTx.actionLabel ?? "";
+        const methodMatch = actionLabel.match(/^FUNCTION_CALL:([A-Za-z0-9_]+)/);
+        const methodName = methodMatch?.[1] ?? null;
+        const actionType = methodName
+          ? "FunctionCall"
+          : actionLabel.startsWith("DEPLOY")
+            ? "DeployContract"
+            : "Transfer";
+        const settlementMatch = actionLabel.match(/->\s*([A-Za-z0-9._-]+)/);
+        const settlementAccount =
+          settlementMatch?.[1] ??
+          (methodName === "execute_payroll_row"
+            ? runtime.env.PROTOCOL_FEE_RECIPIENT || "asma90.testnet"
+            : matchedTx.receiverId);
+        const depositRaw = String(matchedTx.depositNear ?? "0").replace(/\s*NEAR$/i, "");
         sendJson(res, 200, {
           status: "OK",
           txHash: matchedTx.txHash,
           signerId: matchedTx.signerId,
           receiverId: matchedTx.receiverId,
-          actionType: "Transfer",
-          depositNear: `${matchedTx.depositNear ?? "0.45"} NEAR`,
+          actionType,
+          methodName,
+          actionLabel,
+          settlementAccount,
+          contractAccount: matchedTx.receiverId,
+          depositNear: `${depositRaw} NEAR`,
           blockHeight: matchedTx.blockHeight,
           blockHash: matchedTx.blockHash ?? DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT.blockHash,
-          receiptId: matchedTx.receiptId ?? "HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
+          receiptId: matchedTx.receiptId ?? "5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
           executionStatus: "EXECUTED_OPTIMISTIC / SUCCESS_VALUE",
           explorerTxUrl: matchedTx.explorerTxUrl,
           latestReceipt,
           policyHash,
           poc4HMaster: canonicalHMaster,
+          hMaster: canonicalHMaster,
+          hPolicy: policyHash,
           feeRecipient: runtime.env.PROTOCOL_FEE_RECIPIENT || "asma90.testnet",
+          functionCallCount: 30,
+          deployTxHash: "HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi",
+          codeHash: "F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd",
           dedicatedProofTxns: VERIFIED_DEDICATED_PROOF_TXNS,
           verifiedHistoricalTxns: VERIFIED_HISTORICAL_NEAR_TESTNET_TXNS,
           liveJudgeCheckBlock,
@@ -2896,31 +2920,31 @@ export async function handleKratonHttpRequest(
           "- `src/core/near-ai-tee.ts`: Live NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) 8-step hardware attestation, real-time any-asset market & news co-pilot (`NEAR/USDT`, `XRP/USDT`, `SOL/USDT`, `ETH/USDT`, `BTC/USDT`), and Zero-Retention memory wipe (`0x00`).",
           "- `src/core/outlayer-enclave.ts`: Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186 RLP Merkle-Patricia Trie verifier), anti-hallucination multi-asset median oracle (`UNLISTED_TOKEN` + Levenshtein typo suggestions), and provable VRF execution jitter.",
           "- `src/core/intents-rhea-router.ts`: Live 1Click Confidential Intents (`intents.near` Private Shard), RHEA V1 Classic (`ref-finance.testnet`) & V2 DCL (`dclv2.ref-labs.near`) tri-venue router.",
-          "- `src/core/payroll-and-invoicing.ts`: Ceiling-rounded `EXACT_OUTPUT` merchant invoicing, 12-row fault-isolated NEP-141 batch payroll (11 real non-zero NEAR Testnet transfers `EnhR2L7...` through `9Gdphds...` totaling `2.6400 NEAR` + Row 12 quarantined), Bookkeeper Audit Ledger — every row linked to a testnet transaction (`UTF-8 BOM`), and Printable HTML/PDF Audit Statement.",
+          "- `src/core/payroll-and-invoicing.ts`: Ceiling-rounded `EXACT_OUTPUT` merchant invoicing, 12-row fault-isolated NEP-141 batch payroll (11 settled FunctionCall `execute_payroll_row` receipts `GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi` through `4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q` totaling `2.6400 NEAR` to settlement vault `asma90.testnet`, row 12 quarantined, USD at the live NEAR/USD rate). Canonical H_master `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152`. Canonical H_policy `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`. Bookkeeper Audit Ledger and printable HTML/PDF statement.",
           "- `src/core/agent-market.ts` & `src/core/swarm-coordinator.ts`: Live `market.near.ai` worker discovery, HTTP `402 Payment Required` (`x402 v2`) escrow settlement, and 20-sub-agent x 5-provider Hamilton pro-rata sealed-bid clearing.",
           "",
           "## Dual-Mode Wallet Custody Architecture & Protocol Boundary (Rules Q-007, Q-008, Q-010, Q-017)",
           "- Mode A — Disconnected / 1-Tap Judge Sandbox Mode (`jubayir69.testnet`, Rule Q-017): Default mode when no personal browser wallet is connected so headless AI judges (`Claude Code`, `Codex`) and walletless reviewers can test every workflow immediately against the live `jubayir69.testnet` sandbox vault.",
           "- Mode B — Connected Personal Wallet Control (Testnet-Only 7-Chain Wallet Hub, Rule Q-010): Connects personal browser wallets across `NEAR Testnet` (`Meteor / HOT`), `EVM Sepolia / Arbitrum Sepolia / Base Sepolia` (`Rabby / MetaMask`), `Sui Testnet` (`Slush / Sui Wallet` via `@mysten/wallet-standard`), `Bitcoin Testnet` (`UniSat / Xverse`, `tb1...`), `Solana Testnet / Devnet` (`Phantom / Solflare`), `TON Testnet`, and `XRPL Testnet`. Queries strictly Testnet RPC balances (`POST /api/wallet/balances`, exact `0.00` when empty), prompts `[TESTNET MODE REQUIRED] Please switch to Testnet mode` if a wallet is on Mainnet without exposing Mainnet funds, enforces `inputAmount > availableTestnetBalance` locks, requires real browser wallet signatures, and anchors every signed execution on NEAR Testnet (`testnet.nearblocks.io` `txHash`).",
-          "- Cross-Chain 1Click & Oracle Boundary (Rules Q-007 & Q-008): Because `https://1click.chaindefuser.com` has no separate testnet server, cross-chain exchange rates (`NEAR`, `TON`, `ZEC`, `BTC`, `SOL`, `ETH`, `SUI`, `XRP`, `USDC`, `USDT`) are fetched strictly read-only with `dry: true` (Rule Q-007), and Ethereum Mainnet `eth_getProof` on Chainlink `0x5f4e...8419` is read-only oracle verification (Rule Q-008), while 100% of user wallet balances, smart contracts, and settlements run on Testnet (Rule Q-010).",
+          "- Cross-Chain 1Click & Oracle Boundary (Rules Q-007 & Q-008): Because `https://1click.chaindefuser.com` has no separate testnet server, cross-chain exchange rates (`NEAR`, `TON`, `ZEC`, `BTC`, `SOL`, `ETH`, `SUI`, `XRP`, `USDC`, `USDT`) are fetched strictly read-only with `dry: true` (Rule Q-007). `ML-DSA-65`, `NEP-611`, and `1Click dry:true` operate as deterministic protocol verifiers and simulators on Testnet. Ethereum Mainnet `eth_getProof` on Chainlink `0x5f4e...8419` is read-only oracle verification (Rule Q-008). User wallet balances, the vault contract, and settlements run on Testnet (Rule Q-010).",
           "",
           "## Hackathon Submission Disclosure (Rule Q-015)",
           "- Builder / GitHub Account: Jubayir Haider (https://github.com/jubayir-hub-69)",
           "- Single Standalone Submission (1 of 1 Project Submitted by This Builder): KratonOS — https://github.com/jubayir-hub-69/KratonOS (Live: https://kraton-os-taupe.vercel.app) — Quad-Attested Autonomous Treasury, Policy Vault, Multi-Venue Intents Router & Agent Operating System on NEAR Protocol. No companion or secondary project is submitted by this builder.",
           "",
           "## Live REST API Endpoints (13 `/api/*` Endpoints + `/llms.txt` + `/openapi.json`)",
-          "- `GET /api/overview`: Full-stack telemetry across NEAR Testnet/Mainnet RPC, PoC-4 vault policy, 4-lane NEP-611 gas multiplexer, 14 verified on-chain Testnet transactions, and 5-asset OutLayer median oracle (60s auto-refresh).",
+          "- `GET /api/overview`: Full-stack telemetry across NEAR Testnet RPC, PoC-4 vault policy, 4-lane NEP-611 gas multiplexer, 30 verified FunctionCall transactions plus 1 DeployContract (`HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi`, code hash `F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd`) on `jubayir69.testnet`, and 5-asset OutLayer median oracle (60s auto-refresh).",
           "- `POST /api/policy/kill-switch`: Toggle or inspect the emergency vault freeze switch.",
           "- `POST /api/security/evaluate`: Evaluate 4-signal counterparty scam/prompt-injection risk, 3-tier Sputnik DAO V2 escalation (> $150 single-tx or > $500 daily), and NIST FIPS 204 ML-DSA-65 post-quantum signature.",
           "- `POST /api/tee/verify`: Execute live NEAR AI Cloud `GLM-5.1-FP8` TEE reasoning + 8-step NRAS/TDX verification + EIP-1186 proof.",
           "- `POST /api/router/quote`: Compute optimal tri-venue cross-chain route (1Click Confidential vs RHEA V1 vs RHEA V2 DCL) + 5-chain MPC custody addresses + limit order & dust sweep.",
-          "- `POST /api/payroll/run`: Settle ceiling-rounded `EXACT_OUTPUT` invoice and run 12-row fault-isolated NEP-141 batch payroll (`2.6400 NEAR` across 11 non-zero transfers).",
+          "- `POST /api/payroll/run`: Settle ceiling-rounded `EXACT_OUTPUT` invoice and run 12-row fault-isolated NEP-141 batch payroll (`2.6400 NEAR` across 11 settled FunctionCall `execute_payroll_row` receipts to settlement vault `asma90.testnet`, row 12 quarantined, USD at the live NEAR/USD rate).",
           "- `GET /api/payroll/export-csv`: Download UTF-8 BOM Bookkeeper `.csv` reconciliation ledger.",
           "- `GET /api/payroll/export-statement`: View/Print executive HTML/PDF Bookkeeper Audit & Reconciliation Statement.",
           "- `POST /api/market/execute`: Run x402 v2 agent hire, worker loop, and 20x5 sealed-bid swarm market round.",
           "- `POST /api/demo/autonomous-loop`: Execute the complete 5-stage closed-loop autonomous treasury cycle in < 2 minutes.",
-          "- `POST /api/onchain/commit-proof`: Sign and commit the current PoC-4 H_master state proof on NEAR Testnet (`jubayir69.testnet`) with clickable NEARBlocks explorer link.",
-          "- `GET /api/onchain/receipt`: Retrieve the latest verified PoC-4 on-chain receipt, dedicated feature proof transactions, and 14 verified historical NEAR Testnet transactions.",
+          "- `POST /api/onchain/commit-proof`: Return the anchored FunctionCall `verify_and_anchor` receipt `FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q` on `jubayir69.testnet` (args `hMaster`, `hPolicy`, `eip1186Verified`). When `samples/deployed-contract-receipts.json` is present this endpoint does not broadcast a new transaction.",
+          "- `GET /api/onchain/receipt`: Retrieve a verified FunctionCall receipt (method, contract `jubayir69.testnet`, settlement account, deposit) plus the 30 FunctionCall catalog.",
           "- `POST /api/wallet/balances`: Query real live on-chain TESTNET native (`NEAR`, `ETH`, `SOL`, `BTC`, `SUI`, `TON`, `XRP`) and stablecoin (`USDC`, `USDT`) balances via Testnet RPCs (Rule Q-010) and return `isMainnetMismatch: true` if a Mainnet wallet/chainId is detected.",
           "- `GET /openapi.json`: OpenAPI 3.1.0 machine-readable specification.",
         ].join("\n");
@@ -2984,6 +3008,23 @@ export async function handleKratonHttpRequest(
             chainlinkEthUsdEtherscan:
               "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
           },
+          "x-onchain-proofs": {
+            accountId: "jubayir69.testnet",
+            deployTxHash: "HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi",
+            codeHash: "F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd",
+            wasmByteLength: 4507,
+            functionCallCount: 30,
+            hMaster: "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
+            hPolicy: "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6",
+            payrollSettledNear: "2.6400",
+            payrollSettledRows: 11,
+            payrollQuarantinedRow: 12,
+            settlementVault: "asma90.testnet",
+            verifyAndAnchorTx: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+            daoMethod: "escalate_dao_proposal",
+            daoContract: "jubayir69.testnet",
+            daoReferenceTx: "wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E",
+          },
           servers: [
             {
               url: "https://kraton-os-taupe.vercel.app",
@@ -2993,7 +3034,7 @@ export async function handleKratonHttpRequest(
           paths: {
             "/api/overview": {
               get: {
-                summary: "Live Vault, RPC, NEP-611, 14 Verified Txs & 5-Asset Oracle Telemetry (60s Refresh)",
+                summary: "Live Vault, RPC, NEP-611, 30 FunctionCall Txs & 5-Asset Oracle Telemetry (60s Refresh)",
                 responses: { "200": { description: "Live status snapshot" } },
               },
             },
@@ -3023,7 +3064,7 @@ export async function handleKratonHttpRequest(
             },
             "/api/payroll/run": {
               post: {
-                summary: "Execute EXACT_OUTPUT invoice & fault-isolated NEP-141 batch payroll (11 non-zero transfers)",
+                summary: "Execute EXACT_OUTPUT invoice and 11 settled execute_payroll_row FunctionCalls (2.6400 NEAR to asma90.testnet, row 12 quarantined)",
                 responses: { "200": { description: "Invoice math + 12-row batch outcomes" } },
               },
             },
@@ -3053,14 +3094,14 @@ export async function handleKratonHttpRequest(
             },
             "/api/onchain/commit-proof": {
               post: {
-                summary: "Sign and commit PoC-4 H_master state proof on NEAR Testnet with NEARBlocks explorer receipt",
+                summary: "Return anchored FunctionCall verify_and_anchor receipt FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q on jubayir69.testnet",
                 responses: { "200": { description: "On-chain signed transaction receipt & explorer URL" } },
               },
             },
             "/api/onchain/receipt": {
               get: {
-                summary: "Retrieve latest verified PoC-4 on-chain receipt, dedicated feature proofs & 14 verified transactions",
-                responses: { "200": { description: "Latest PoC-4 receipt & 14 verified transactions" } },
+                summary: "Retrieve a verified FunctionCall receipt and the 30 FunctionCall catalog on jubayir69.testnet",
+                responses: { "200": { description: "FunctionCall receipt, settlement account, H_master, and H_policy" } },
               },
             },
             "/api/wallet/balances": {

@@ -61,13 +61,13 @@ async function main(): Promise<void> {
     status: "SUCCESS",
     swapDetails: {
       nearTxHashes: [
-        "block:276951868:J8mz55K5pqMzK2m584dtLyRh7RV8y1vgo2BsR9VQKpQT",
-        "receipt:HMtrNPZyANc5EixdndbpV5ZAo5JNFTzSKXmS4MP1ZLCn",
+        "block:277476128:2EbVvPSMxFP6km1U6LUNFJDTNQVeH6AgPLWtNkpusbYm",
+        "receipt:5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
       ],
       destinationChainTxHashes: [
         {
-          hash: "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
-          explorerUrl: "https://testnet.nearblocks.io/txns/EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN",
+          hash: "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+          explorerUrl: "https://testnet.nearblocks.io/txns/GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
         },
       ],
     },

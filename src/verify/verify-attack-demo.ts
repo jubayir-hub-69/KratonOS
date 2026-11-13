@@ -214,7 +214,9 @@ async function runPhase2VerificationAndAttackDemo(): Promise<void> {
 
   assert.equal(overLimitEscalation.decision, "warn", "Over-limit spend must trigger 'warn' escalation");
   assert.equal(overLimitEscalation.tier, "SPUTNIK_DAO_PROPOSAL", "Must escalate to Tier 3 Sputnik DAO V2 Proposal");
-  assert.ok(overLimitEscalation.sputnikDaoProposalTx, "Must generate Sputnik DAO V2 add_proposal transaction");
+  assert.ok(overLimitEscalation.sputnikDaoProposalTx, "Must generate escalate_dao_proposal transaction on jubayir69.testnet");
+  assert.equal(overLimitEscalation.sputnikDaoProposalTx.methodName, "escalate_dao_proposal");
+  assert.equal(overLimitEscalation.sputnikDaoProposalTx.receiverId, "jubayir69.testnet");
   assert.equal(
     overLimitEscalation.sputnikDaoProposalTx.deposit,
     "1000000000000000000000000",

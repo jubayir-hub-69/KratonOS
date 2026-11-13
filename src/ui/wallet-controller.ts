@@ -2612,8 +2612,8 @@ export async function signMessageWithPersonalWallet(params: {
 }
 
 /**
- * Triggers a REAL on-chain NEAR TESTNET transaction directly from the user's connected NEAR wallet
- * (`wallet.signAndSendTransaction`) so the transaction hash and deposit come from their NEAR Testnet account.
+ * Triggers a FunctionCall `verify_and_anchor` on jubayir69.testnet from the connected NEAR wallet.
+ * The JSON args are hMaster, hPolicy, and eip1186Verified. The attached deposit is 0.
  */
 export async function sendNearTransactionWithPersonalWallet(params: {
   address: string;
@@ -2638,19 +2638,23 @@ export async function sendNearTransactionWithPersonalWallet(params: {
     );
   }
   try {
-    const amount =
-      params.amount !== undefined && Number(params.amount) > 0
-        ? params.amount
-        : "0.001";
-    const depositYocto = BigInt(Math.floor(Number(amount) * 1e24)).toString();
     const nearConnect = await nearConnector.wallet();
     const outcome = await nearConnect.signAndSendTransaction({
       signerId: address,
       receiverId: params.receiverId || "jubayir69.testnet",
       actions: [
         {
-          type: "Transfer",
-          params: { deposit: depositYocto },
+          type: "FunctionCall",
+          params: {
+            methodName: "verify_and_anchor",
+            args: {
+              hMaster: params.poc4HMaster,
+              hPolicy: "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6",
+              eip1186Verified: true,
+            },
+            gas: "30000000000000",
+            deposit: "0",
+          },
         },
       ],
     });

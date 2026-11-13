@@ -296,7 +296,7 @@ async function runServerSmokeTest(): Promise<void> {
     stmtRes.bodyText.includes("SETTLED (") &&
       stmtRes.bodyText.includes("block:") &&
       stmtRes.bodyText.includes("|receipt:") &&
-      stmtRes.bodyText.includes("EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN") &&
+      stmtRes.bodyText.includes("GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/txns/") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/address/"),
     "Printable payroll statement must include real block/receipt commitments and clickable NEARBlocks batch anchor tx links"
@@ -542,17 +542,23 @@ async function runServerSmokeTest(): Promise<void> {
 
   const receiptInspectorRes = await invokeServerEndpoint(
     "GET",
-    "/api/onchain/receipt?txHash=EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN"
+    "/api/onchain/receipt?txHash=GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi"
   );
   assert.equal(receiptInspectorRes.statusCode, 200, "GET /api/onchain/receipt must return HTTP 200");
   const receiptInspectorJson = JSON.parse(receiptInspectorRes.bodyText) as {
     txHash: string;
     depositNear: string;
     receiverId: string;
+    actionType: string;
+    methodName: string;
+    settlementAccount: string;
     executionStatus: string;
   };
-  assert.equal(receiptInspectorJson.txHash, "EnhR2L7eUkqBkrbZmAVgwYErUVhAHtaLXvRZeB9o4ayN");
-  assert.equal(receiptInspectorJson.receiverId, "asma90.testnet");
+  assert.equal(receiptInspectorJson.txHash, "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi");
+  assert.equal(receiptInspectorJson.actionType, "FunctionCall");
+  assert.equal(receiptInspectorJson.methodName, "execute_payroll_row");
+  assert.equal(receiptInspectorJson.receiverId, "jubayir69.testnet");
+  assert.equal(receiptInspectorJson.settlementAccount, "asma90.testnet");
   assert.equal(receiptInspectorJson.depositNear, "0.45 NEAR");
   assert.equal(receiptInspectorJson.executionStatus, "EXECUTED_OPTIMISTIC / SUCCESS_VALUE");
   for (const record of VERIFIED_PAYROLL_ONCHAIN_RECORDS) {

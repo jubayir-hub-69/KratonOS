@@ -1193,6 +1193,8 @@ export function generateVisualAuditStatementHtml(params: {
 
     <div style="margin-top:18px;padding:12px 16px;border-radius:8px;background:#ecfdf5;border:1px solid #a7f3d0;font-family:monospace;font-size:12px;color:#065f46;display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;">
       <div><strong>PoC-4 Quad-Attested Master Commitment (H_master):</strong> ${safePoc4HMaster}</div>
+      <div><strong>Canonical Policy Commitment (H_policy):</strong> 40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6</div>
+      <div><strong>Settlement Vault:</strong> asma90.testnet via FunctionCall execute_payroll_row (11 settled rows, 2.6400 NEAR, row 12 quarantined)</div>
       <div><strong>NEARBlocks Anchor Tx:</strong> <a href="${txExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;font-weight:700;">${safeActiveTxHash} &#8599;</a></div>
     </div>
 

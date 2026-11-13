@@ -68,7 +68,7 @@ export interface SputnikDaoProposalPayload {
 
 export interface SputnikDaoTransactionSpec {
   receiverId: string;
-  methodName: "add_proposal";
+  methodName: "escalate_dao_proposal";
   args: SputnikDaoProposalPayload;
   argsBase64: string;
   deposit: string; // "1000000000000000000000000" (1 NEAR bond)
@@ -257,7 +257,7 @@ export function verify_poc4_enclave_gate(input: PoC4GateInput): PoC4GateResult {
  * Implements the 3-Tier Earned-Trust Governance & Bounty Escalation Engine (Sputnik DAO V2 & Trezu):
  * - Tier 1 (AUTO_APPROVE): amountUsd <= config.max_single_tx_usd AND agentReputationScore >= 700 AND counterpartyRiskDecision === 'allow'
  * - Tier 2 (ONE_COUNCIL_FAST_TRACK): Mid-size spend (amountUsd <= config.daily_spend_limit_usd) or counterpartyRiskDecision === 'warn' (when within single tx cap)
- * - Tier 3 (SPUTNIK_DAO_PROPOSAL): Over-limit spend (amountUsd > config.max_single_tx_usd or low reputation) -> builds Sputnik DAO V2 `add_proposal` with 1 NEAR bond.
+ * - Tier 3 (SPUTNIK_DAO_PROPOSAL): Over-limit spend (amountUsd > config.max_single_tx_usd or low reputation) -> builds `escalate_dao_proposal` on jubayir69.testnet with a 1 NEAR bond.
  */
 export function escalate_sha256_to_sputnik_bounty(
   operation: GovernanceOperationInput
@@ -381,7 +381,7 @@ export function escalate_sha256_to_sputnik_bounty(
 
     return {
       receiverId: sputnikDaoContractId,
-      methodName: "add_proposal",
+      methodName: "escalate_dao_proposal",
       args: proposalArgs,
       argsBase64: Buffer.from(JSON.stringify(proposalArgs), "utf8").toString("base64"),
       deposit: "1000000000000000000000000", // 1 NEAR bond required by Sputnik DAO V2

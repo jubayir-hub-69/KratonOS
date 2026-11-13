@@ -1,0 +1,242 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KratonOS — Autonomous Treasury & Policy Vault on NEAR API",
+    "version": "2026.6",
+    "description": "Verifiable Confidential Treasury, Cross-Chain Liquidity & Agentic Commerce OS built on NEAR Protocol v88.",
+    "license": {
+      "name": "MIT",
+      "url": "https://github.com/jubayir-hub-69/KratonOS/blob/main/LICENSE"
+    }
+  },
+  "externalDocs": {
+    "description": "KratonOS Live Documentation Portal & Official NEAR Hackathon Spec",
+    "url": "https://kraton-os-taupe.vercel.app/docs"
+  },
+  "x-official-references": {
+    "hackathonSpec": "https://nearhackathon.com/HACKATHON.md",
+    "hackathonPrompts": "https://github.com/nearai/near-hackathon-prompt-examples",
+    "liveDeployment": "https://kraton-os-taupe.vercel.app",
+    "liveDocs": "https://kraton-os-taupe.vercel.app/docs",
+    "liveLlmsTxt": "https://kraton-os-taupe.vercel.app/llms.txt",
+    "repository": "https://github.com/jubayir-hub-69/KratonOS",
+    "submissionStatus": "Single standalone submission (1 of 1 project submitted by Jubayir Haider)",
+    "nearDocs": "https://docs.near.org/",
+    "oneClickApi": "https://1click.chaindefuser.com",
+    "oneClickExplorer": "https://explorer.near-intents.org/api/v0/transactions",
+    "nearIntentsDocs": "https://docs.near-intents.org/",
+    "nearAiCloudApi": "https://cloud-api.near.ai/v1",
+    "nearAiCloudPortal": "https://cloud.near.ai",
+    "nearAiDocs": "https://docs.near.ai/",
+    "agentMarket": "https://market.near.ai",
+    "agentMarketDocs": "https://docs.market.near.ai/",
+    "outlayerSite": "https://outlayer.ai/",
+    "outlayerDocs": "https://app.outlayer.ai/docs/getting-started",
+    "outlayerExplorer": "https://testnet.nearblocks.io/address/outlayer.testnet",
+    "rheaFinance": "https://rhea.finance/",
+    "rheaGuide": "https://guide.rhea.finance/",
+    "rheaExchangeExplorer": "https://testnet.nearblocks.io/address/ref-finance.testnet",
+    "rheaFarmingExplorer": "https://testnet.nearblocks.io/address/ref-farming.testnet",
+    "hotConnectDocs": "https://docs.hotdao.ai/",
+    "sputnikDaoRepo": "https://github.com/near-daos/sputnik-dao-contract",
+    "trezuMultiAsset": "https://trezu.org/",
+    "mpcSignerExplorer": "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
+    "treasuryVaultExplorer": "https://testnet.nearblocks.io/address/jubayir69.testnet",
+    "feeRecipientExplorer": "https://testnet.nearblocks.io/address/asma90.testnet",
+    "chainlinkEthUsdEtherscan": "https://etherscan.io/address/0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"
+  },
+  "x-onchain-proofs": {
+    "accountId": "jubayir69.testnet",
+    "deployTxHash": "HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi",
+    "codeHash": "F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd",
+    "wasmByteLength": 4507,
+    "functionCallCount": 30,
+    "hMaster": "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
+    "hPolicy": "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6",
+    "payrollSettledNear": "2.6400",
+    "payrollSettledRows": 11,
+    "payrollQuarantinedRow": 12,
+    "settlementVault": "asma90.testnet",
+    "verifyAndAnchorTx": "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    "daoMethod": "escalate_dao_proposal",
+    "daoContract": "jubayir69.testnet",
+    "daoReferenceTx": "wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E"
+  },
+  "servers": [
+    {
+      "url": "https://kraton-os-taupe.vercel.app",
+      "description": "KratonOS Production Deployment (Vercel + NEAR Testnet)"
+    }
+  ],
+  "paths": {
+    "/api/overview": {
+      "get": {
+        "summary": "Live Vault, RPC, NEP-611, 30 FunctionCall Txs & 5-Asset Oracle Telemetry (60s Refresh)",
+        "responses": {
+          "200": {
+            "description": "Live status snapshot"
+          }
+        }
+      }
+    },
+    "/api/policy/kill-switch": {
+      "post": {
+        "summary": "Toggle or inspect emergency PoC-4 vault kill-switch",
+        "responses": {
+          "200": {
+            "description": "Updated kill-switch state"
+          }
+        }
+      }
+    },
+    "/api/security/evaluate": {
+      "post": {
+        "summary": "Evaluate 4-signal counterparty risk, Sputnik DAO V2 escalation & ML-DSA-65 PQ signature",
+        "responses": {
+          "200": {
+            "description": "Risk verdict, Sputnik proposal & PQ verification"
+          }
+        }
+      }
+    },
+    "/api/tee/verify": {
+      "post": {
+        "summary": "Execute live GLM-5.1-FP8 TEE market/policy co-pilot & 8-step attestation",
+        "responses": {
+          "200": {
+            "description": "Signed TEE verdict + EIP-1186 proof + multi-asset oracle"
+          }
+        }
+      }
+    },
+    "/api/router/quote": {
+      "post": {
+        "summary": "Compare 1Click Confidential Intents vs RHEA V1 Classic vs RHEA V2 DCL & derive 5-chain MPC addresses",
+        "responses": {
+          "200": {
+            "description": "Winning venue quote, 5-chain MPC addresses, limit order & dust sweep"
+          }
+        }
+      }
+    },
+    "/api/payroll/run": {
+      "post": {
+        "summary": "Execute EXACT_OUTPUT invoice and 11 settled execute_payroll_row FunctionCalls (2.6400 NEAR to asma90.testnet, row 12 quarantined)",
+        "responses": {
+          "200": {
+            "description": "Invoice math + 12-row batch outcomes"
+          }
+        }
+      }
+    },
+    "/api/payroll/export-csv": {
+      "get": {
+        "summary": "Download Bookkeeper Audit Ledger — every row linked to a testnet transaction (UTF-8 BOM)",
+        "responses": {
+          "200": {
+            "description": "CSV file attachment"
+          }
+        }
+      }
+    },
+    "/api/payroll/export-statement": {
+      "get": {
+        "summary": "Render printable HTML/PDF Executive Bookkeeper Audit Statement",
+        "responses": {
+          "200": {
+            "description": "Printable HTML document"
+          }
+        }
+      }
+    },
+    "/api/market/execute": {
+      "post": {
+        "summary": "Execute x402 v2 escrow settlement & 20x5 sealed-bid swarm round",
+        "responses": {
+          "200": {
+            "description": "x402 task receipt + swarm clearing prices"
+          }
+        }
+      }
+    },
+    "/api/demo/autonomous-loop": {
+      "post": {
+        "summary": "Run full 5-stage autonomous treasury closed loop (< 2 minutes)",
+        "responses": {
+          "200": {
+            "description": "5-stage cryptographic execution proof"
+          }
+        }
+      }
+    },
+    "/api/onchain/commit-proof": {
+      "post": {
+        "summary": "Return anchored FunctionCall verify_and_anchor receipt FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q on jubayir69.testnet",
+        "responses": {
+          "200": {
+            "description": "On-chain signed transaction receipt & explorer URL"
+          }
+        }
+      }
+    },
+    "/api/onchain/receipt": {
+      "get": {
+        "summary": "Retrieve a verified FunctionCall receipt and the 30 FunctionCall catalog on jubayir69.testnet",
+        "responses": {
+          "200": {
+            "description": "FunctionCall receipt, settlement account, H_master, and H_policy"
+          }
+        }
+      }
+    },
+    "/api/wallet/balances": {
+      "post": {
+        "summary": "Query real live on-chain TESTNET native (NEAR, ETH, SOL, BTC, SUI, TON, XRP) and stablecoin (USDC, USDT) balances via Testnet RPCs (Rule Q-010) and flag Mainnet mismatches",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "address"
+                ],
+                "properties": {
+                  "address": {
+                    "type": "string",
+                    "description": "Connected NEAR Testnet, EVM Sepolia 0x, Solana Testnet/Devnet, Bitcoin Testnet (tb1...), Sui Testnet 0x, TON Testnet, or XRPL Testnet address"
+                  },
+                  "chainType": {
+                    "type": "string",
+                    "enum": [
+                      "near",
+                      "evm",
+                      "solana",
+                      "bitcoin",
+                      "sui",
+                      "ton",
+                      "xrp"
+                    ],
+                    "description": "Wallet network family (defaults to near)"
+                  },
+                  "chainIdHex": {
+                    "type": "string",
+                    "description": "Optional active EVM chainId hex (0xaa36a7 Sepolia, 0x14a34 Base Sepolia, 0x66eee Arbitrum Sepolia)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Live Testnet native and token balance snapshot (0 when empty; isMainnetMismatch=true if Mainnet)"
+          },
+          "400": {
+            "description": "Missing or malformed wallet address"
+          }
+        }
+      }
+    }
+  }
+}

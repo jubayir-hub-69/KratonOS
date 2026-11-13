@@ -1261,12 +1261,12 @@ export function App() {
           stage: 4,
           title: "4. 1Click / RHEA Execution",
           summary:
-            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps to asma90.testnet) + RHEA Farm ref-finance.testnet@0#0 (1-Tx Sweep, Proof: 71hcr5fPMjAu...).",
+            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps to asma90.testnet) + RHEA Farm ref-finance.testnet@0#0 (1-Tx Sweep, Proof: DLwMCDMcTC...).",
         },
         {
           stage: 5,
           title: "5. Settled Across Chains!",
-          summary: `Settled 11/12 batch payroll rows (2.6400 NEAR ≈ $${(2.64 * Number(overview?.oracle?.nearUsdMedian ?? 3.55)).toFixed(2)} USD at live rate, 1 scam quarantined), x402 v2 receipt verified (7DwfTP8k3m5n...), and 20x5 Swarm saved $357.00 (C8M7vc1p8j9s...).`,
+          summary: `Settled 11/12 batch payroll rows (2.6400 NEAR ≈ $${(2.64 * Number(overview?.oracle?.nearUsdMedian ?? 3.55)).toFixed(2)} USD at live rate, 1 scam quarantined), x402 v2 receipt verified (3CH6o6zLxD...), and 20x5 Swarm saved $357.00 (DhPbV1YXFf...).`,
         },
       ],
     });
@@ -1408,20 +1408,28 @@ export function App() {
           const data = (await res.json()) as MarketApiResponse;
           setMarketData(data);
           if (userTriggered) {
-            pushNotification(
-              `x402 v2 Gasless Hire (${data.x402Hire.taskReceipt.receiptId}) & 20x5 Swarm Saved $${data.swarmRound.totalSwarmSavingsUsd.toFixed(
-                2
-              )}`,
-              "market",
-              "cyan"
-            );
+            if (!isPersonalWallet) {
+              pushNotification(
+                "DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF",
+                "market",
+                "cyan"
+              );
+            } else {
+              pushNotification(
+                `x402 v2 Gasless Hire (${data.x402Hire.taskReceipt.receiptId}) & 20x5 Swarm Saved $${data.swarmRound.totalSwarmSavingsUsd.toFixed(
+                  2
+                )}`,
+                "market",
+                "cyan"
+              );
+            }
           }
         }
       } finally {
         setMarketLoading(false);
       }
     },
-    [pushNotification]
+    [isPersonalWallet, pushNotification]
   );
 
   const handleToggleKillSwitch = async () => {

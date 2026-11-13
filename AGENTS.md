@@ -40,7 +40,7 @@ KratonOS partitions autonomous treasury operations across 4 dedicated NEP-611 ga
 - **Tier 2 — Single-Council Fast-Track (`$50.01 - $150.00` or `warn` Risk Score)**:
   - Queues a pre-verified PoC-4 execution bundle for single-council co-signature.
 - **Tier 3 — Sputnik DAO V2 On-Chain Proposal (`> $150.00` / `> $500.00` or Policy Mutation)**:
-  - Escalates via `add_proposal` on `kratonos-dao.sputnikv2.testnet` with a `1 NEAR` proposal bond (`1000000000000000000000000` yoctoNEAR) and SHA-256 operation commitment.
+  - Escalates via `escalate_dao_proposal` on `jubayir69.testnet` with a `1 NEAR` proposal bond (`1000000000000000000000000` yoctoNEAR) and SHA-256 operation commitment. Verified reference transaction `wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E`.
 - **Never Without Human Confirmation**:
   - Rotating Full-Access recovery keys, disabling the 4-Signal Scam Shield, or deploying unverified WASM bytecode.
 
