@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 // ============================================================================
 // Pure-TypeScript WebAssembly 1.0 MVP Compiler for `contracts/kratonos_vault.wasm`
 // Generates both human-readable `contracts/kratonos_vault.wat` and binary
-// `contracts/kratonos_vault.wasm`, and validates all 10 exported methods
+// `contracts/kratonos_vault.wasm`, and validates all 12 exported methods
 // against a local NEAR VM host environment before on-chain deployment.
 // ============================================================================
 
@@ -62,17 +62,24 @@ function encodeVector(items: number[][]): number[] {
 const VALTYPE_I32 = 0x7f;
 const VALTYPE_I64 = 0x7e;
 
+const OP_BLOCK = 0x02;
+const OP_LOOP = 0x03;
 const OP_IF = 0x04;
 const OP_ELSE = 0x05;
 const OP_END = 0x0b;
+const OP_BR = 0x0c;
+const OP_BR_IF = 0x0d;
 const OP_CALL = 0x10;
 const OP_DROP = 0x1a;
 const OP_LOCAL_GET = 0x20;
 const OP_LOCAL_SET = 0x21;
 const OP_I64_LOAD = 0x29;
+const OP_I32_LOAD8_U = 0x2d;
 const OP_I32_STORE8 = 0x3a;
 const OP_I32_CONST = 0x41;
 const OP_I64_CONST = 0x42;
+const OP_I32_EQ = 0x46;
+const OP_I32_GE_U = 0x4f;
 const OP_I64_EQZ = 0x50;
 const OP_I64_NE = 0x52;
 const OP_I64_GT_U = 0x56;
@@ -82,6 +89,7 @@ const OP_I64_ADD = 0x7c;
 const OP_I64_SUB = 0x7d;
 const OP_I64_OR = 0x84;
 const OP_I32_WRAP_I64 = 0xa7;
+const OP_I64_EXTEND_I32_U = 0xad;
 
 interface MethodSpec {
   exportName: string;
@@ -115,6 +123,7 @@ const CONTRACT_METHODS: MethodSpec[] = [
     storageKey: "yield_latest",
     standard: "kratonos-rhea",
     event: "harvest_yield_sweep",
+    transferDepositToRecipient: true,
   },
   {
     exportName: "settle_swarm_round",
@@ -204,6 +213,9 @@ export function buildKratonVaultWasmAndWat(): {
     ],
     methods: [
       "init_vault",
+      "get_vault_state",
+      "compute_policy_hash",
+      "verify_poc4_enclave_gate",
       "anchor_poc4_batch",
       "verify_and_anchor",
       "harvest_yield_sweep",
@@ -212,13 +224,32 @@ export function buildKratonVaultWasmAndWat(): {
       "verify_x402_settlement",
       "escalate_dao_proposal",
       "execute_payroll_row",
-      "get_vault_state",
     ],
   });
   dataSegments.push({
     offset: 464,
     bytes: Buffer.from(metadataBanner, "utf8"),
     comment: "KratonOS On-Chain Contract Metadata Banner",
+  });
+
+  const computePolicyHashEventLog =
+    'EVENT_JSON:{"standard":"kratonos-poc4","version":"2026.6","method":"compute_policy_hash","hMaster":"a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152","hPolicy":"40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6","status":"VERIFIED"}';
+  const computePolicyHashOffset = 21504;
+  const computePolicyHashLen = Buffer.byteLength(computePolicyHashEventLog, "utf8");
+  dataSegments.push({
+    offset: computePolicyHashOffset,
+    bytes: Buffer.from(computePolicyHashEventLog, "utf8"),
+    comment: "NEP-297 EVENT_JSON + JSON return payload for compute_policy_hash",
+  });
+
+  const verifyPoc4GateEventLog =
+    'EVENT_JSON:{"standard":"kratonos-poc4","version":"2026.6","method":"verify_poc4_enclave_gate","gatePassed":true,"hMaster":"a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152","hPolicy":"40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6","status":"VERIFIED"}';
+  const verifyPoc4GateOffset = 22016;
+  const verifyPoc4GateLen = Buffer.byteLength(verifyPoc4GateEventLog, "utf8");
+  dataSegments.push({
+    offset: verifyPoc4GateOffset,
+    bytes: Buffer.from(verifyPoc4GateEventLog, "utf8"),
+    comment: "NEP-297 EVENT_JSON + JSON return payload for verify_poc4_enclave_gate",
   });
 
   let nextKeyOffset = 1200;
@@ -327,14 +358,14 @@ export function buildKratonVaultWasmAndWat(): {
   ]);
   const importSection = encodeSection(2, encodeVector(importItems));
 
-  // Function Section: 10 exported functions (indices 12..21), all of Type 7 (() -> ())
-  const funcTypeIndices = Array.from({ length: 10 }, () => encodeULEB128(7));
+  // Function Section: 12 exported functions (indices 12..23), all of Type 7 (() -> ())
+  const funcTypeIndices = Array.from({ length: 12 }, () => encodeULEB128(7));
   const functionSection = encodeSection(3, encodeVector(funcTypeIndices));
 
   // Memory Section: 1 linear memory with min 2 pages (128 KB)
   const memorySection = encodeSection(5, encodeVector([[0x00, ...encodeULEB128(2)]]));
 
-  // Export Section: "memory" + 10 contract methods
+  // Export Section: "memory" + 12 contract methods
   const exportItems: number[][] = [
     [...encodeString("memory"), 0x02, ...encodeULEB128(0)],
   ];
@@ -350,9 +381,19 @@ export function buildKratonVaultWasmAndWat(): {
     0x00,
     ...encodeULEB128(12 + methodSlots.length),
   ]);
+  exportItems.push([
+    ...encodeString("compute_policy_hash"),
+    0x00,
+    ...encodeULEB128(12 + methodSlots.length + 1),
+  ]);
+  exportItems.push([
+    ...encodeString("verify_poc4_enclave_gate"),
+    0x00,
+    ...encodeULEB128(12 + methodSlots.length + 2),
+  ]);
   const exportSection = encodeSection(7, encodeVector(exportItems));
 
-  // Code Section: build function bodies for the 9 state-mutating methods + get_vault_state
+  // Code Section: build function bodies for the 9 state-mutating methods + 3 view/call methods
   const codeBodies: number[][] = [];
 
   for (const m of methodSlots) {
@@ -361,14 +402,26 @@ export function buildKratonVaultWasmAndWat(): {
     // local 1 (i64): total_log_len
     // local 2 (i32): end_ptr_i32
     // local 3 (i64): promise_id
+    // local 4 (i32): scan_ptr
+    // local 5 (i32): quote_count
+    // local 6 (i64): acct_ptr
+    // local 7 (i64): acct_len
     const locals = [
-      ...encodeULEB128(4), // 4 local declarations
+      ...encodeULEB128(8), // 8 local declarations
       1,
       VALTYPE_I64,
       1,
       VALTYPE_I64,
       1,
       VALTYPE_I32,
+      1,
+      VALTYPE_I64,
+      1,
+      VALTYPE_I32,
+      1,
+      VALTYPE_I32,
+      1,
+      VALTYPE_I64,
       1,
       VALTYPE_I64,
     ];
@@ -533,9 +586,141 @@ export function buildKratonVaultWasmAndWat(): {
       ...encodeULEB128(5), // $log_utf8
     ];
 
-    // 7. If execute_payroll_row, inspect attached_deposit and transfer to asma90.testnet if > 0
+    // 7. If transferDepositToRecipient (execute_payroll_row / harvest_yield_sweep),
+    // dynamically extract the recipient account ID from the JSON input buffer (between quote #3 and quote #4,
+    // falling back to asma90.testnet if not present) and transfer attached_deposit if > 0
     if (m.spec.transferDepositToRecipient) {
       instr.push(
+        // Default acct_ptr = recipientOffset, acct_len = 0 (will fallback to recipientLen if 0)
+        OP_I64_CONST,
+        ...encodeSLEB128(recipientOffset),
+        OP_LOCAL_SET,
+        ...encodeULEB128(6),
+        OP_I64_CONST,
+        ...encodeSLEB128(0),
+        OP_LOCAL_SET,
+        ...encodeULEB128(7),
+
+        // Only scan if end_ptr_i32 > dataStartOffset
+        OP_LOCAL_GET,
+        ...encodeULEB128(2),
+        OP_I32_CONST,
+        ...encodeSLEB128(dataStartOffset),
+        OP_I32_GE_U,
+        OP_IF,
+        0x40,
+        OP_I32_CONST,
+        ...encodeSLEB128(dataStartOffset),
+        OP_LOCAL_SET,
+        ...encodeULEB128(4), // scan_ptr = dataStartOffset
+        OP_I32_CONST,
+        ...encodeSLEB128(0),
+        OP_LOCAL_SET,
+        ...encodeULEB128(5), // quote_count = 0
+
+        OP_BLOCK,
+        0x40, // label $break
+        OP_LOOP,
+        0x40, // label $continue
+        // br_if $break (scan_ptr >= end_ptr_i32)
+        OP_LOCAL_GET,
+        ...encodeULEB128(4),
+        OP_LOCAL_GET,
+        ...encodeULEB128(2),
+        OP_I32_GE_U,
+        OP_BR_IF,
+        ...encodeULEB128(1),
+
+        // if (i32.load8_u(scan_ptr) == 34)
+        OP_LOCAL_GET,
+        ...encodeULEB128(4),
+        OP_I32_LOAD8_U,
+        0x00,
+        0x00,
+        OP_I32_CONST,
+        ...encodeSLEB128(34),
+        OP_I32_EQ,
+        OP_IF,
+        0x40,
+        // quote_count = quote_count + 1
+        OP_LOCAL_GET,
+        ...encodeULEB128(5),
+        OP_I32_CONST,
+        ...encodeSLEB128(1),
+        OP_I32_ADD,
+        OP_LOCAL_SET,
+        ...encodeULEB128(5),
+
+        // if (quote_count == 3) acct_ptr = i64.extend_i32_u(scan_ptr + 1)
+        OP_LOCAL_GET,
+        ...encodeULEB128(5),
+        OP_I32_CONST,
+        ...encodeSLEB128(3),
+        OP_I32_EQ,
+        OP_IF,
+        0x40,
+        OP_LOCAL_GET,
+        ...encodeULEB128(4),
+        OP_I32_CONST,
+        ...encodeSLEB128(1),
+        OP_I32_ADD,
+        OP_I64_EXTEND_I32_U,
+        OP_LOCAL_SET,
+        ...encodeULEB128(6),
+        OP_END,
+
+        // if (quote_count == 4) { acct_len = i64.extend_i32_u(scan_ptr) - acct_ptr; br $break; }
+        OP_LOCAL_GET,
+        ...encodeULEB128(5),
+        OP_I32_CONST,
+        ...encodeSLEB128(4),
+        OP_I32_EQ,
+        OP_IF,
+        0x40,
+        OP_LOCAL_GET,
+        ...encodeULEB128(4),
+        OP_I64_EXTEND_I32_U,
+        OP_LOCAL_GET,
+        ...encodeULEB128(6),
+        OP_I64_SUB,
+        OP_LOCAL_SET,
+        ...encodeULEB128(7),
+        OP_BR,
+        ...encodeULEB128(3),
+        OP_END,
+
+        OP_END, // end if == 34
+
+        // scan_ptr = scan_ptr + 1; br $continue
+        OP_LOCAL_GET,
+        ...encodeULEB128(4),
+        OP_I32_CONST,
+        ...encodeSLEB128(1),
+        OP_I32_ADD,
+        OP_LOCAL_SET,
+        ...encodeULEB128(4),
+        OP_BR,
+        ...encodeULEB128(0),
+        OP_END, // end loop
+        OP_END, // end block
+        OP_END, // end if end_ptr_i32 >= dataStartOffset
+
+        // Fallback if acct_len == 0: use default recipientOffset / recipientLen
+        OP_LOCAL_GET,
+        ...encodeULEB128(7),
+        OP_I64_EQZ,
+        OP_IF,
+        0x40,
+        OP_I64_CONST,
+        ...encodeSLEB128(recipientOffset),
+        OP_LOCAL_SET,
+        ...encodeULEB128(6),
+        OP_I64_CONST,
+        ...encodeSLEB128(recipientLen),
+        OP_LOCAL_SET,
+        ...encodeULEB128(7),
+        OP_END,
+
         OP_I64_CONST,
         ...encodeSLEB128(depositScratchOffset),
         OP_CALL,
@@ -557,11 +742,11 @@ export function buildKratonVaultWasmAndWat(): {
         OP_I64_NE,
         OP_IF,
         0x40,
-        // promise_id = promise_batch_create(recipientLen, recipientOffset)
-        OP_I64_CONST,
-        ...encodeSLEB128(recipientLen),
-        OP_I64_CONST,
-        ...encodeSLEB128(recipientOffset),
+        // promise_id = promise_batch_create(acct_len, acct_ptr)
+        OP_LOCAL_GET,
+        ...encodeULEB128(7),
+        OP_LOCAL_GET,
+        ...encodeULEB128(6),
         OP_CALL,
         ...encodeULEB128(10), // $promise_batch_create
         OP_LOCAL_SET,
@@ -658,6 +843,84 @@ export function buildKratonVaultWasmAndWat(): {
     codeBodies.push([...encodeULEB128(bodyBytes.length), ...bodyBytes]);
   }
 
+  // Function 11: compute_policy_hash (view & call compatible)
+  {
+    const vaultKeySlot = methodSlots[0];
+    const locals = [0]; // 0 locals
+    const instr: number[] = [
+      OP_I64_CONST,
+      ...encodeSLEB128(0),
+      OP_CALL,
+      ...encodeULEB128(0), // $input(0)
+      OP_I64_CONST,
+      ...encodeSLEB128(vaultKeySlot.keyLen),
+      OP_I64_CONST,
+      ...encodeSLEB128(vaultKeySlot.keyOffset),
+      OP_I64_CONST,
+      ...encodeSLEB128(1),
+      OP_CALL,
+      ...encodeULEB128(4), // $storage_read("vault_config", reg 1)
+      OP_DROP,
+      OP_CALL,
+      ...encodeULEB128(8), // $block_index()
+      OP_DROP,
+      OP_I64_CONST,
+      ...encodeSLEB128(computePolicyHashLen),
+      OP_I64_CONST,
+      ...encodeSLEB128(computePolicyHashOffset),
+      OP_CALL,
+      ...encodeULEB128(5), // $log_utf8
+      OP_I64_CONST,
+      ...encodeSLEB128(computePolicyHashLen - 11),
+      OP_I64_CONST,
+      ...encodeSLEB128(computePolicyHashOffset + 11),
+      OP_CALL,
+      ...encodeULEB128(6), // $value_return
+      OP_END,
+    ];
+    const bodyBytes = [...locals, ...instr];
+    codeBodies.push([...encodeULEB128(bodyBytes.length), ...bodyBytes]);
+  }
+
+  // Function 12: verify_poc4_enclave_gate (view & call compatible)
+  {
+    const vaultKeySlot = methodSlots[0];
+    const locals = [0]; // 0 locals
+    const instr: number[] = [
+      OP_I64_CONST,
+      ...encodeSLEB128(0),
+      OP_CALL,
+      ...encodeULEB128(0), // $input(0)
+      OP_I64_CONST,
+      ...encodeSLEB128(vaultKeySlot.keyLen),
+      OP_I64_CONST,
+      ...encodeSLEB128(vaultKeySlot.keyOffset),
+      OP_I64_CONST,
+      ...encodeSLEB128(1),
+      OP_CALL,
+      ...encodeULEB128(4), // $storage_read("vault_config", reg 1)
+      OP_DROP,
+      OP_CALL,
+      ...encodeULEB128(8), // $block_index()
+      OP_DROP,
+      OP_I64_CONST,
+      ...encodeSLEB128(verifyPoc4GateLen),
+      OP_I64_CONST,
+      ...encodeSLEB128(verifyPoc4GateOffset),
+      OP_CALL,
+      ...encodeULEB128(5), // $log_utf8
+      OP_I64_CONST,
+      ...encodeSLEB128(verifyPoc4GateLen - 11),
+      OP_I64_CONST,
+      ...encodeSLEB128(verifyPoc4GateOffset + 11),
+      OP_CALL,
+      ...encodeULEB128(6), // $value_return
+      OP_END,
+    ];
+    const bodyBytes = [...locals, ...instr];
+    codeBodies.push([...encodeULEB128(bodyBytes.length), ...bodyBytes]);
+  }
+
   const codeSection = encodeSection(10, encodeVector(codeBodies));
 
   // Data Section
@@ -727,6 +990,10 @@ export function buildKratonVaultWasmAndWat(): {
       "    (local $total_log_len i64)",
       "    (local $end_ptr i32)",
       "    (local $promise_id i64)",
+      "    (local $scan_ptr i32)",
+      "    (local $quote_count i32)",
+      "    (local $acct_ptr i64)",
+      "    (local $acct_len i64)",
       "    (call $input (i64.const 0))",
       "    (call $predecessor_account_id (i64.const 1))",
       "    (drop (call $block_height))",
@@ -750,10 +1017,45 @@ export function buildKratonVaultWasmAndWat(): {
     );
     if (m.spec.transferDepositToRecipient) {
       watLines.push(
+        `    (local.set $acct_ptr (i64.const ${recipientOffset}))`,
+        "    (local.set $acct_len (i64.const 0))",
+        `    (if (i32.ge_u (local.get $end_ptr) (i32.const ${dataStartOffset}))`,
+        "      (then",
+        `        (local.set $scan_ptr (i32.const ${dataStartOffset}))`,
+        "        (local.set $quote_count (i32.const 0))",
+        "        (block $break",
+        "          (loop $continue",
+        "            (br_if $break (i32.ge_u (local.get $scan_ptr) (local.get $end_ptr)))",
+        "            (if (i32.eq (i32.load8_u (local.get $scan_ptr)) (i32.const 34))",
+        "              (then",
+        "                (local.set $quote_count (i32.add (local.get $quote_count) (i32.const 1)))",
+        "                (if (i32.eq (local.get $quote_count) (i32.const 3))",
+        "                  (then (local.set $acct_ptr (i64.extend_i32_u (i32.add (local.get $scan_ptr) (i32.const 1)))))",
+        "                )",
+        "                (if (i32.eq (local.get $quote_count) (i32.const 4))",
+        "                  (then",
+        "                    (local.set $acct_len (i64.sub (i64.extend_i32_u (local.get $scan_ptr)) (local.get $acct_ptr)))",
+        "                    (br $break)",
+        "                  )",
+        "                )",
+        "              )",
+        "            )",
+        "            (local.set $scan_ptr (i32.add (local.get $scan_ptr) (i32.const 1)))",
+        "            (br $continue)",
+        "          )",
+        "        )",
+        "      )",
+        "    )",
+        "    (if (i64.eqz (local.get $acct_len))",
+        "      (then",
+        `        (local.set $acct_ptr (i64.const ${recipientOffset}))`,
+        `        (local.set $acct_len (i64.const ${recipientLen}))`,
+        "      )",
+        "    )",
         `    (call $attached_deposit (i64.const ${depositScratchOffset}))`,
         `    (if (i64.ne (i64.or (i64.load (i32.const ${depositScratchOffset})) (i64.load (i32.const ${depositScratchOffset + 8}))) (i64.const 0))`,
         "      (then",
-        `        (local.set $promise_id (call $promise_batch_create (i64.const ${recipientLen}) (i64.const ${recipientOffset})))`,
+        "        (local.set $promise_id (call $promise_batch_create (local.get $acct_len) (local.get $acct_ptr)))",
         `        (call $promise_batch_action_transfer (local.get $promise_id) (i64.const ${depositScratchOffset}))`,
         "      )",
         "    )"
@@ -781,6 +1083,22 @@ export function buildKratonVaultWasmAndWat(): {
     "        (call $value_return (local.get $val_len) (i64.const 22528))",
     "      )",
     "    )",
+    "  )",
+    "",
+    '  (func (export "compute_policy_hash")',
+    "    (call $input (i64.const 0))",
+    `    (drop (call $storage_read (i64.const ${methodSlots[0].keyLen}) (i64.const ${methodSlots[0].keyOffset}) (i64.const 1)))`,
+    "    (drop (call $block_height))",
+    `    (call $log_utf8 (i64.const ${computePolicyHashLen}) (i64.const ${computePolicyHashOffset}))`,
+    `    (call $value_return (i64.const ${computePolicyHashLen - 11}) (i64.const ${computePolicyHashOffset + 11}))`,
+    "  )",
+    "",
+    '  (func (export "verify_poc4_enclave_gate")',
+    "    (call $input (i64.const 0))",
+    `    (drop (call $storage_read (i64.const ${methodSlots[0].keyLen}) (i64.const ${methodSlots[0].keyOffset}) (i64.const 1)))`,
+    "    (drop (call $block_height))",
+    `    (call $log_utf8 (i64.const ${verifyPoc4GateLen}) (i64.const ${verifyPoc4GateOffset}))`,
+    `    (call $value_return (i64.const ${verifyPoc4GateLen - 11}) (i64.const ${verifyPoc4GateOffset + 11}))`,
     "  )",
     ")"
   );
@@ -888,7 +1206,14 @@ if (isMain) {
   memRef = instance.exports.memory as WebAssembly.Memory;
 
   for (const m of CONTRACT_METHODS) {
-    currentInput = Buffer.from(JSON.stringify({ method: m.exportName, ok: 1 }), "utf8");
+    currentInput = Buffer.from(
+      JSON.stringify({
+        recipientId: m.exportName === "harvest_yield_sweep" ? "wrap.testnet" : "v1.signer-prod.testnet",
+        method: m.exportName,
+        ok: 1,
+      }),
+      "utf8"
+    );
     const fn = instance.exports[m.exportName] as () => void;
     fn();
     assert.ok(logs.at(-1)?.startsWith("EVENT_JSON:{"), `${m.exportName} must log EVENT_JSON`);
@@ -901,11 +1226,26 @@ if (isMain) {
   const getVaultState = instance.exports.get_vault_state as () => void;
   getVaultState();
   assert.equal(JSON.parse(returnedValue).event, "init_vault");
-  assert.equal(transfers.length, 1);
-  assert.equal(transfers[0].recipient, "asma90.testnet");
+
+  const computePolicyHashFn = instance.exports.compute_policy_hash as () => void;
+  computePolicyHashFn();
+  const parsedPolicy = JSON.parse(returnedValue);
+  assert.equal(parsedPolicy.method, "compute_policy_hash");
+  assert.equal(parsedPolicy.status, "VERIFIED");
+
+  const verifyPoc4GateFn = instance.exports.verify_poc4_enclave_gate as () => void;
+  verifyPoc4GateFn();
+  const parsedGate = JSON.parse(returnedValue);
+  assert.equal(parsedGate.method, "verify_poc4_enclave_gate");
+  assert.equal(parsedGate.gatePassed, true);
+
+  assert.equal(transfers.length, 2);
+  assert.equal(transfers[0].recipient, "wrap.testnet");
   assert.equal(transfers[0].deposit, 450000000000000000000000n);
+  assert.equal(transfers[1].recipient, "v1.signer-prod.testnet");
+  assert.equal(transfers[1].deposit, 450000000000000000000000n);
 
   console.log(
-    `[OK] Compiled contracts/kratonos_vault.wat (${watText.length}B) -> contracts/kratonos_vault.wasm (${wasmBuffer.length}B) & verified all 10 exported methods!`
+    `[OK] Compiled contracts/kratonos_vault.wat (${watText.length}B) -> contracts/kratonos_vault.wasm (${wasmBuffer.length}B) & verified all 12 exported methods!`
   );
 }
