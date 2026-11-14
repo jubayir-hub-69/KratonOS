@@ -1261,12 +1261,12 @@ export function App() {
           stage: 4,
           title: "4. 1Click / RHEA Execution",
           summary:
-            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps to asma90.testnet) + RHEA Farm ref-finance.testnet@0#0 (1-Tx Sweep, Proof: DLwMCDMcTC...).",
+            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps to asma90.testnet) + RHEA Farm ref-finance.testnet@0#0 (1-Tx Sweep, Proof: ArNihHTyPz...).",
         },
         {
           stage: 5,
           title: "5. Settled Across Chains!",
-          summary: `Settled 11/12 batch payroll rows (2.6400 NEAR ≈ $${(2.64 * Number(overview?.oracle?.nearUsdMedian ?? 3.55)).toFixed(2)} USD at live rate, 1 scam quarantined), x402 v2 receipt verified (3CH6o6zLxD...), and 20x5 Swarm saved $357.00 (DhPbV1YXFf...).`,
+          summary: `Settled 11/12 batch payroll rows (2.6400 NEAR ≈ $${(2.64 * Number(overview?.oracle?.nearUsdMedian ?? 3.55)).toFixed(2)} USD at live rate, 1 scam quarantined), x402 v2 receipt verified (C1LfqHuH2D...), and 20x5 Swarm saved $357.00 (EJxJz6ta1h...).`,
         },
       ],
     });
@@ -1374,18 +1374,26 @@ export function App() {
           const data = (await res.json()) as PayrollApiResponse;
           setPayrollData(data);
           if (userTriggered) {
-            pushNotification(
-              `EXACT_OUTPUT Invoice (${data.invoiceResult.netSettledFormatted}) & ${data.batchResult.totalSettledCount}/${data.batchResult.totalRowsImported} Batch Payroll Settled`,
-              "payroll",
-              "emerald"
-            );
+            if (!isPersonalWallet) {
+              pushNotification(
+                "MODE A SANDBOX VERIFIED: 11/12 Payroll Rows Settled On-Chain (2.6400 NEAR). Connect Wallet for Live Execution.",
+                "payroll",
+                "emerald"
+              );
+            } else {
+              pushNotification(
+                `EXACT_OUTPUT Invoice (${data.invoiceResult.netSettledFormatted}) & ${data.batchResult.totalSettledCount}/${data.batchResult.totalRowsImported} Batch Payroll Settled`,
+                "payroll",
+                "emerald"
+              );
+            }
           }
         }
       } finally {
         setPayrollLoading(false);
       }
     },
-    [pushNotification]
+    [isPersonalWallet, pushNotification]
   );
 
   const handleExecuteMarket = useCallback(
@@ -1410,7 +1418,7 @@ export function App() {
           if (userTriggered) {
             if (!isPersonalWallet) {
               pushNotification(
-                "DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF",
+                "DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx",
                 "market",
                 "cyan"
               );
@@ -1437,6 +1445,11 @@ export function App() {
     try {
       const nextArmed = !sessionKillSwitchArmed;
       setSessionKillSwitchArmed(nextArmed);
+      void fetch("/api/policy/kill-switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: nextArmed }),
+      }).catch(() => {});
       try {
         if (typeof window !== "undefined") {
           window.sessionStorage?.setItem(

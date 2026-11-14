@@ -296,7 +296,7 @@ async function runServerSmokeTest(): Promise<void> {
     stmtRes.bodyText.includes("SETTLED (") &&
       stmtRes.bodyText.includes("block:") &&
       stmtRes.bodyText.includes("|receipt:") &&
-      stmtRes.bodyText.includes("GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi") &&
+      stmtRes.bodyText.includes("8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/txns/") &&
       stmtRes.bodyText.includes("https://testnet.nearblocks.io/address/"),
     "Printable payroll statement must include real block/receipt commitments and clickable NEARBlocks batch anchor tx links"
@@ -534,15 +534,23 @@ async function runServerSmokeTest(): Promise<void> {
     openApiJson.paths["/api/onchain/receipt"],
     "/openapi.json must document GET /api/onchain/receipt"
   );
+  assert.ok(
+    openApiJson.paths["/api/policy/verify"],
+    "/openapi.json must document POST /api/policy/verify"
+  );
+  assert.ok(
+    openApiJson.paths["/api/payroll/execute-batch"],
+    "/openapi.json must document POST /api/payroll/execute-batch"
+  );
   assert.equal(
     Object.keys(openApiJson.paths).length,
-    13,
-    "/openapi.json must register all 13 REST API endpoints"
+    15,
+    "/openapi.json must register all 15 REST API endpoints"
   );
 
   const receiptInspectorRes = await invokeServerEndpoint(
     "GET",
-    "/api/onchain/receipt?txHash=GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi"
+    "/api/onchain/receipt?txHash=8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND"
   );
   assert.equal(receiptInspectorRes.statusCode, 200, "GET /api/onchain/receipt must return HTTP 200");
   const receiptInspectorJson = JSON.parse(receiptInspectorRes.bodyText) as {
@@ -554,12 +562,12 @@ async function runServerSmokeTest(): Promise<void> {
     settlementAccount: string;
     executionStatus: string;
   };
-  assert.equal(receiptInspectorJson.txHash, "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi");
+  assert.equal(receiptInspectorJson.txHash, "8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND");
   assert.equal(receiptInspectorJson.actionType, "FunctionCall");
   assert.equal(receiptInspectorJson.methodName, "execute_payroll_row");
   assert.equal(receiptInspectorJson.receiverId, "jubayir69.testnet");
   assert.equal(receiptInspectorJson.settlementAccount, "asma90.testnet");
-  assert.equal(receiptInspectorJson.depositNear, "0.45 NEAR");
+  assert.equal(receiptInspectorJson.depositNear, "0.4500 NEAR");
   assert.equal(receiptInspectorJson.executionStatus, "EXECUTED_OPTIMISTIC / SUCCESS_VALUE");
   for (const record of VERIFIED_PAYROLL_ONCHAIN_RECORDS) {
     assert.ok(
@@ -676,7 +684,8 @@ async function runServerSmokeTest(): Promise<void> {
     explorerAccountUrl: string;
   };
   assert.ok(
-    proofJson.status === "COMMITTED_ON_CHAIN" ||
+    proofJson.status === "MODE_A_SANDBOX_VERIFIED" ||
+      proofJson.status === "COMMITTED_ON_CHAIN" ||
       proofJson.status === "CRYPTOGRAPHICALLY_SIGNED_PROOF",
     `Unexpected proof commit status: ${proofJson.status}`
   );

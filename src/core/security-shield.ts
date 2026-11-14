@@ -769,11 +769,11 @@ export async function evaluateCounterpartyRisk(
     balanceSource = "offline_fallback_snapshot_disclosed";
     if (KNOWN_SANDBOX_VERIFIED_ACCOUNTS.has(receiverId)) {
       existsOnChain = true;
-      storageUsageBytes = receiverId === "jubayir69.testnet" ? 7550 : 182;
+      storageUsageBytes = receiverId === "jubayir69.testnet" ? 8680 : 182;
       balanceYocto = "37220268529675000000000000";
       codeHash =
         receiverId === "jubayir69.testnet"
-          ? "F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd"
+          ? "8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD"
           : SYSTEM_EMPTY_CODE_HASH;
     } else {
       existsOnChain = false;
@@ -878,7 +878,7 @@ export async function evaluateCounterpartyRisk(
         decision = "warn";
       }
       reasons.push(
-        `[GOVERNANCE GATE] Tier 3 Governance Gate ($${input.requestedAmountUsd.toFixed(2)} > $${tier2MaxUsd.toFixed(2)} single-tx cap): requires Sputnik DAO V2 on-chain proposal (1 NEAR bond).`
+        `[GOVERNANCE GATE] Tier 3 Governance Gate ($${input.requestedAmountUsd.toFixed(2)} > $${tier2MaxUsd.toFixed(2)} single-tx cap): requires Tier 3 escalate_dao_proposal on jubayir69.testnet (1.0000 NEAR on-chain bond deposit).`
       );
     } else if (input.requestedAmountUsd > tier1MaxUsd) {
       governanceTier = "ONE_COUNCIL_FAST_TRACK";

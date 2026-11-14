@@ -804,7 +804,7 @@ export async function fetchMultiSourceMedianOracle(params: {
   const rawBtcStats =
     btcUsdSamples.length > 0
       ? computeMedianAndMaxDeviation(btcUsdSamples.map((s) => s.priceUsd))
-      : { median: 74400.0, maxDeviationPercent: 0.09 };
+      : { median: 84250.0, maxDeviationPercent: 0.09 };
   const btcStats = {
     median: rawBtcStats.median,
     maxDeviationPercent: Number(
@@ -852,8 +852,8 @@ export async function fetchMultiSourceMedianOracle(params: {
 }
 
 const KNOWN_CRYPTO_FALLBACK_PRICES: Record<string, number> = {
-  BTC: 74400.0,
-  WBTC: 74400.0,
+  BTC: 84250.0,
+  WBTC: 84250.0,
   ETH: 2127.0,
   SOL: 86.5,
   NEAR: 3.55,
@@ -1411,7 +1411,7 @@ export async function fetchDynamicMultiAssetSnapshot(
     ethUsd: resolvedMap.get("ETH")?.priceUsd ?? oneClickMap.get("ETH") ?? 2127.0,
     nearUsd: resolvedMap.get("NEAR")?.priceUsd ?? oneClickMap.get("NEAR") ?? 3.55,
     solUsd: resolvedMap.get("SOL")?.priceUsd ?? oneClickMap.get("SOL") ?? 86.5,
-    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 74400.0,
+    btcUsd: resolvedMap.get("BTC")?.priceUsd ?? oneClickMap.get("BTC") ?? 84250.0,
     xrpUsd: resolvedMap.get("XRP")?.priceUsd ?? oneClickMap.get("XRP") ?? 1.09,
     suiUsd: resolvedMap.get("SUI")?.priceUsd ?? oneClickMap.get("SUI") ?? 0.815,
     tonUsd: resolvedMap.get("TON")?.priceUsd ?? oneClickMap.get("TON") ?? 1.45,

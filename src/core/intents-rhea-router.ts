@@ -306,7 +306,7 @@ export async function fetchLiveOneClickTokens(): Promise<{
         symbol: "WBTC",
         decimals: 8,
         blockchain: "btc",
-        price: 74400.0,
+        price: 84250.0,
       },
       {
         assetId: "nep141:sol.omft.near",
@@ -440,8 +440,7 @@ export async function findOptimalTriVenueRoute(params: {
   const hasOneClickApiKey = Boolean(runtime.env.ONECLICK_API_KEY && runtime.env.ONECLICK_API_KEY.trim());
 
   // Enforce hard 500 bps total fee ceiling:
-  // Without an API key, 1Click charges 25 bps unauthenticated fee -> max appFeeBps is 475 bps.
-  // KratonOS default app_fee_bps is 40 bps.
+  // KratonOS canonical app_fee_bps is 40 bps (0.40% routed to asma90.testnet).
   const requestedAppFeeBps = runtime.constraints.app_fee_bps; // 40 bps
   const isStableOrSameAsset =
     (STABLECOIN_SYMBOLS.has(originSym) && STABLECOIN_SYMBOLS.has(destSym)) ||
@@ -600,7 +599,7 @@ export async function findOptimalTriVenueRoute(params: {
   }
 
   if (!oneClickOutAtomic) {
-    // Deterministic 1-bp stablecoin (or 20/25 bps cross-asset) + 40 bps appFee deduction scaled by priceRatio
+    // Deterministic 1-bp stablecoin (or 8 bps cross-asset) + 40 bps appFee deduction scaled by priceRatio
     const netMultiplierBps = BigInt(10_000 - totalOneClickFeeBps);
     const outUnitsMicro = (BigInt(Math.round(grossDestHuman * 1_000_000)) * netMultiplierBps) / 10_000n;
     const outAtomicScaled =

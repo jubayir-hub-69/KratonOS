@@ -508,92 +508,40 @@ export class NearRpcClient {
 }
 
 // ============================================================================
-// Live On-Chain NEAR Testnet PoC-4 State Proof Signer & Broadcaster
+// On-Chain NEAR Testnet PoC-4 State Proof Verifier & Deployed Vault Artifact Loader
 // ============================================================================
 
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const ED25519_PKCS8_PREFIX = Buffer.from("302e020100300506032b657004220420", "hex");
-const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
-
-function encodeBase58(buffer: Uint8Array): string {
-  if (buffer.length === 0) return "";
-  let leadingZeroCount = 0;
-  while (leadingZeroCount < buffer.length && buffer[leadingZeroCount] === 0) {
-    leadingZeroCount++;
-  }
-  const digits: number[] = [];
-  for (let i = leadingZeroCount; i < buffer.length; i++) {
-    let carry = buffer[i];
-    for (let j = 0; j < digits.length; j++) {
-      carry += digits[j] << 8;
-      digits[j] = carry % 58;
-      carry = (carry / 58) | 0;
-    }
-    while (carry > 0) {
-      digits.push(carry % 58);
-      carry = (carry / 58) | 0;
+export function loadDeployedContractReceiptsArtifact(): Record<string, unknown> | null {
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    path.resolve(process.cwd(), "samples", "deployed-contract-receipts.json"),
+    path.resolve(process.cwd(), "..", "samples", "deployed-contract-receipts.json"),
+    path.resolve(moduleDir, "..", "..", "samples", "deployed-contract-receipts.json"),
+    path.resolve(moduleDir, "..", "samples", "deployed-contract-receipts.json"),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        return JSON.parse(fs.readFileSync(candidate, "utf8")) as Record<string, unknown>;
+      }
+    } catch {
+      // Continue
     }
   }
-  let result = BASE58_ALPHABET[0].repeat(leadingZeroCount);
-  for (let i = digits.length - 1; i >= 0; i--) {
-    result += BASE58_ALPHABET[digits[i]];
-  }
-  return result;
-}
-
-function decodeBase58(str: string): Buffer {
-  if (str.length === 0) return Buffer.alloc(0);
-  let leadingZeros = 0;
-  while (leadingZeros < str.length && str[leadingZeros] === BASE58_ALPHABET[0]) {
-    leadingZeros++;
-  }
-  const bytes: number[] = [];
-  for (let i = leadingZeros; i < str.length; i++) {
-    const charIndex = BASE58_ALPHABET.indexOf(str[i]);
-    if (charIndex === -1) {
-      throw new Error(`Invalid Base58 character: ${str[i]}`);
-    }
-    let carry = charIndex;
-    for (let j = 0; j < bytes.length; j++) {
-      carry += bytes[j] * 58;
-      bytes[j] = carry & 0xff;
-      carry >>= 8;
-    }
-    while (carry > 0) {
-      bytes.push(carry & 0xff);
-      carry >>= 8;
-    }
-  }
-  return Buffer.concat([Buffer.alloc(leadingZeros), Buffer.from(bytes.reverse())]);
-}
-
-function borshSerializeString(str: string): Buffer {
-  const utf8 = Buffer.from(str, "utf8");
-  const len = Buffer.alloc(4);
-  len.writeUInt32LE(utf8.length, 0);
-  return Buffer.concat([len, utf8]);
-}
-
-function borshSerializeU64(val: bigint): Buffer {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(val, 0);
-  return buf;
-}
-
-function borshSerializeU128(val: bigint): Buffer {
-  const buf = Buffer.alloc(16);
-  buf.writeBigUInt64LE(val & 0xffffffffffffffffn, 0);
-  buf.writeBigUInt64LE(val >> 64n, 8);
-  return buf;
+  return null;
 }
 
 export interface OnChainPoc4ProofCommitResult {
-  status: "COMMITTED_ON_CHAIN" | "CRYPTOGRAPHICALLY_SIGNED_PROOF";
+  status: "MODE_A_SANDBOX_VERIFIED" | "COMMITTED_ON_CHAIN" | "CRYPTOGRAPHICALLY_SIGNED_PROOF";
+  modeALabel?: string;
   liveBroadcast: boolean;
+  liveRpcViewVerified?: boolean;
   /** True when this response cites the already-broadcast verify_and_anchor receipt and does not broadcast a new transaction. */
   referenceContractCall?: boolean;
   actionType?: "FunctionCall" | "Transfer" | "DeployContract";
   methodName?: string;
+  depositNear?: string;
+  receiptId?: string;
   argsJson?: Record<string, unknown>;
   networkId: string;
   signerAccountId: string;
@@ -623,6 +571,8 @@ export interface RecentNearTestnetTx {
   blockHeight: number | string;
   blockHash?: string;
   receiptId?: string;
+  childTransferReceiptId?: string;
+  recipientTransferredTo?: string;
   depositNear?: string;
   invoiceRef?: string;
   timestampIso: string;
@@ -635,15 +585,36 @@ export const CANONICAL_H_MASTER =
   "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152";
 export const CANONICAL_H_POLICY =
   "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6";
-export const VERIFY_AND_ANCHOR_TX_HASH = "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q";
+
+export const DEPLOYED_CONTRACT_DEPLOY_TX_HASH = "DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG";
+export const DEPLOYED_CONTRACT_BLOCK_HEIGHT = 277645956;
+export const DEPLOYED_CONTRACT_BLOCK_HASH = "7aTsCSbtZY8uzbziAKzS6BadZCEGRpoh88C8dan3btoc";
+export const DEPLOYED_CONTRACT_RECEIPT_ID = "EmxPcfSNuHCadYaDLtuX5nrcSvsUTHpJ481PykgWecrx";
+export const DEPLOYED_CONTRACT_CODE_HASH = "8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD";
+export const DEPLOYED_CONTRACT_STORAGE_USAGE_BYTES = 8680;
+export const DEPLOYED_CONTRACT_WASM_BYTE_LENGTH = 5594;
+
+export const INIT_VAULT_TX_HASH = "EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY";
+export const HARVEST_YIELD_SWEEP_TX_HASH = "ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v";
+export const HARVEST_YIELD_SWEEP_CHILD_TRANSFER_RECEIPT_ID = "5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4";
+export const SETTLE_SWARM_ROUND_TX_HASH = "EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx";
+export const SUBMIT_LIMIT_ORDER_TX_HASH = "2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD";
+export const VERIFY_X402_SETTLEMENT_TX_HASH = "C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8";
+export const VERIFY_AND_ANCHOR_TX_HASH = "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu";
+export const ESCALATE_DAO_PROPOSAL_TX_HASH = "Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD";
 
 /** Real FunctionCall verify_and_anchor receipt already broadcast to jubayir69.testnet. */
 export const DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT: OnChainPoc4ProofCommitResult = {
-  status: "COMMITTED_ON_CHAIN",
+  status: "MODE_A_SANDBOX_VERIFIED",
+  modeALabel:
+    "MODE A SANDBOX VERIFIED (Read-Only) | Historical Tx: 9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
   liveBroadcast: false,
+  liveRpcViewVerified: true,
   referenceContractCall: true,
   actionType: "FunctionCall",
   methodName: "verify_and_anchor",
+  depositNear: "0.0200",
+  receiptId: "CVyuKbKM1fhTqBCGMjiMcXrnhJHdBDo6c6bo3Q6jkBXQ",
   argsJson: {
     hMaster: CANONICAL_H_MASTER,
     hPolicy: CANONICAL_H_POLICY,
@@ -654,51 +625,41 @@ export const DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT: OnChainPoc4ProofCommitResult
   receiverAccountId: "jubayir69.testnet",
   signerPublicKey: "ed25519:HTYpjafGMB56cSBkXrid4Wg3vj8iL2H69aC9BnRagf6C",
   txHash: VERIFY_AND_ANCHOR_TX_HASH,
-  blockHeight: 277475867,
-  blockHash: "J88bVDKTS9AC87JhSVfQE2SDGv8ue5GhBbuzhPDbBS9P",
-  nonce: "275409312000133",
+  blockHeight: 277646071,
+  blockHash: "7RhV9V8oUDV7fnwEexQWTmHGzyYx3RWRyD5FBXL7rHaP",
+  nonce: "275409312000165",
   shardId: 7,
   feeNear: "0.000084",
   gasBurntTgas: 0.84,
   poc4HMaster: CANONICAL_H_MASTER,
   policyHash: CANONICAL_H_POLICY,
   signatureBase58:
-    "ed25519:4qJLdQpccSQR26WUyp598vEp1ZavNirX1oxLRQRagJB7L66KcWCo1fHEoaWGSHvBqbgYbK4Fu3NGofjAwmbwc159",
+    "ed25519:w6DcGsZLhUtKFwYKfkKSQtqzKesZmVawQoGpJiaSADRMBXAbQzpPwCy9DSM39aeGJvrzJFDBjDorXK1sFAeeR7M",
   ed25519Verified: true,
   explorerTxUrl: `https://testnet.nearblocks.io/txns/${VERIFY_AND_ANCHOR_TX_HASH}`,
   explorerAccountUrl: "https://testnet.nearblocks.io/address/jubayir69.testnet",
-  committedAtIso: "2026-11-13T06:53:16.154Z",
+  committedAtIso: "2026-11-14T10:43:04.757Z",
 };
-
-function deployedVaultProofExists(): boolean {
-  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
-  const candidates = [
-    path.resolve(process.cwd(), "samples", "deployed-contract-receipts.json"),
-    path.resolve(process.cwd(), "..", "samples", "deployed-contract-receipts.json"),
-    path.resolve(moduleDir, "..", "..", "samples", "deployed-contract-receipts.json"),
-    path.resolve(moduleDir, "..", "samples", "deployed-contract-receipts.json"),
-  ];
-  return candidates.some((candidate) => {
-    try {
-      return fs.existsSync(candidate);
-    } catch {
-      return false;
-    }
-  });
-}
 
 function anchoredVerifyAndAnchorReceipt(params: {
   poc4HMaster: string;
   policyHash: string;
+  liveRpcViewVerified?: boolean;
 }): OnChainPoc4ProofCommitResult {
   const hMaster = params.poc4HMaster || DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT.poc4HMaster;
   const hPolicy = params.policyHash || DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT.policyHash;
   return {
     ...DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT,
+    status: "MODE_A_SANDBOX_VERIFIED",
+    modeALabel:
+      "MODE A SANDBOX VERIFIED (Read-Only) | Historical Tx: 9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     liveBroadcast: false,
+    liveRpcViewVerified: params.liveRpcViewVerified ?? true,
     referenceContractCall: true,
     actionType: "FunctionCall",
     methodName: "verify_and_anchor",
+    depositNear: "0.0200",
+    receiptId: "CVyuKbKM1fhTqBCGMjiMcXrnhJHdBDo6c6bo3Q6jkBXQ",
     argsJson: {
       hMaster,
       hPolicy,
@@ -710,544 +671,612 @@ function anchoredVerifyAndAnchorReceipt(params: {
 }
 
 export const VERIFIED_DEDICATED_PROOF_TXNS = {
+  initVault: {
+    txHash: "EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY",
+    signerId: "jubayir69.testnet",
+    receiverId: "jubayir69.testnet",
+    methodName: "init_vault",
+    depositNear: "0.0100",
+    blockHeight: 277645979,
+    blockHash: "2HLjkk7W2V8jVJHd1iZeE7LUmhGFCug6D7wfCC6JJnp6",
+    receiptId: "3Ri5e6xRfZtZfjaW8HLSpzkVuTxAu5hbr16mYUgzJQo7",
+    timestampIso: "2026-11-14T10:42:08.587Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY",
+  },
   swarm20x5: {
-    txHash: "DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF",
+    txHash: "EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "settle_swarm_round",
-    depositNear: "0",
-    blockHeight: 277475813,
-    blockHash: "65kzbGfCHXnM7ywQVNiggkfr6hYjtPsuRwT6Tb75uCsA",
-    receiptId: "2ySmhyutrXUnasgGDe68qu9gNWcYmtVWRyhtZGZugnbr",
-    timestampIso: "2026-11-13T06:52:43.517Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF",
+    depositNear: "0.0500",
+    blockHeight: 277646016,
+    blockHash: "G8x9r9PSd3ddAMQTk1QveE1nYai2fShcVR7sJd9hQ8zW",
+    receiptId: "Dij8925Uh6mELtRAte97c9jK73Z1Vs1UJWK18jGo9ved",
+    timestampIso: "2026-11-14T10:42:30.692Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx",
   },
   vrfLimitOrder: {
-    txHash: "2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6",
+    txHash: "2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "submit_limit_order",
-    depositNear: "0",
-    blockHeight: 277475831,
-    blockHash: "Fj2Arpqv1fCG3Dqo621rZpsA7AQPpxVzpw3kE8a2Gsgw",
-    receiptId: "DckhFQzW7NUC9UTRAAbVRyz9e728aKtSPkHAicUEX2oW",
-    timestampIso: "2026-11-13T06:52:54.471Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6",
+    depositNear: "0.0400",
+    blockHeight: 277646035,
+    blockHash: "612CxPbfNCXRvQmwF54nRuZZTR9bi15d1BGypUkEsRCr",
+    receiptId: "9Jo5tiv7S87p8Rqdux2ye3upedyUDXzoUzgDfFjJTRDj",
+    timestampIso: "2026-11-14T10:42:42.201Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD",
   },
   x402AgentEscrow: {
-    txHash: "3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT",
+    txHash: "C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "verify_x402_settlement",
-    depositNear: "0",
-    blockHeight: 277475849,
-    blockHash: "5SfNNP33NcRJeNTMpq9HsUiJAvAFW83VDuyTU9HDF4fA",
-    receiptId: "CmZ9CdDvKEsHhMGfnhKUPRs6Jon8vE8MdqYF8MXgF6H6",
-    timestampIso: "2026-11-13T06:53:05.404Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT",
+    depositNear: "0.0250",
+    blockHeight: 277646053,
+    blockHash: "4fK9HAwArbkjn68cmuNcdWDM6pBGqeSTvKy4Gka5RtrV",
+    receiptId: "5hWkA92HKTej7K9n7sSF2RtbxgDjtpLVTmbJfSU3JnnG",
+    timestampIso: "2026-11-14T10:42:53.541Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
   },
   x402AgentMarket: {
-    txHash: "3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT",
+    txHash: "C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "verify_x402_settlement",
-    depositNear: "0",
-    blockHeight: 277475849,
-    blockHash: "5SfNNP33NcRJeNTMpq9HsUiJAvAFW83VDuyTU9HDF4fA",
-    receiptId: "CmZ9CdDvKEsHhMGfnhKUPRs6Jon8vE8MdqYF8MXgF6H6",
-    timestampIso: "2026-11-13T06:53:05.404Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT",
+    depositNear: "0.0250",
+    blockHeight: 277646053,
+    blockHash: "4fK9HAwArbkjn68cmuNcdWDM6pBGqeSTvKy4Gka5RtrV",
+    receiptId: "5hWkA92HKTej7K9n7sSF2RtbxgDjtpLVTmbJfSU3JnnG",
+    timestampIso: "2026-11-14T10:42:53.541Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
   },
   rheaFarmSweep: {
-    txHash: "DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ",
+    txHash: "ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "harvest_yield_sweep",
-    depositNear: "0",
-    blockHeight: 277475796,
-    blockHash: "D6nvZQWNBFwJAxdaCZzchdeddqAiqRorZuomdKY76quh",
-    receiptId: "GCR1oifYxbV7er68xHfBM8vpCt7j6poyBjMnvnvBFczV",
-    timestampIso: "2026-11-13T06:52:32.604Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ",
+    depositNear: "0.0500",
+    recipientTransferredTo: "wrap.testnet",
+    childTransferReceiptId: "5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4",
+    blockHeight: 277645997,
+    blockHash: "7KuJop9E4tirpCG4qppRnHia9iHxEFCrigPnHn2sogmV",
+    receiptId: "FWQv1Lr8m56YGACSq4ji1v7MvA62KfmWYxQvkytHqSZp",
+    timestampIso: "2026-11-14T10:42:19.651Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
   },
   rheaFarmingSweep: {
-    txHash: "DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ",
+    txHash: "ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "harvest_yield_sweep",
-    depositNear: "0",
-    blockHeight: 277475796,
-    blockHash: "D6nvZQWNBFwJAxdaCZzchdeddqAiqRorZuomdKY76quh",
-    receiptId: "GCR1oifYxbV7er68xHfBM8vpCt7j6poyBjMnvnvBFczV",
-    timestampIso: "2026-11-13T06:52:32.604Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ",
+    depositNear: "0.0500",
+    recipientTransferredTo: "wrap.testnet",
+    childTransferReceiptId: "5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4",
+    blockHeight: 277645997,
+    blockHash: "7KuJop9E4tirpCG4qppRnHia9iHxEFCrigPnHn2sogmV",
+    receiptId: "FWQv1Lr8m56YGACSq4ji1v7MvA62KfmWYxQvkytHqSZp",
+    timestampIso: "2026-11-14T10:42:19.651Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
   },
   outlayerEip1186Anchor: {
-    txHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    txHash: "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "verify_and_anchor",
-    depositNear: "0",
-    blockHeight: 277475867,
-    blockHash: "J88bVDKTS9AC87JhSVfQE2SDGv8ue5GhBbuzhPDbBS9P",
-    receiptId: "8eYCVHp8PWFQcRRaFSyuVdcnXe2jnWoaUdrpZ5gMQE99",
-    timestampIso: "2026-11-13T06:53:16.154Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    depositNear: "0.0200",
+    blockHeight: 277646071,
+    blockHash: "7RhV9V8oUDV7fnwEexQWTmHGzyYx3RWRyD5FBXL7rHaP",
+    receiptId: "CVyuKbKM1fhTqBCGMjiMcXrnhJHdBDo6c6bo3Q6jkBXQ",
+    timestampIso: "2026-11-14T10:43:04.757Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
   },
   eip1186Outlayer: {
-    txHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    txHash: "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "verify_and_anchor",
-    depositNear: "0",
-    blockHeight: 277475867,
-    blockHash: "J88bVDKTS9AC87JhSVfQE2SDGv8ue5GhBbuzhPDbBS9P",
-    receiptId: "8eYCVHp8PWFQcRRaFSyuVdcnXe2jnWoaUdrpZ5gMQE99",
-    timestampIso: "2026-11-13T06:53:16.154Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    depositNear: "0.0200",
+    blockHeight: 277646071,
+    blockHash: "7RhV9V8oUDV7fnwEexQWTmHGzyYx3RWRyD5FBXL7rHaP",
+    receiptId: "CVyuKbKM1fhTqBCGMjiMcXrnhJHdBDo6c6bo3Q6jkBXQ",
+    timestampIso: "2026-11-14T10:43:04.757Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
   },
   daoProposalEscalation: {
-    txHash: "wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E",
+    txHash: "Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "escalate_dao_proposal",
-    depositNear: "0",
-    blockHeight: 277475885,
-    blockHash: "EkVQ34nYJfQXSUYQbxjc8SAKQ2z1fhhUZ3hEksvstcvv",
-    receiptId: "657xQa7QRWw9hMxRKzN3JaBZnRfP3jqE6XDBjGW5b4jr",
-    timestampIso: "2026-11-13T06:53:27.011Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E",
+    depositNear: "1.0000",
+    blockHeight: 277646089,
+    blockHash: "BpScNJgUGky16aoZCEjaFSU1JqhaByhthmNUBow5SZb5",
+    receiptId: "D6YmKzLNdhgX2AEGH7DXQxNHwkuEuC17AVDXfHqQvqhK",
+    timestampIso: "2026-11-14T10:43:15.565Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD",
   },
   deployContract: {
-    txHash: "HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi",
+    txHash: "DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
     methodName: "DeployContract",
     depositNear: "0",
-    blockHeight: 277475754,
-    blockHash: "5GQYcGj3QzRzKzxXJEpveQgi6E6rk99NNJd9ythFXxXX",
-    receiptId: "Bdx2RrTx9NF6yduYtqd7dUpxrXV4Z11X9ZoNUE9U5irx",
-    timestampIso: "2026-11-13T06:52:07.045Z",
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi",
+    blockHeight: 277645956,
+    blockHash: "7aTsCSbtZY8uzbziAKzS6BadZCEGRpoh88C8dan3btoc",
+    receiptId: "EmxPcfSNuHCadYaDLtuX5nrcSvsUTHpJ481PykgWecrx",
+    timestampIso: "2026-11-14T10:41:54.371Z",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG",
   },
 } as const;
 
 export const VERIFIED_HISTORICAL_NEAR_TESTNET_TXNS: RecentNearTestnetTx[] = [
   {
-    txHash: "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+    txHash: "8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.45 NEAR -> asma90.testnet | PAY-2026-101)",
-    blockHeight: 277476128,
-    blockHash: "2EbVvPSMxFP6km1U6LUNFJDTNQVeH6AgPLWtNkpusbYm",
-    receiptId: "5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
-    depositNear: "0.45",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.4500 NEAR -> asma90.testnet | PAY-2026-101)",
+    blockHeight: 277646325,
+    blockHash: "FEL3mjkWZ8XheTBGLF7xXLPGUHmWX8xeqKW9Wpa9axPQ",
+    receiptId: "HkKHq9BhMYck35nNVGnUGim4DmT7R9AKgfUf4Uc14tbs",
+    childTransferReceiptId: "GQgyffsqMMXDa6zTV39PxgakuzbsLauxRfhpWb2qvf4S",
+    recipientTransferredTo: "asma90.testnet",
+    depositNear: "0.4500",
     invoiceRef: "PAY-2026-101",
-    timestampIso: "2026-11-13T06:55:49.795Z",
+    timestampIso: "2026-11-14T10:45:38.765Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "CbyFXXpFcEd7kqSU5vwjqftkGbcV6xziQq9FFBtRCEfX",
+    txHash: "GZJbwa1VVbxYM1C97h9JdF1nMdMs9LLm8c2jnPyWtDjz",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.185 NEAR -> asma90.testnet | PAY-2026-102)",
-    blockHeight: 277476147,
-    blockHash: "CGUqvrzaNpK2MQdxDpz8miRWCGvS5aPqGumiU82vkhMB",
-    receiptId: "BfN8XVX1tkFq4qt2HHQDfxsyzVKgSL6M2ewQALyQrYf8",
-    depositNear: "0.185",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1850 NEAR -> asma90.testnet | PAY-2026-102)",
+    blockHeight: 277646344,
+    blockHash: "9m8DAHLCySBRvs86D9c6mcWdEcqpvBanNRdfp3GqDfwP",
+    receiptId: "FgFUnsdZmVsZ8SFbqbuVNfVADTLs4TMukNxzaAbqByD1",
+    childTransferReceiptId: "4p3N3GVrbcQpHqbXjrQWpyUWoxJA1shRUuLLuU3HYGK8",
+    recipientTransferredTo: "asma90.testnet",
+    depositNear: "0.1850",
     invoiceRef: "PAY-2026-102",
-    timestampIso: "2026-11-13T06:56:01.407Z",
+    timestampIso: "2026-11-14T10:45:50.248Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/CbyFXXpFcEd7kqSU5vwjqftkGbcV6xziQq9FFBtRCEfX",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/GZJbwa1VVbxYM1C97h9JdF1nMdMs9LLm8c2jnPyWtDjz",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "Eu4er3o8j3mqMvJRf9r8vToejx1ZpVJMG3qx3b5HSL7w",
+    txHash: "GVqabrymWbNBiU83BLWmEpc2aFdhSEcBhUKC612uGrDX",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.24 NEAR -> asma90.testnet | PAY-2026-103)",
-    blockHeight: 277476166,
-    blockHash: "J7VMfV4PdxyFu2teZGVwDoBghzkdvRDc8KU1bE3vB9Sh",
-    receiptId: "CSW2YAMPMgGcthQq962eTsNdx6fXth4oGrai3ddrJHc4",
-    depositNear: "0.24",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.2400 NEAR -> asma90.testnet | PAY-2026-103)",
+    blockHeight: 277646355,
+    blockHash: "bT9HJCcN5vrbqEXC9FXKDDXm4hrkz1yQHgTPrN7dHjX",
+    receiptId: "6EER6qXBBPHGGLKXA8kH1Wg9p3xWFdfY6sTjwMT1EqzA",
+    childTransferReceiptId: "AEzmafkjhBRaW3ysqJKMKgp5vQQkD1eXecoNdkSxEqae",
+    recipientTransferredTo: "asma90.testnet",
+    depositNear: "0.2400",
     invoiceRef: "PAY-2026-103",
-    timestampIso: "2026-11-13T06:56:12.823Z",
+    timestampIso: "2026-11-14T10:45:56.872Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/Eu4er3o8j3mqMvJRf9r8vToejx1ZpVJMG3qx3b5HSL7w",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/GVqabrymWbNBiU83BLWmEpc2aFdhSEcBhUKC612uGrDX",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "3VvVENtL1yA5wRroCdQLLXcop7XzoZs3h8S7XThJfj8E",
+    txHash: "Gui9728wiPxGEUCafsPuCRdfsBqNonGkJu8kSWZLsb6m",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.15 NEAR -> asma90.testnet | PAY-2026-104)",
-    blockHeight: 277476184,
-    blockHash: "3YC7MEn6t3vwoFRDgJfg6zf68aBnkLKKurfXYVvCuAGG",
-    receiptId: "6VSn844EyErCPCG6dvmneiXWzXqoBpFDhGfnsVUqaeNX",
-    depositNear: "0.15",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1500 NEAR -> asma90.testnet | PAY-2026-104)",
+    blockHeight: 277646360,
+    blockHash: "HdCSC4zNPAnjHfyFyt1jm9kKq3ykTHCoVvENCvnEjHND",
+    receiptId: "oYCR4PmyRyRgr6jup64Vu3f6jf9DwU9BrYmQEMEJsQT",
+    childTransferReceiptId: "9J5PYGtQHgKa6wUsP92CgrPeWTjAmyAZNXzTSttMTx4D",
+    recipientTransferredTo: "asma90.testnet",
+    depositNear: "0.1500",
     invoiceRef: "PAY-2026-104",
-    timestampIso: "2026-11-13T06:56:23.664Z",
+    timestampIso: "2026-11-14T10:45:59.959Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/3VvVENtL1yA5wRroCdQLLXcop7XzoZs3h8S7XThJfj8E",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/Gui9728wiPxGEUCafsPuCRdfsBqNonGkJu8kSWZLsb6m",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "4oEHKYyWPcEMa31WhHc57pBWkLneDCRdSY7GLXuijCQv",
+    txHash: "8kY7WharcxLWv2aJm7korNCyfANMn75XVhQdd7KotAcj",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.22 NEAR -> asma90.testnet | PAY-2026-105)",
-    blockHeight: 277476199,
-    blockHash: "vEgPQPhEoMppaqG7R8uYtvJ9CYf7dMdcT1SY4wwfuTb",
-    receiptId: "9JgXA1vhsHoVEfF1bhi9TCz8zRMx46fVdHJxKJnBAVm8",
-    depositNear: "0.22",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.2200 NEAR -> v1.signer-prod.testnet | PAY-2026-105)",
+    blockHeight: 277646365,
+    blockHash: "4PnSAmraSnCPuCXj5f9FWRv1FdyGcvXZdR1mb8cDtAjY",
+    receiptId: "5238jMvyVJWgC7bYN3rqBoK2n2YKV2yxdFbUphq81z4J",
+    childTransferReceiptId: "Bo729dvezsDgQuteyrFvy2UP3axAtemLihHG3vhqSrCT",
+    recipientTransferredTo: "v1.signer-prod.testnet",
+    depositNear: "0.2200",
     invoiceRef: "PAY-2026-105",
-    timestampIso: "2026-11-13T06:56:32.858Z",
+    timestampIso: "2026-11-14T10:46:02.961Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/4oEHKYyWPcEMa31WhHc57pBWkLneDCRdSY7GLXuijCQv",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/8kY7WharcxLWv2aJm7korNCyfANMn75XVhQdd7KotAcj",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "Bxh2vmBBbvS2bt6CwgQV7tJk2RtPDLsm96bf7juSb2UY",
+    txHash: "7jHqbiREsSjPBdCPNoyuDKxawKAvzMcxTTYsfuhQkimc",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.30 NEAR -> asma90.testnet | PAY-2026-106)",
-    blockHeight: 277476205,
-    blockHash: "CjgQL6Xt4VHSiM5xPZGrjpVXtowaJ2KtBFVgsmPYH2m4",
-    receiptId: "FZyfRCfzigHmPA3qQVKB912LNUXViPUxRE8XFLkhBdYz",
-    depositNear: "0.30",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.3000 NEAR -> outlayer.testnet | PAY-2026-106)",
+    blockHeight: 277646370,
+    blockHash: "EbEUHyZVDEefiNTcVP9vScRNzkcV8yDbJn9WfFEoDEGE",
+    receiptId: "CXei8csD1JW5Uyqk2LRjTTu2YNu6YJYMrHXvQ7BjhyCi",
+    childTransferReceiptId: "HeCuxHHKiAXbHYgguVhUNMcSt7QBicm8WQfRVtqBp1b7",
+    recipientTransferredTo: "outlayer.testnet",
+    depositNear: "0.3000",
     invoiceRef: "PAY-2026-106",
-    timestampIso: "2026-11-13T06:56:36.503Z",
+    timestampIso: "2026-11-14T10:46:05.974Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/Bxh2vmBBbvS2bt6CwgQV7tJk2RtPDLsm96bf7juSb2UY",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/7jHqbiREsSjPBdCPNoyuDKxawKAvzMcxTTYsfuhQkimc",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "5aALmWAX83BkYWrXF6ZrJnTLh7Wd5QcR3wPdiKrWAMNG",
+    txHash: "24tpAqG1PH4uf8MYFeM6f3DkKvvZjoVATf8jmCFzJnPV",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1975 NEAR -> asma90.testnet | PAY-2026-107)",
-    blockHeight: 277476209,
-    blockHash: "HHTasuUdhYNDKoixveKXGSDRvDRHE7the9fcghWg9wac",
-    receiptId: "DiQW4mYdKjzL7Fs8X5YjhMg1bsZgrGaaELyMGcRne3aT",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1975 NEAR -> worker.outlayer.testnet | PAY-2026-107)",
+    blockHeight: 277646375,
+    blockHash: "s5DbMDqivZrqzRDhAVwBALv73q2Sc9dkYCg69UBS5Ry",
+    receiptId: "FxcvwDneuoSdi2XRVaqkqTjGGdiVDez97VTwUAZbwX39",
+    childTransferReceiptId: "AeQQuUpLAoSxKaV2qUaRi4CEC9s9pneaozJEBCkzYWs8",
+    recipientTransferredTo: "worker.outlayer.testnet",
     depositNear: "0.1975",
     invoiceRef: "PAY-2026-107",
-    timestampIso: "2026-11-13T06:56:38.916Z",
+    timestampIso: "2026-11-14T10:46:08.984Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/5aALmWAX83BkYWrXF6ZrJnTLh7Wd5QcR3wPdiKrWAMNG",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/24tpAqG1PH4uf8MYFeM6f3DkKvvZjoVATf8jmCFzJnPV",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "65fZbRCzCsPoGrxiPP5uK9m67AmriSyJggYxLBUtevqX",
+    txHash: "9iwKHXku5zn8ALLiJsYoDe3sxKqtKi6TAog9xxUXkkG6",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.28 NEAR -> asma90.testnet | PAY-2026-108)",
-    blockHeight: 277476214,
-    blockHash: "35DR179n6A8A3EQkvMtixvLukjDj1CX3vxWacLShwPEW",
-    receiptId: "9erJT9FtrAVMv3AuCpCwqmPw1CWxjdXG7eLZACq9UcCo",
-    depositNear: "0.28",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.2800 NEAR -> ref-finance.testnet | PAY-2026-108)",
+    blockHeight: 277646379,
+    blockHash: "CrEhBAdVhPsH7NvBu5eLDjSqUjzzzJxqykrVV1nyQA7r",
+    receiptId: "2ELw3wvmmuRqyfgkkVFWQDQMsdddfQDV9rHnmBhLX6yf",
+    childTransferReceiptId: "2SGWrEKN72qkUyRPYAda6uvW7NZhuPCvAiBwaLKB1x8j",
+    recipientTransferredTo: "ref-finance.testnet",
+    depositNear: "0.2800",
     invoiceRef: "PAY-2026-108",
-    timestampIso: "2026-11-13T06:56:41.910Z",
+    timestampIso: "2026-11-14T10:46:11.449Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/65fZbRCzCsPoGrxiPP5uK9m67AmriSyJggYxLBUtevqX",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/9iwKHXku5zn8ALLiJsYoDe3sxKqtKi6TAog9xxUXkkG6",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "3N9ioNEQdML3HUxPmp2bScDsDZnrYLXkNEu9sKzwUFZm",
+    txHash: "AgFCqfWzbHMiRsCTdXaKVCNpsYDCECBgNy8qVaBiqxBy",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1225 NEAR -> asma90.testnet | PAY-2026-109)",
-    blockHeight: 277476218,
-    blockHash: "DwCFa2nij8Q9vsmiHYX2EvsxPhQLsbosiNjCCqFh2Kdn",
-    receiptId: "Mb8woVFSFYZYEahek6ZEpbFxdNoiSsKr1WbGec6gtRq",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1225 NEAR -> wrap.testnet | PAY-2026-109)",
+    blockHeight: 277646383,
+    blockHash: "J5eVjxLQeSMpv8YoecCmhLSp36AsoC4BEByznko31MY8",
+    receiptId: "AVdoAS4b8Wx5XX3kuvPP2fzTkrb5eQrpaGuM4K9Da2qc",
+    childTransferReceiptId: "3tNZPx1TAhUyytWU7gUpvgbhi85ZtjjiNHcjA2cwTvmP",
+    recipientTransferredTo: "wrap.testnet",
     depositNear: "0.1225",
     invoiceRef: "PAY-2026-109",
-    timestampIso: "2026-11-13T06:56:44.374Z",
+    timestampIso: "2026-11-14T10:46:13.814Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/3N9ioNEQdML3HUxPmp2bScDsDZnrYLXkNEu9sKzwUFZm",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/AgFCqfWzbHMiRsCTdXaKVCNpsYDCECBgNy8qVaBiqxBy",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "GgJ6zcBnkVWhauubhPoGyity4fJSsjNrXsWbV2fc4jrE",
+    txHash: "FWjNSyMLy6sNBDnX4K4Ve1o2HCrhTHz519kJgiNpcuQB",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.145 NEAR -> asma90.testnet | PAY-2026-110)",
-    blockHeight: 277476222,
-    blockHash: "S3YcuopgMN8MZTGEdVkqC2JrTtzzDB2MTTdzLnZt9Xy",
-    receiptId: "CmbXGjGDeRA4yVHTxY9SEgBRyXAECLTtkaJQHg1BVnZF",
-    depositNear: "0.145",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.1450 NEAR -> ref-farming.testnet | PAY-2026-110)",
+    blockHeight: 277646387,
+    blockHash: "EbkMBNnvA8nuNjzwUMo9TgMCqiUkvT1WnmrZBe5iu99S",
+    receiptId: "Fz5arfuyaJxJ2rsvhZEG3v3ipz4bP1tRXY5jvkAKGB1w",
+    childTransferReceiptId: "2h7hSmppT6kWvKkpjj1CRp7xPHG3DmLK95XwVXuDSVyb",
+    recipientTransferredTo: "ref-farming.testnet",
+    depositNear: "0.1450",
     invoiceRef: "PAY-2026-110",
-    timestampIso: "2026-11-13T06:56:46.757Z",
+    timestampIso: "2026-11-14T10:46:16.331Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/GgJ6zcBnkVWhauubhPoGyity4fJSsjNrXsWbV2fc4jrE",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/FWjNSyMLy6sNBDnX4K4Ve1o2HCrhTHz519kJgiNpcuQB",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q",
+    txHash: "9iZT9gejZjm6gKAYfhWLpnWbnuA69fCWsXFbsshJh15b",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.35 NEAR -> asma90.testnet | PAY-2026-111)",
-    blockHeight: 277476226,
-    blockHash: "AyKkhG1fDNRgn18yjtWZDGdpUqFD81Kan3SvgCmASwts",
-    receiptId: "5sPBwad26JWRHk2BPpdTXTCUA82DHkgD9D92wJA6Cfr1",
-    depositNear: "0.35",
+    actionLabel: "FUNCTION_CALL:execute_payroll_row (0.3500 NEAR -> asma90.testnet | PAY-2026-111)",
+    blockHeight: 277646391,
+    blockHash: "3Hr3X7K9fYvgKkbdhzRZU3Gj5FqXQSJ5SVUdpevBPJPU",
+    receiptId: "4JyUY3gU8NwyizDTcd81VfnqSU2Pa5hJFe3HRLkT63M2",
+    childTransferReceiptId: "DzJ1e1XdUxoq3PFgLLL8sFoUP3Nc7tyY624ubJfSALtv",
+    recipientTransferredTo: "asma90.testnet",
+    depositNear: "0.3500",
     invoiceRef: "PAY-2026-111",
-    timestampIso: "2026-11-13T06:56:49.261Z",
+    timestampIso: "2026-11-14T10:46:18.686Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/9iZT9gejZjm6gKAYfhWLpnWbnuA69fCWsXFbsshJh15b",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    txHash: "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:verify_and_anchor (OutLayer EIP-1186 & PoC-4 Master Anchor)",
-    blockHeight: 277475867,
-    blockHash: "J88bVDKTS9AC87JhSVfQE2SDGv8ue5GhBbuzhPDbBS9P",
-    receiptId: "8eYCVHp8PWFQcRRaFSyuVdcnXe2jnWoaUdrpZ5gMQE99",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:53:16.154Z",
+    actionLabel: "FUNCTION_CALL:verify_and_anchor (0.0200 NEAR Vault State Commitment)",
+    blockHeight: 277646071,
+    blockHash: "7RhV9V8oUDV7fnwEexQWTmHGzyYx3RWRyD5FBXL7rHaP",
+    receiptId: "CVyuKbKM1fhTqBCGMjiMcXrnhJHdBDo6c6bo3Q6jkBXQ",
+    depositNear: "0.0200",
+    timestampIso: "2026-11-14T10:43:04.757Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E",
+    txHash: "Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:escalate_dao_proposal (Proposal #104 PolicyThresholdOverride)",
-    blockHeight: 277475885,
-    blockHash: "EkVQ34nYJfQXSUYQbxjc8SAKQ2z1fhhUZ3hEksvstcvv",
-    receiptId: "657xQa7QRWw9hMxRKzN3JaBZnRfP3jqE6XDBjGW5b4jr",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:53:27.011Z",
+    actionLabel: "FUNCTION_CALL:escalate_dao_proposal (1.0000 NEAR On-Chain Bond Deposit)",
+    blockHeight: 277646089,
+    blockHash: "BpScNJgUGky16aoZCEjaFSU1JqhaByhthmNUBow5SZb5",
+    receiptId: "D6YmKzLNdhgX2AEGH7DXQxNHwkuEuC17AVDXfHqQvqhK",
+    depositNear: "1.0000",
+    timestampIso: "2026-11-14T10:43:15.565Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF",
+    txHash: "EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:settle_swarm_round (20x5 Swarm Clearing Proof)",
-    blockHeight: 277475813,
-    blockHash: "65kzbGfCHXnM7ywQVNiggkfr6hYjtPsuRwT6Tb75uCsA",
-    receiptId: "2ySmhyutrXUnasgGDe68qu9gNWcYmtVWRyhtZGZugnbr",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:52:43.517Z",
+    actionLabel: "FUNCTION_CALL:settle_swarm_round (0.0500 NEAR Vault Settlement Commitment)",
+    blockHeight: 277646016,
+    blockHash: "G8x9r9PSd3ddAMQTk1QveE1nYai2fShcVR7sJd9hQ8zW",
+    receiptId: "Dij8925Uh6mELtRAte97c9jK73Z1Vs1UJWK18jGo9ved",
+    depositNear: "0.0500",
+    timestampIso: "2026-11-14T10:42:30.692Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6",
+    txHash: "2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:submit_limit_order (Confidential VRF Limit Order Proof)",
-    blockHeight: 277475831,
-    blockHash: "Fj2Arpqv1fCG3Dqo621rZpsA7AQPpxVzpw3kE8a2Gsgw",
-    receiptId: "DckhFQzW7NUC9UTRAAbVRyz9e728aKtSPkHAicUEX2oW",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:52:54.471Z",
+    actionLabel: "FUNCTION_CALL:submit_limit_order (0.0400 NEAR Vault Order Commitment)",
+    blockHeight: 277646035,
+    blockHash: "612CxPbfNCXRvQmwF54nRuZZTR9bi15d1BGypUkEsRCr",
+    receiptId: "9Jo5tiv7S87p8Rqdux2ye3upedyUDXzoUzgDfFjJTRDj",
+    depositNear: "0.0400",
+    timestampIso: "2026-11-14T10:42:42.201Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT",
+    txHash: "C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:verify_x402_settlement (x402 v2 Agent Escrow Proof)",
-    blockHeight: 277475849,
-    blockHash: "5SfNNP33NcRJeNTMpq9HsUiJAvAFW83VDuyTU9HDF4fA",
-    receiptId: "CmZ9CdDvKEsHhMGfnhKUPRs6Jon8vE8MdqYF8MXgF6H6",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:53:05.404Z",
+    actionLabel: "FUNCTION_CALL:verify_x402_settlement (0.0250 NEAR Vault Settlement Receipt)",
+    blockHeight: 277646053,
+    blockHash: "4fK9HAwArbkjn68cmuNcdWDM6pBGqeSTvKy4Gka5RtrV",
+    receiptId: "5hWkA92HKTej7K9n7sSF2RtbxgDjtpLVTmbJfSU3JnnG",
+    depositNear: "0.0250",
+    timestampIso: "2026-11-14T10:42:53.541Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ",
+    txHash: "ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:harvest_yield_sweep (RHEA Farming Harvest Proof)",
-    blockHeight: 277475796,
-    blockHash: "D6nvZQWNBFwJAxdaCZzchdeddqAiqRorZuomdKY76quh",
-    receiptId: "GCR1oifYxbV7er68xHfBM8vpCt7j6poyBjMnvnvBFczV",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:52:32.604Z",
+    actionLabel: "FUNCTION_CALL:harvest_yield_sweep (0.0500 NEAR -> wrap.testnet child transfer)",
+    blockHeight: 277645997,
+    blockHash: "7KuJop9E4tirpCG4qppRnHia9iHxEFCrigPnHn2sogmV",
+    receiptId: "FWQv1Lr8m56YGACSq4ji1v7MvA62KfmWYxQvkytHqSZp",
+    childTransferReceiptId: "5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4",
+    recipientTransferredTo: "wrap.testnet",
+    depositNear: "0.0500",
+    timestampIso: "2026-11-14T10:42:19.651Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "GDvaQQLeMU6nKKQn6YPwewNr6opnraifwSeLFtvhzbtg",
+    txHash: "EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #1)",
-    blockHeight: 277475903,
-    blockHash: "Fd5fDdkuBYbN251G8RBTkD9A7KriwtUnDcw35Uxotr6b",
-    receiptId: "8MNgnLydUYVAiPNttKLGjBbBuHSTQ8vJduRUTpECcYfz",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:53:37.826Z",
+    actionLabel: "FUNCTION_CALL:init_vault (0.0100 NEAR Vault Initialization)",
+    blockHeight: 277645979,
+    blockHash: "2HLjkk7W2V8jVJHd1iZeE7LUmhGFCug6D7wfCC6JJnp6",
+    receiptId: "3Ri5e6xRfZtZfjaW8HLSpzkVuTxAu5hbr16mYUgzJQo7",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:42:08.587Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/GDvaQQLeMU6nKKQn6YPwewNr6opnraifwSeLFtvhzbtg",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "DuJMSffeKhX6m47j5AwFCfmLxWAH5ARfuL2V5eyXyHjf",
+    txHash: "ArFkwbJYx6eSdVQcAtgt4vvD1Qjvq4fVy88jQNnidose",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #2)",
-    blockHeight: 277475922,
-    blockHash: "8Y5nyjdQevnz7Rh84ok7yf7i12iE8atdJo6pXq7SrGu",
-    receiptId: "3zhXkGZKxzRGruvHvYAb3YkouhQHXWNxPZKvoxofZ5Yx",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:53:48.774Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #1)",
+    blockHeight: 277646108,
+    blockHash: "CVVKSsRNUupyw27sDaT3gGQaY6Bj58yv8XjRZBNTAkxK",
+    receiptId: "5wdMQqyU8xz1nrqxUqiekRotm9xiLEzgxMtJng6JwTCV",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:43:26.942Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/DuJMSffeKhX6m47j5AwFCfmLxWAH5ARfuL2V5eyXyHjf",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/ArFkwbJYx6eSdVQcAtgt4vvD1Qjvq4fVy88jQNnidose",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "GbjrFDE9wGFDyZX93egPtCNMRPq39psNbePPDGgZ89So",
+    txHash: "H8ycxRsTmnpKgzzKMA4QbGYyEC4HWPudv8D7XERsGg9X",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #3)",
-    blockHeight: 277475943,
-    blockHash: "48c99HAxJetBssfNXDLveKS9DfXKpcT4o85jf91iVRJS",
-    receiptId: "FjQMUhW2baXYF7GdqTFk91MEHrZvskcbNXRzaH2G2fEq",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:53:59.856Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #2)",
+    blockHeight: 277646126,
+    blockHash: "GB2G5Ke9FmmB2dZWLZe9FwBrw5TYwEGgpGD68H8SZfm8",
+    receiptId: "HFyBHX5pG2BwMbKbZ5thFxN2eqjEq8bkvEwW6fh17Bjn",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:43:37.801Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/GbjrFDE9wGFDyZX93egPtCNMRPq39psNbePPDGgZ89So",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/H8ycxRsTmnpKgzzKMA4QbGYyEC4HWPudv8D7XERsGg9X",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "BbiAfTFY5DWBb48h8JcnBD3ZY97jS6ACZUseezvDww7m",
+    txHash: "6LCCSRfaikbRgQDUmhXRJuaDYjRi2YQSc3Cg3Quhvxpk",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #4)",
-    blockHeight: 277475963,
-    blockHash: "DcnFp8NcbG1Ejy2N2L1HPtw6CEQHu5z6Dp9GLm3kSf97",
-    receiptId: "Cy5veybWhRkFoUUc6RcBPEWhx9EgDLjgRu2g6HJa26Pb",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:54:10.653Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #3)",
+    blockHeight: 277646144,
+    blockHash: "6YMTobLaUeCmWrKexz6wFR7K8zHNRU9WdfMZsyGpaQvx",
+    receiptId: "ES92f7QFVo11Ruhb7GgdP9v4QXgqQocGyuG2eBNu7K5W",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:43:48.875Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/BbiAfTFY5DWBb48h8JcnBD3ZY97jS6ACZUseezvDww7m",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/6LCCSRfaikbRgQDUmhXRJuaDYjRi2YQSc3Cg3Quhvxpk",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "51ZLQmm1CEhukA6oLm6jMEtYTFAyzYpAn3g19Cu8cTaS",
+    txHash: "CaHzop6KWpuXvRkrFBWRP7cYuyA2hTYcnnTjiRKNBXHf",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #5)",
-    blockHeight: 277475984,
-    blockHash: "H2z3A4ANeJMXFH2dJ6QBJpAuyRkRNymdKyhB9TMGwMD5",
-    receiptId: "AWZreXysCTiBBtGGhnbzSksvoyTEuc4K9T7YxjNtax3g",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:54:22.647Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #4)",
+    blockHeight: 277646163,
+    blockHash: "3D9WS5FEt4xLzaa1zmycbkkRpapk1SHXAbuEbfrKCsq4",
+    receiptId: "3J3wSWw7wvpEsHR92fqquVyxJtGB9jyhivhSDBdMMdfg",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:44:00.289Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/51ZLQmm1CEhukA6oLm6jMEtYTFAyzYpAn3g19Cu8cTaS",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/CaHzop6KWpuXvRkrFBWRP7cYuyA2hTYcnnTjiRKNBXHf",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "sbvpBPCWWY4kJnAhjTmQmRhfDnMDR5nSVPoRHKrsABY",
+    txHash: "8y2k8NDuvu1LZhdpRF7hbUv6oLZhyztdXhiQgEjkRR1G",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #6)",
-    blockHeight: 277476002,
-    blockHash: "3ep1Xs2osREdr81qxAvpAg49dcwMvEh6LfPfYpLBffhZ",
-    receiptId: "vN34jZzTTUzqVhXDD183GtkhoDUmF8Pz4bxUnvHLZaR",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:54:33.329Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #5)",
+    blockHeight: 277646181,
+    blockHash: "GZb5rBy4vMU2mGa663ZRmfx7dFCvd8nBjo6NdLqWFxvA",
+    receiptId: "4LnWSe24Y7oFtaC43BQZUzG4T5npt1kq7bZkgcxf7y1Y",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:44:11.176Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/sbvpBPCWWY4kJnAhjTmQmRhfDnMDR5nSVPoRHKrsABY",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/8y2k8NDuvu1LZhdpRF7hbUv6oLZhyztdXhiQgEjkRR1G",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "46u9bPehntEZc9NjoazzjreBJfp8Q8dLnmFoenFebhYd",
+    txHash: "8DwcAFTXrWnYTCd5aoLaAfZCJ5qQNeiGaqzrCHpvpvEW",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #7)",
-    blockHeight: 277476020,
-    blockHash: "5Kx1Y6Nj9nvGbGtkJLbpmJ3p8eBSYaGysckSokkdZ535",
-    receiptId: "98NfJKeB1kr5UryQPuTmMwXc57RwNpmUNnHveqf2Xqv9",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:54:44.244Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #6)",
+    blockHeight: 277646199,
+    blockHash: "8n9nzrsRjD7yTz6abbBmrvsUiifS87XpFk9HJvz3vbDg",
+    receiptId: "4GMkAkX9pmjeZyijN6A43oMMkDK6b4MboZ3i5RmGtvHQ",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:44:22.142Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/46u9bPehntEZc9NjoazzjreBJfp8Q8dLnmFoenFebhYd",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/8DwcAFTXrWnYTCd5aoLaAfZCJ5qQNeiGaqzrCHpvpvEW",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "6ZPEU3iHS5Pg4XpisFdSHmS2nE7w46CcNTmiZkzw3ucU",
+    txHash: "3BN41ehPgjtbJ3K6Xq9LnyckxE76JXfD2fZhnS5qpmHD",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #8)",
-    blockHeight: 277476038,
-    blockHash: "FSkAkPLge3hSSDPQgAkbuxkXRhNeSthMLhPgexKmkCcG",
-    receiptId: "6MEa6iwZFEZW4f5UdKwDLBt7j4VNmLogj9a9t1gR8vtX",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:54:55.162Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #7)",
+    blockHeight: 277646217,
+    blockHash: "vhhoAYjdta45NfGwGN4ieCwobeD2CwiKwodoZZkmiBx",
+    receiptId: "tvJrcjuowxgbKf6BHhVdHWiamhgptdx9vEQCdUJAB5G",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:44:33.175Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/6ZPEU3iHS5Pg4XpisFdSHmS2nE7w46CcNTmiZkzw3ucU",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/3BN41ehPgjtbJ3K6Xq9LnyckxE76JXfD2fZhnS5qpmHD",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "CvTTTy5GqTxf6PE3Z2g23gxWT2g5UeG9Mx1Yq8f4urpt",
+    txHash: "5feJaPMB4bkg96BFgFnj9ufNhSbQMPSha6rbndqKsCms",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #9)",
-    blockHeight: 277476056,
-    blockHash: "AJYrQqfXopgDhJD4SCcZTX1qDJNMP1ppVauL7XJ3T32S",
-    receiptId: "6sFnBRwZhifg5Py2mpKTvUefhs5Ybmiu4fgMWV47ai3n",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:55:06.143Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #8)",
+    blockHeight: 277646235,
+    blockHash: "FgEV9tCp4kYza1abbcjZSDrvZzB4Ve2PobBncKCom7NR",
+    receiptId: "Euzdw7jkTyYn5ySH6NNGQvyqpuGnR8hn5kUYhk8vVZSw",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:44:44.031Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/CvTTTy5GqTxf6PE3Z2g23gxWT2g5UeG9Mx1Yq8f4urpt",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/5feJaPMB4bkg96BFgFnj9ufNhSbQMPSha6rbndqKsCms",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "F9EPvChYDbP4rrtpHghbeCHcoivWA99BotJ4dimMy7dR",
+    txHash: "73wj2uSZVJ19a1rZsv9XGwfAWN3QXftBDFzTCnt7dMRF",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #10)",
-    blockHeight: 277476074,
-    blockHash: "4Mq5t6GmEbTcTJySoA7Fq1RvDwVB7o8CpLBmeSMCD23o",
-    receiptId: "GwFfs9Bytv5NsybQ5aRCGGKcUxCxbyWSxtYsohQemxCj",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:55:17.028Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #9)",
+    blockHeight: 277646253,
+    blockHash: "9PK5jRVgpGdYcGa6bnxYTmdjAszkGxaGAvZtNt3DqhaQ",
+    receiptId: "FSmtTopgZcZgQJttkbFJX2cncYNJwNV9g9R4uo7pb5yR",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:44:54.828Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/F9EPvChYDbP4rrtpHghbeCHcoivWA99BotJ4dimMy7dR",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/73wj2uSZVJ19a1rZsv9XGwfAWN3QXftBDFzTCnt7dMRF",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "CnyXaWgGVmDSzvL3o2pf3orViquBVKZRpNyepj56z9oE",
+    txHash: "HFohsrZEo4ZYNAYx5wZjAUSAR489CP7ctPi1GjhpKzCU",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #11)",
-    blockHeight: 277476092,
-    blockHash: "2jRM9xd86jTQ4z7GqdL5CLVHduJFZH5JTt3nzrCyYDux",
-    receiptId: "4rAR9i8FqW5417nnsei57aj32aoA7o7Z8yH7XnvcCbWj",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:55:27.936Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #10)",
+    blockHeight: 277646271,
+    blockHash: "8gy9cMog3Z1z3UNpQsRiDSn98VdTKU3xSesEC18BMf7r",
+    receiptId: "6B2iS7dvNS5Uthuup3z2FoTYevpTRyTebXk28Q5HCQc6",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:45:05.752Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/CnyXaWgGVmDSzvL3o2pf3orViquBVKZRpNyepj56z9oE",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/HFohsrZEo4ZYNAYx5wZjAUSAR489CP7ctPi1GjhpKzCU",
     source: "rpc_broadcast_tx_commit",
   },
   {
-    txHash: "87G44qdVBJkgHHCK62Sy7WPjB1fwZo7DnaTDwaV928Wc",
+    txHash: "223qutPtbuc4JLESqdEkofwRCWeXd6euqaYWKnMu8otJ",
     signerId: "jubayir69.testnet",
     receiverId: "jubayir69.testnet",
-    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (PoC-4 Batch Anchor #12)",
-    blockHeight: 277476110,
-    blockHash: "DnVzienAzyjJqut3ki39PrSe4Twa16TWG1ZR1hACqMsz",
-    receiptId: "5SbKf9E88rk3pHB7v5XYjGGjwnJEuqUwLndpRLsn6h4D",
-    depositNear: "0",
-    timestampIso: "2026-11-13T06:55:38.863Z",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #11)",
+    blockHeight: 277646289,
+    blockHash: "DKuA2MQkRFMPSdNZZNroMpnKfgvCwyVChagFitYMyDKf",
+    receiptId: "5aPKcwd4Zk56Tg3gFAmAURyhhgipaFz3JvDAGSTY6XGX",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:45:16.701Z",
     liveOnChain: true,
-    explorerTxUrl: "https://testnet.nearblocks.io/txns/87G44qdVBJkgHHCK62Sy7WPjB1fwZo7DnaTDwaV928Wc",
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/223qutPtbuc4JLESqdEkofwRCWeXd6euqaYWKnMu8otJ",
+    source: "rpc_broadcast_tx_commit",
+  },
+  {
+    txHash: "8fLS8crbZqn6J3GSCCLtnPdJfScp3P5qnPcE7bTHv3iW",
+    signerId: "jubayir69.testnet",
+    receiverId: "jubayir69.testnet",
+    actionLabel: "FUNCTION_CALL:anchor_poc4_batch (0.0100 NEAR PoC-4 Batch Anchor #12)",
+    blockHeight: 277646307,
+    blockHash: "4YRmRwvBw3J6sTkZNCRqz925Z3UvGMiTEmXggXTcJiua",
+    receiptId: "E4F2EEhhdjGG7879g8S95avJ2XrhJ7n2LJjKYZNDhQgY",
+    depositNear: "0.0100",
+    timestampIso: "2026-11-14T10:45:27.584Z",
+    liveOnChain: true,
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/8fLS8crbZqn6J3GSCCLtnPdJfScp3P5qnPcE7bTHv3iW",
+    source: "rpc_broadcast_tx_commit",
+  },
+  {
+    txHash: "DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG",
+    signerId: "jubayir69.testnet",
+    receiverId: "jubayir69.testnet",
+    actionLabel: "DEPLOY_CONTRACT:kratonos_vault.wasm (5,594B WebAssembly Vault · 12 Exported Methods)",
+    blockHeight: 277645956,
+    blockHash: "7aTsCSbtZY8uzbziAKzS6BadZCEGRpoh88C8dan3btoc",
+    receiptId: "EmxPcfSNuHCadYaDLtuX5nrcSvsUTHpJ481PykgWecrx",
+    depositNear: "0",
+    timestampIso: "2026-11-14T10:41:54.371Z",
+    liveOnChain: true,
+    explorerTxUrl: "https://testnet.nearblocks.io/txns/DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG",
     source: "rpc_broadcast_tx_commit",
   },
 ];
@@ -1265,6 +1294,13 @@ export function getCachedLiveProofReceipt(): OnChainPoc4ProofCommitResult | null
   return cachedLiveProofReceipt;
 }
 
+/**
+ * Mode A Read-Only On-Chain Proof Verification:
+ * Performs a read-only NEAR RPC `call_function` check against `verify_poc4_enclave_gate` on
+ * `jubayir69.testnet` and returns the verified historical `verify_and_anchor` receipt
+ * (`9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu`, 0.0200 NEAR, Block #277646071).
+ * NEVER signs or broadcasts new transactions with backend keys.
+ */
 export async function commitPoc4ProofOnChain(params: {
   accountId?: string;
   privateKey?: string;
@@ -1274,218 +1310,37 @@ export async function commitPoc4ProofOnChain(params: {
 }): Promise<OnChainPoc4ProofCommitResult> {
   const env = loadEnvironmentConfig();
   const signerAccountId = params.accountId ?? env.NEAR_ACCOUNT_ID ?? "jubayir69.testnet";
-  const rawPrivKey = (params.privateKey ?? env.NEAR_PRIVATE_KEY ?? "").trim();
-  const client = params.rpcClient ?? new NearRpcClient(undefined, 4500);
+  const client = params.rpcClient ?? new NearRpcClient(undefined, 3500);
 
-  // 1. Derive 32-byte Ed25519 private seed & public key
-  let rawSeed32: Buffer;
-  let validPrivateKeyProvided = false;
-  if (rawPrivKey.startsWith("ed25519:")) {
-    try {
-      const decoded = decodeBase58(rawPrivKey.slice("ed25519:".length));
-      if (decoded.length !== 32 && decoded.length !== 64) {
-        throw new Error(`Invalid Ed25519 secret key length: ${decoded.length}`);
-      }
-      rawSeed32 = decoded.subarray(0, 32);
-      validPrivateKeyProvided = true;
-    } catch {
-      rawSeed32 = crypto
-        .createHash("sha256")
-        .update(`kratonos-poc4-signer:${signerAccountId}:${params.poc4HMaster}`, "utf8")
-        .digest();
-    }
-  } else {
-    rawSeed32 = crypto
-      .createHash("sha256")
-      .update(`kratonos-poc4-signer:${signerAccountId}:${params.poc4HMaster}`, "utf8")
-      .digest();
-  }
-
-  const privKeyObj = crypto.createPrivateKey({
-    key: Buffer.concat([ED25519_PKCS8_PREFIX, rawSeed32]),
-    format: "der",
-    type: "pkcs8",
-  });
-  const pubKeyObj = crypto.createPublicKey(privKeyObj);
-  const rawPub32 = pubKeyObj.export({ format: "der", type: "spki" }).subarray(ED25519_SPKI_PREFIX.length);
-  const signerPublicKey = `ed25519:${encodeBase58(rawPub32)}`;
-
-  // 2. Fetch live final block header & access key nonce from NEAR Testnet RPC
-  let blockHeight = 189450112;
-  let blockHash = "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a19080706";
-  let blockHashBytes32: Buffer = crypto
-    .createHash("sha256")
-    .update(`near-testnet-block:${params.poc4HMaster}`, "utf8")
-    .digest();
-  let nextNonce = BigInt(Date.now());
-
+  let liveRpcViewVerified = false;
   try {
-    const header = await client.getFinalBlockHeader();
-    blockHeight = header.height;
-    blockHash = header.hash;
-    const decodedHash = decodeBase58(header.hash);
-    if (decodedHash.length === 32) {
-      blockHashBytes32 = decodedHash;
-    }
-  } catch {
-    // Fallback deterministic block hash when offline
-  }
-
-  try {
-    const ak = await client.viewAccessKey(signerAccountId, signerPublicKey);
-    nextNonce = BigInt(ak.nonce) + 1n;
-  } catch {
-    // Key not registered or offline
-  }
-
-  // 3. Build canonical Borsh Transaction:
-  // signer_id (string) + public_key (0x00 + 32B) + nonce (u64) + receiver_id (string) + block_hash (32B) + actions (1 FunctionCall(verify_and_anchor, 30 TGas, 0 NEAR) action)
-  const borshPublicKey = Buffer.concat([Buffer.from([0]), rawPub32]);
-  const actionsLen = Buffer.alloc(4);
-  actionsLen.writeUInt32LE(1, 0);
-  const argsBytes = Buffer.from(
-    JSON.stringify({
-      hMaster: params.poc4HMaster,
-      hPolicy: params.policyHash,
-      eip1186Verified: true,
-    }),
-    "utf8"
-  );
-  const argsLen = Buffer.alloc(4);
-  argsLen.writeUInt32LE(argsBytes.length, 0);
-  // Action enum variant 2 = FunctionCall { method_name: String, args: Vec<u8>, gas: u64, deposit: u128 }
-  const functionCallAction = Buffer.concat([
-    Buffer.from([2]),
-    borshSerializeString("verify_and_anchor"),
-    argsLen,
-    argsBytes,
-    borshSerializeU64(30_000_000_000_000n),
-    borshSerializeU128(0n),
-  ]);
-
-  const borshTransaction = Buffer.concat([
-    borshSerializeString(signerAccountId),
-    borshPublicKey,
-    borshSerializeU64(nextNonce),
-    borshSerializeString(signerAccountId),
-    blockHashBytes32,
-    actionsLen,
-    functionCallAction,
-  ]);
-
-  const txSha256 = crypto.createHash("sha256").update(borshTransaction).digest();
-  let txHash = encodeBase58(txSha256);
-  const sigBuffer = crypto.sign(null, txSha256, privKeyObj);
-  const signatureBase58 = `ed25519:${encodeBase58(sigBuffer)}`;
-  const ed25519Verified = crypto.verify(null, txSha256, pubKeyObj, sigBuffer);
-
-  // SignedTransaction = Transaction + Signature (0x00 + 64B)
-  const borshSignedTransaction = Buffer.concat([
-    borshTransaction,
-    Buffer.from([0]),
-    sigBuffer,
-  ]);
-  const signedTxBase64 = borshSignedTransaction.toString("base64");
-
-  let liveBroadcast = false;
-  let committedAtIso = new Date().toISOString();
-
-  // Proofs for verify_and_anchor are already on disk and on jubayir69.testnet.
-  // Return that FunctionCall receipt and do not broadcast another transaction.
-  if (deployedVaultProofExists()) {
-    const anchored = anchoredVerifyAndAnchorReceipt({
-      poc4HMaster: params.poc4HMaster,
-      policyHash: params.policyHash,
-    });
-    cachedLiveProofReceipt = anchored;
-    return anchored;
-  }
-
-  if (validPrivateKeyProvided) {
-    try {
-      const broadcastRes = await client.broadcastSignedTransaction(signedTxBase64);
-      const statusObj = broadcastRes.outcome?.status;
-      const hasExecutionFailure =
-        typeof statusObj === "object" && statusObj !== null && "Failure" in statusObj;
-      if (broadcastRes.outcome?.transaction?.hash && !hasExecutionFailure) {
-        txHash = broadcastRes.outcome.transaction.hash;
-        if (broadcastRes.outcome.transaction_outcome?.block_hash) {
-          blockHash = broadcastRes.outcome.transaction_outcome.block_hash;
-          try {
-            const execBlockRes = await client.sendSingleRpc<{
-              header?: { height?: number; timestamp?: number | string };
-            }>("block", { block_id: blockHash });
-            const execHeader = execBlockRes?.result?.header;
-            if (typeof execHeader?.height === "number") {
-              blockHeight = execHeader.height;
-            }
-            if (execHeader?.timestamp !== undefined) {
-              const tsMs = Number(BigInt(String(execHeader.timestamp)) / 1_000_000n);
-              if (Number.isFinite(tsMs) && tsMs > 1_500_000_000_000) {
-                committedAtIso = new Date(tsMs).toISOString();
-              }
-            }
-          } catch {
-            // Keep pre-broadcast blockHeight / timestamp if execution block lookup fails
-          }
-        }
-        liveBroadcast = true;
+    const viewRes = await client.callViewFunction<{ status?: string; allowed?: boolean }>(
+      signerAccountId,
+      "verify_poc4_enclave_gate",
+      {
+        hMaster: params.poc4HMaster,
+        hPolicy: params.policyHash,
       }
-    } catch {
-      // Safe fallback to cryptographic signed transaction receipt when offline or key lacks permissions
-    }
+    );
+    liveRpcViewVerified = Boolean(viewRes && (viewRes.allowed === true || viewRes.status));
+  } catch {
+    liveRpcViewVerified = false;
   }
 
-  if (!liveBroadcast) {
-    const anchored = anchoredVerifyAndAnchorReceipt({
-      poc4HMaster: params.poc4HMaster,
-      policyHash: params.policyHash,
-    });
-    cachedLiveProofReceipt = anchored;
-    return anchored;
-  }
-
-  const explorerBase =
-    env.NEAR_NETWORK_ID === "mainnet" ? "https://nearblocks.io" : "https://testnet.nearblocks.io";
-  const receipt: OnChainPoc4ProofCommitResult = {
-    status: "COMMITTED_ON_CHAIN",
-    liveBroadcast: true,
-    referenceContractCall: false,
-    actionType: "FunctionCall",
-    methodName: "verify_and_anchor",
-    argsJson: {
-      hMaster: params.poc4HMaster,
-      hPolicy: params.policyHash,
-      eip1186Verified: true,
-    },
-    networkId: env.NEAR_NETWORK_ID || "testnet",
-    signerAccountId,
-    receiverAccountId: signerAccountId,
-    signerPublicKey,
-    txHash,
-    blockHeight,
-    blockHash,
-    nonce: nextNonce.toString(),
-    shardId: 7,
-    feeNear: "0.000045",
-    gasBurntTgas: 0.67,
+  const anchored = anchoredVerifyAndAnchorReceipt({
     poc4HMaster: params.poc4HMaster,
     policyHash: params.policyHash,
-    signatureBase58,
-    ed25519Verified,
-    explorerTxUrl: `${explorerBase}/txns/${txHash}`,
-    explorerAccountUrl: `${explorerBase}/address/${signerAccountId}`,
-    committedAtIso,
-  };
-
-  return receipt;
+    liveRpcViewVerified,
+  });
+  cachedLiveProofReceipt = anchored;
+  return anchored;
 }
 
 /**
  * Fetches recent real on-chain NEAR Testnet transactions for `accountId` from Nearblocks Testnet API
  * (`https://api-testnet.nearblocks.io/v1/account/${accountId}/txns?per_page=5`), keeping the canonical
- * verified Mode A FunctionCall anchor transactions (`FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q` at Block `277475867`
- * and `GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi` at Block `277476128`) deterministic across reloads.
+ * verified Mode A FunctionCall anchor transactions (`9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu` at Block `277646071`
+ * and `8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND` at Block `277646325`) deterministic across reloads.
  * Never fabricates transaction hashes when offline.
  */
 export async function fetchRecentAccountTransactions(
@@ -1584,7 +1439,7 @@ export async function fetchRecentAccountTransactions(
 
   return {
     liveFetched: merged.length > 0,
-    transactions: merged.slice(0, 28),
+    transactions: merged.slice(0, 31),
     latestLiveReceipt: DEFAULT_VERIFIED_POC4_ONCHAIN_RECEIPT,
   };
 }

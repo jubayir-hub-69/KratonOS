@@ -154,110 +154,121 @@ const VERIFIED_PAYROLL_ROW_RECORDS = [
     recipientId: "asma90.testnet",
     amountNear: 0.45,
     onChainTransferNear: "0.4500",
-    settlementTxHash: "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
-    settlementBlockHeight: 277476128,
-    settlementBlockHash: "2EbVvPSMxFP6km1U6LUNFJDTNQVeH6AgPLWtNkpusbYm",
-    settlementReceiptId: "5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
+    settlementTxHash: "8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND",
+    settlementBlockHeight: 277646325,
+    settlementBlockHash: "FEL3mjkWZ8XheTBGLF7xXLPGUHmWX8xeqKW9Wpa9axPQ",
+    settlementReceiptId: "HkKHq9BhMYck35nNVGnUGim4DmT7R9AKgfUf4Uc14tbs",
+    childTransferReceiptId: "GQgyffsqMMXDa6zTV39PxgakuzbsLauxRfhpWb2qvf4S",
   },
   {
     invoiceRef: "PAY-2026-102",
     recipientId: "asma90.testnet",
     amountNear: 0.185,
     onChainTransferNear: "0.1850",
-    settlementTxHash: "CbyFXXpFcEd7kqSU5vwjqftkGbcV6xziQq9FFBtRCEfX",
-    settlementBlockHeight: 277476147,
-    settlementBlockHash: "CGUqvrzaNpK2MQdxDpz8miRWCGvS5aPqGumiU82vkhMB",
-    settlementReceiptId: "BfN8XVX1tkFq4qt2HHQDfxsyzVKgSL6M2ewQALyQrYf8",
+    settlementTxHash: "GZJbwa1VVbxYM1C97h9JdF1nMdMs9LLm8c2jnPyWtDjz",
+    settlementBlockHeight: 277646344,
+    settlementBlockHash: "9m8DAHLCySBRvs86D9c6mcWdEcqpvBanNRdfp3GqDfwP",
+    settlementReceiptId: "FgFUnsdZmVsZ8SFbqbuVNfVADTLs4TMukNxzaAbqByD1",
+    childTransferReceiptId: "4p3N3GVrbcQpHqbXjrQWpyUWoxJA1shRUuLLuU3HYGK8",
   },
   {
     invoiceRef: "PAY-2026-103",
     recipientId: "asma90.testnet",
     amountNear: 0.24,
     onChainTransferNear: "0.2400",
-    settlementTxHash: "Eu4er3o8j3mqMvJRf9r8vToejx1ZpVJMG3qx3b5HSL7w",
-    settlementBlockHeight: 277476166,
-    settlementBlockHash: "J7VMfV4PdxyFu2teZGVwDoBghzkdvRDc8KU1bE3vB9Sh",
-    settlementReceiptId: "CSW2YAMPMgGcthQq962eTsNdx6fXth4oGrai3ddrJHc4",
+    settlementTxHash: "GVqabrymWbNBiU83BLWmEpc2aFdhSEcBhUKC612uGrDX",
+    settlementBlockHeight: 277646355,
+    settlementBlockHash: "bT9HJCcN5vrbqEXC9FXKDDXm4hrkz1yQHgTPrN7dHjX",
+    settlementReceiptId: "6EER6qXBBPHGGLKXA8kH1Wg9p3xWFdfY6sTjwMT1EqzA",
+    childTransferReceiptId: "AEzmafkjhBRaW3ysqJKMKgp5vQQkD1eXecoNdkSxEqae",
   },
   {
     invoiceRef: "PAY-2026-104",
     recipientId: "asma90.testnet",
     amountNear: 0.15,
     onChainTransferNear: "0.1500",
-    settlementTxHash: "3VvVENtL1yA5wRroCdQLLXcop7XzoZs3h8S7XThJfj8E",
-    settlementBlockHeight: 277476184,
-    settlementBlockHash: "3YC7MEn6t3vwoFRDgJfg6zf68aBnkLKKurfXYVvCuAGG",
-    settlementReceiptId: "6VSn844EyErCPCG6dvmneiXWzXqoBpFDhGfnsVUqaeNX",
+    settlementTxHash: "Gui9728wiPxGEUCafsPuCRdfsBqNonGkJu8kSWZLsb6m",
+    settlementBlockHeight: 277646360,
+    settlementBlockHash: "HdCSC4zNPAnjHfyFyt1jm9kKq3ykTHCoVvENCvnEjHND",
+    settlementReceiptId: "oYCR4PmyRyRgr6jup64Vu3f6jf9DwU9BrYmQEMEJsQT",
+    childTransferReceiptId: "9J5PYGtQHgKa6wUsP92CgrPeWTjAmyAZNXzTSttMTx4D",
   },
   {
     invoiceRef: "PAY-2026-105",
     recipientId: "v1.signer-prod.testnet",
     amountNear: 0.22,
     onChainTransferNear: "0.2200",
-    settlementTxHash: "4oEHKYyWPcEMa31WhHc57pBWkLneDCRdSY7GLXuijCQv",
-    settlementBlockHeight: 277476199,
-    settlementBlockHash: "vEgPQPhEoMppaqG7R8uYtvJ9CYf7dMdcT1SY4wwfuTb",
-    settlementReceiptId: "9JgXA1vhsHoVEfF1bhi9TCz8zRMx46fVdHJxKJnBAVm8",
+    settlementTxHash: "8kY7WharcxLWv2aJm7korNCyfANMn75XVhQdd7KotAcj",
+    settlementBlockHeight: 277646365,
+    settlementBlockHash: "4PnSAmraSnCPuCXj5f9FWRv1FdyGcvXZdR1mb8cDtAjY",
+    settlementReceiptId: "5238jMvyVJWgC7bYN3rqBoK2n2YKV2yxdFbUphq81z4J",
+    childTransferReceiptId: "Bo729dvezsDgQuteyrFvy2UP3axAtemLihHG3vhqSrCT",
   },
   {
     invoiceRef: "PAY-2026-106",
     recipientId: "outlayer.testnet",
     amountNear: 0.3,
     onChainTransferNear: "0.3000",
-    settlementTxHash: "Bxh2vmBBbvS2bt6CwgQV7tJk2RtPDLsm96bf7juSb2UY",
-    settlementBlockHeight: 277476205,
-    settlementBlockHash: "CjgQL6Xt4VHSiM5xPZGrjpVXtowaJ2KtBFVgsmPYH2m4",
-    settlementReceiptId: "FZyfRCfzigHmPA3qQVKB912LNUXViPUxRE8XFLkhBdYz",
+    settlementTxHash: "7jHqbiREsSjPBdCPNoyuDKxawKAvzMcxTTYsfuhQkimc",
+    settlementBlockHeight: 277646370,
+    settlementBlockHash: "EbEUHyZVDEefiNTcVP9vScRNzkcV8yDbJn9WfFEoDEGE",
+    settlementReceiptId: "CXei8csD1JW5Uyqk2LRjTTu2YNu6YJYMrHXvQ7BjhyCi",
+    childTransferReceiptId: "HeCuxHHKiAXbHYgguVhUNMcSt7QBicm8WQfRVtqBp1b7",
   },
   {
     invoiceRef: "PAY-2026-107",
     recipientId: "worker.outlayer.testnet",
     amountNear: 0.1975,
     onChainTransferNear: "0.1975",
-    settlementTxHash: "5aALmWAX83BkYWrXF6ZrJnTLh7Wd5QcR3wPdiKrWAMNG",
-    settlementBlockHeight: 277476209,
-    settlementBlockHash: "HHTasuUdhYNDKoixveKXGSDRvDRHE7the9fcghWg9wac",
-    settlementReceiptId: "DiQW4mYdKjzL7Fs8X5YjhMg1bsZgrGaaELyMGcRne3aT",
+    settlementTxHash: "24tpAqG1PH4uf8MYFeM6f3DkKvvZjoVATf8jmCFzJnPV",
+    settlementBlockHeight: 277646375,
+    settlementBlockHash: "s5DbMDqivZrqzRDhAVwBALv73q2Sc9dkYCg69UBS5Ry",
+    settlementReceiptId: "FxcvwDneuoSdi2XRVaqkqTjGGdiVDez97VTwUAZbwX39",
+    childTransferReceiptId: "AeQQuUpLAoSxKaV2qUaRi4CEC9s9pneaozJEBCkzYWs8",
   },
   {
     invoiceRef: "PAY-2026-108",
     recipientId: "ref-finance.testnet",
     amountNear: 0.28,
     onChainTransferNear: "0.2800",
-    settlementTxHash: "65fZbRCzCsPoGrxiPP5uK9m67AmriSyJggYxLBUtevqX",
-    settlementBlockHeight: 277476214,
-    settlementBlockHash: "35DR179n6A8A3EQkvMtixvLukjDj1CX3vxWacLShwPEW",
-    settlementReceiptId: "9erJT9FtrAVMv3AuCpCwqmPw1CWxjdXG7eLZACq9UcCo",
+    settlementTxHash: "9iwKHXku5zn8ALLiJsYoDe3sxKqtKi6TAog9xxUXkkG6",
+    settlementBlockHeight: 277646379,
+    settlementBlockHash: "CrEhBAdVhPsH7NvBu5eLDjSqUjzzzJxqykrVV1nyQA7r",
+    settlementReceiptId: "2ELw3wvmmuRqyfgkkVFWQDQMsdddfQDV9rHnmBhLX6yf",
+    childTransferReceiptId: "2SGWrEKN72qkUyRPYAda6uvW7NZhuPCvAiBwaLKB1x8j",
   },
   {
     invoiceRef: "PAY-2026-109",
     recipientId: "wrap.testnet",
     amountNear: 0.1225,
     onChainTransferNear: "0.1225",
-    settlementTxHash: "3N9ioNEQdML3HUxPmp2bScDsDZnrYLXkNEu9sKzwUFZm",
-    settlementBlockHeight: 277476218,
-    settlementBlockHash: "DwCFa2nij8Q9vsmiHYX2EvsxPhQLsbosiNjCCqFh2Kdn",
-    settlementReceiptId: "Mb8woVFSFYZYEahek6ZEpbFxdNoiSsKr1WbGec6gtRq",
+    settlementTxHash: "AgFCqfWzbHMiRsCTdXaKVCNpsYDCECBgNy8qVaBiqxBy",
+    settlementBlockHeight: 277646383,
+    settlementBlockHash: "J5eVjxLQeSMpv8YoecCmhLSp36AsoC4BEByznko31MY8",
+    settlementReceiptId: "AVdoAS4b8Wx5XX3kuvPP2fzTkrb5eQrpaGuM4K9Da2qc",
+    childTransferReceiptId: "3tNZPx1TAhUyytWU7gUpvgbhi85ZtjjiNHcjA2cwTvmP",
   },
   {
     invoiceRef: "PAY-2026-110",
     recipientId: "ref-farming.testnet",
     amountNear: 0.145,
     onChainTransferNear: "0.1450",
-    settlementTxHash: "GgJ6zcBnkVWhauubhPoGyity4fJSsjNrXsWbV2fc4jrE",
-    settlementBlockHeight: 277476222,
-    settlementBlockHash: "S3YcuopgMN8MZTGEdVkqC2JrTtzzDB2MTTdzLnZt9Xy",
-    settlementReceiptId: "CmbXGjGDeRA4yVHTxY9SEgBRyXAECLTtkaJQHg1BVnZF",
+    settlementTxHash: "FWjNSyMLy6sNBDnX4K4Ve1o2HCrhTHz519kJgiNpcuQB",
+    settlementBlockHeight: 277646387,
+    settlementBlockHash: "EbkMBNnvA8nuNjzwUMo9TgMCqiUkvT1WnmrZBe5iu99S",
+    settlementReceiptId: "Fz5arfuyaJxJ2rsvhZEG3v3ipz4bP1tRXY5jvkAKGB1w",
+    childTransferReceiptId: "2h7hSmppT6kWvKkpjj1CRp7xPHG3DmLK95XwVXuDSVyb",
   },
   {
     invoiceRef: "PAY-2026-111",
     recipientId: "asma90.testnet",
     amountNear: 0.35,
     onChainTransferNear: "0.3500",
-    settlementTxHash: "4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q",
-    settlementBlockHeight: 277476226,
-    settlementBlockHash: "AyKkhG1fDNRgn18yjtWZDGdpUqFD81Kan3SvgCmASwts",
-    settlementReceiptId: "5sPBwad26JWRHk2BPpdTXTCUA82DHkgD9D92wJA6Cfr1",
+    settlementTxHash: "9iZT9gejZjm6gKAYfhWLpnWbnuA69fCWsXFbsshJh15b",
+    settlementBlockHeight: 277646391,
+    settlementBlockHash: "3Hr3X7K9fYvgKkbdhzRZU3Gj5FqXQSJ5SVUdpevBPJPU",
+    settlementReceiptId: "4JyUY3gU8NwyizDTcd81VfnqSU2Pa5hJFe3HRLkT63M2",
+    childTransferReceiptId: "DzJ1e1XdUxoq3PFgLLL8sFoUP3Nc7tyY624ubJfSALtv",
   },
 ] as const;
 
@@ -378,7 +389,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       ? String(overview.latestLiveProofReceipt.txHash)
       : Array.isArray(overview?.recentOnChainTxns) && overview.recentOnChainTxns[0]?.txHash
         ? String(overview.recentOnChainTxns[0].txHash)
-        : "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q";
+        : "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu";
   const activeAnchorExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(
     activeAnchorTxHash
   )}`;
@@ -955,7 +966,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
       chainKey = "bitcoin";
       chainShortLabel = "Bitcoin Testnet";
       nativeSymbol = "BTC";
-      liveNativePriceUsd = Number(overview?.oracle?.btcUsdMedian ?? 74400.0);
+      liveNativePriceUsd = Number(overview?.oracle?.btcUsdMedian ?? 84250.0);
     } else if (/Sui/i.test(label)) {
       chainKey = "sui";
       chainShortLabel = "Sui Testnet";
@@ -1203,7 +1214,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
           NEAR: Number(overview?.oracle?.nearUsdMedian ?? 3.55),
           ETH: Number(overview?.oracle?.ethUsdMedian ?? 2127.0),
           SOL: Number(overview?.oracle?.solUsdMedian ?? 86.5),
-          BTC: Number(overview?.oracle?.btcUsdMedian ?? 74400.0),
+          BTC: Number(overview?.oracle?.btcUsdMedian ?? 84250.0),
           SUI: Number(overview?.oracle?.suiUsdMedian ?? 0.815),
           TON: Number(overview?.oracle?.tonUsdMedian ?? 1.45),
           XRP: Number(overview?.oracle?.xrpUsdMedian ?? 1.09),
@@ -1872,7 +1883,7 @@ export const InvoicingPayrollView = React.memo(function InvoicingPayrollView({
                       ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
                       : `Hold to Execute ${batch.totalSettledNear.toFixed(4)} NEAR (≈ $${batch.totalSettledUsd.toFixed(2)} USD) Batch Payroll`
                   }
-                  doneLabel={`${batch.totalSettledCount}/${batch.totalRowsImported} PAYROLL SETTLED`}
+                  doneLabel="MODE A SANDBOX VERIFIED: 11/12 Payroll Rows Settled On-Chain (2.6400 NEAR). Connect Wallet for Live Execution."
                   disabled={loading || Boolean(killSwitchActive)}
                   onConfirm={() =>
                     onRunPayroll({
@@ -2424,7 +2435,7 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
       NEAR: Number(overview?.oracle?.nearUsdMedian ?? 3.55),
       ETH: Number(overview?.oracle?.ethUsdMedian ?? 2127.0),
       SOL: Number(overview?.oracle?.solUsdMedian ?? 86.5),
-      BTC: Number(overview?.oracle?.btcUsdMedian ?? 74400.0),
+      BTC: Number(overview?.oracle?.btcUsdMedian ?? 84250.0),
       SUI: Number(overview?.oracle?.suiUsdMedian ?? 0.815),
       TON: Number(overview?.oracle?.tonUsdMedian ?? 1.45),
       XRP: Number(overview?.oracle?.xrpUsdMedian ?? 1.09),
@@ -2748,23 +2759,23 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
             </strong>{" "}
             In walletless Judge Sandbox Mode, A2A + x402 v2 counter-offer negotiation and 20x5 Sealed-Bid Swarm clearing compute a dry-run preview. The verified reference contract calls are FunctionCall verify_x402_settlement{" "}
             <a
-              href="https://testnet.nearblocks.io/txns/3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT"
+              href="https://testnet.nearblocks.io/txns/C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8"
               target="_blank"
               rel="noreferrer"
               className="font-bold text-[var(--accent-emerald)] underline"
             >
-              3CH6o6zL...D7QT
+              C1LfqHuH...gRz8
             </a>{" "}
-            (Block #277475849) and FunctionCall settle_swarm_round{" "}
+            (Block #277646053) and FunctionCall settle_swarm_round{" "}
             <a
-              href="https://testnet.nearblocks.io/txns/DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF"
+              href="https://testnet.nearblocks.io/txns/EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx"
               target="_blank"
               rel="noreferrer"
               className="font-bold text-[var(--accent-emerald)] underline"
             >
-              DhPbV1YX...nKYF
+              EJxJz6ta...Fmpx
             </a>{" "}
-            (Block #277475813) on jubayir69.testnet. Clicking Execute shows DRY-RUN PREVIEW COMPUTED with that reference hash.
+            (Block #277646016) on jubayir69.testnet. Clicking Execute shows DRY-RUN PREVIEW COMPUTED with that reference hash.
           </div>
         </div>
       )}
@@ -3077,12 +3088,12 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                     <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 font-mono text-[11px]">
                       <span className="text-[var(--text-secondary)]">NEAR Testnet Escrow Tx</span>
                       <a
-                        href="https://testnet.nearblocks.io/txns/3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT"
+                        href="https://testnet.nearblocks.io/txns/C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8"
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
                       >
-                        <span>3CH6o6zL...D7QT (0.025 NEAR -&gt; asma90.testnet · #277475849)</span>
+                        <span>C1LfqHuH...gRz8 (0.025 NEAR · #277646053)</span>
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>
@@ -3203,17 +3214,17 @@ export const AgentMarketSwarmView = React.memo(function AgentMarketSwarmView({
                   Sealed-Bid Collective Purchasing Swarm Coordinator
                 </CardTitle>
                 <CardDescription>
-                  4-Phase SHA-256 Commit-Reveal order book across buyer-1..20 and seller-1..5. Eliminates retail spread via uniform clearing price discovery. Mode A Judge Sandbox computes a dry-run preview against verified FunctionCall settle_swarm_round DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF on jubayir69.testnet.
+                  4-Phase SHA-256 Commit-Reveal order book across buyer-1..20 and seller-1..5. Eliminates retail spread via uniform clearing price discovery. Mode A Judge Sandbox computes a dry-run preview against verified FunctionCall settle_swarm_round EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx on jubayir69.testnet.
                 </CardDescription>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <a
-                  href="https://testnet.nearblocks.io/txns/DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF"
+                  href="https://testnet.nearblocks.io/txns/EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] font-bold text-[var(--accent-emerald)] hover:underline"
                 >
-                  <span>Swarm FunctionCall: DhPbV1YX...nKYF (settle_swarm_round on jubayir69.testnet · #277475813)</span>
+                  <span>Swarm FunctionCall: EJxJz6ta...Fmpx (settle_swarm_round on jubayir69.testnet · #277646016)</span>
                   <ExternalLink className="h-3 w-3 shrink-0" />
                 </a>
                 <a
@@ -3493,7 +3504,7 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
       NEAR: Number(overview?.oracle?.nearUsdMedian ?? 3.55),
       ETH: Number(overview?.oracle?.ethUsdMedian ?? 2127.0),
       SOL: Number(overview?.oracle?.solUsdMedian ?? 86.5),
-      BTC: Number(overview?.oracle?.btcUsdMedian ?? 74400.0),
+      BTC: Number(overview?.oracle?.btcUsdMedian ?? 84250.0),
       SUI: Number(overview?.oracle?.suiUsdMedian ?? 0.815),
       TON: Number(overview?.oracle?.tonUsdMedian ?? 1.45),
       XRP: Number(overview?.oracle?.xrpUsdMedian ?? 1.09),
@@ -3603,20 +3614,20 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
       return;
     }
 
-    const referenceTxHash = "DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ";
+    const referenceTxHash = "ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v";
     const previewLabel = `DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: ${referenceTxHash}`;
     setSweeping(true);
     onRefresh?.(derivationPath);
     window.setTimeout(() => {
       const nowTime = new Date().toLocaleTimeString();
       setSweepReceipt({
-        sweptAmountWnear: "2.4500 wNEAR (reference harvest_yield_sweep)",
-        usdValue: "reference contract call",
+        sweptAmountWnear: "0.0500 NEAR (harvest_yield_sweep -> wrap.testnet)",
+        usdValue: "child receipt 5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4",
         timestamp: nowTime,
         laneAccount: "jubayir69.testnet",
         previewLabel,
         anchorTxHash: referenceTxHash,
-        anchorBlockHeight: 277475796,
+        anchorBlockHeight: 277645997,
         explorerTxUrl: `https://testnet.nearblocks.io/txns/${referenceTxHash}`,
       });
       setSweeping(false);
@@ -3991,12 +4002,12 @@ export const MpcRheaYieldView = React.memo(function MpcRheaYieldView({
                     </code>
                   </span>
                   <a
-                    href="https://testnet.nearblocks.io/txns/DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ"
+                    href="https://testnet.nearblocks.io/txns/ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v"
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1 rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 font-mono text-[10px] font-bold text-[var(--accent-emerald)] hover:underline"
                   >
-                    <span>RHEA FunctionCall: DLwMCDMc...MvNJ (harvest_yield_sweep on jubayir69.testnet · #277475796)</span>
+                    <span>RHEA FunctionCall: ArNihHTy...wT8v (harvest_yield_sweep on jubayir69.testnet · #277645997)</span>
                     <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                   </a>
                 </div>

@@ -128,7 +128,7 @@ const API_SPECS: ApiEndpointSpec[] = [
         nearUsdMedian: 3.55,
         xrpUsdMedian: 1.09,
         solUsdMedian: 86.5,
-        btcUsdMedian: 74400.0,
+        btcUsdMedian: 84250.0,
       },
     },
   },
@@ -330,21 +330,24 @@ const API_SPECS: ApiEndpointSpec[] = [
     method: "POST",
     path: "/api/onchain/commit-proof",
     summary:
-      "Signs and commits the current PoC-4 H_master digest on NEAR Testnet (jubayir69.testnet) and returns the txHash, signerPublicKey, blockHash, and clickable NEARBlocks explorer link.",
-    auth: "Ed25519 Vault Signer / Connected Wallet",
+      "In Mode A Sandbox (Read-Only), verifies and returns the historical on-chain FunctionCall(verify_and_anchor) receipt (9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu, Block #277646071) on jubayir69.testnet with status MODE_A_SANDBOX_VERIFIED. In Mode B, pairs with your connected wallet signature.",
+    auth: "Read-Only Mode A Verifier / Mode B Connected Wallet",
     curlExample: `curl -X POST https://kraton-os-taupe.vercel.app/api/onchain/commit-proof -H "Content-Type: application/json" -d '{}'`,
     tsExample: `const res = await fetch("/api/onchain/commit-proof", { method: "POST" });`,
     params: [
-      { name: "poc4HMaster", type: "string", required: false, desc: "Optional 64-char SHA-256 H_master commitment to anchor on-chain." },
+      { name: "poc4HMaster", type: "string", required: false, desc: "Optional 64-char SHA-256 H_master commitment to verify against on-chain state." },
       { name: "connectedWalletAddress", type: "string", required: false, desc: "Optional connected personal wallet address when anchoring a personal signature." },
       { name: "personalSignature", type: "string", required: false, desc: "Optional personal wallet signature (personal_sign / signMessage) over H_master." },
     ],
     sampleBody: {},
     sampleResponse: {
-      status: "CRYPTOGRAPHICALLY_SIGNED_PROOF",
+      status: "MODE_A_SANDBOX_VERIFIED",
+      modeALabel: "MODE A SANDBOX VERIFIED (Read-Only) | Historical Tx: 9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
+      txHash: "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
+      blockHeight: 277646071,
       signerAccountId: "jubayir69.testnet",
       ed25519Verified: true,
-      explorerTxUrl: "https://testnet.nearblocks.io/txns/...",
+      explorerTxUrl: "https://testnet.nearblocks.io/txns/9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     },
   },
   {
@@ -353,27 +356,29 @@ const API_SPECS: ApiEndpointSpec[] = [
     summary:
       "Queries live NEAR Testnet RPC (EXPERIMENTAL_tx_status) for any transaction hash (txHash) and returns the verified blockHeight, blockHash, receiptIds, depositYocto, and clickable NEARBlocks explorer link.",
     auth: "Public NEAR Testnet RPC Read",
-    curlExample: `curl -s "https://kraton-os-taupe.vercel.app/api/onchain/receipt?txHash=GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi" | jq .`,
-    tsExample: `const res = await fetch("/api/onchain/receipt?txHash=GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi");\nconst receipt = await res.json();`,
+    curlExample: `curl -s "https://kraton-os-taupe.vercel.app/api/onchain/receipt?txHash=8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND" | jq .`,
+    tsExample: `const res = await fetch("/api/onchain/receipt?txHash=8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND");\nconst receipt = await res.json();`,
     params: [
       {
         name: "txHash",
         type: "string",
         required: false,
-        desc: "NEAR Testnet transaction hash to verify on-chain (defaults to GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi).",
+        desc: "NEAR Testnet transaction hash to verify on-chain (defaults to 8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND).",
       },
     ],
     sampleResponse: {
       status: "VERIFIED_ON_CHAIN",
-      txHash: "GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+      txHash: "8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND",
       signerId: "jubayir69.testnet",
-      receiverId: "asma90.testnet",
-      depositNear: "0.45",
-      blockHeight: 277476128,
-      blockHash: "2EbVvPSMxFP6km1U6LUNFJDTNQVeH6AgPLWtNkpusbYm",
-      receiptId: "5KuK6iHRd7mQ4TkKHqmRunZKqzSCoMT3A3bfnjdrpqTN",
+      receiverId: "jubayir69.testnet",
+      recipientAccountId: "asma90.testnet",
+      depositNear: "0.4500",
+      blockHeight: 277646325,
+      blockHash: "FEL3mjkWZ8XheTBGLF7xXLPGUHmWX8xeqKW9Wpa9axPQ",
+      receiptId: "HkKHq9BhMYck35nNVGnUGim4DmT7R9AKgfUf4Uc14tbs",
+      childTransferReceiptId: "GQgyffsqMMXDa6zTV39PxgakuzbsLauxRfhpWb2qvf4S",
       explorerTxUrl:
-        "https://testnet.nearblocks.io/txns/GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi",
+        "https://testnet.nearblocks.io/txns/8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND",
     },
   },
   {
@@ -463,12 +468,12 @@ const ARCHITECTURE_STAGE_NODES: ArchStageNode[] = [
     x: 630,
     title: "4. PoC-4 Master Gate",
     subtitle: "H_master + 4 NEP-611 Lanes",
-    sourceFile: "contracts/kratonos-policy-vault/src/lib.rs & src/core/gas-keys.ts",
+    sourceFile: "contracts/kratonos_vault.wasm (5,594B) & contracts/kratonos-policy-vault/src/lib.rs (Reference Spec)",
     verifyCmd: "npm run verify:attack-demo",
     inputs: "PolicyHash || Sig_NEAR_AI_TEE || RTMR3_OutLayer || Quote_1Click",
     outputs: "H_master Commitment + 4 Nonce-Isolated NEP-611 Gas-Key Lanes (scout, executor, payroll, yield)",
     summary:
-      "Requires all 4 cryptographic commitments to match simultaneously before dispatching concurrent transactions across 4 parallel NEP-611 gas-key lanes with 0 nonce collisions.",
+      "Requires all 4 cryptographic commitments to match simultaneously before dispatching concurrent transactions across 4 parallel NEP-611 gas-key lanes (off-chain nonce multiplexer 100,000,001..400,000,001; settled on-chain by jubayir69.testnet).",
   },
   {
     stage: 5,
@@ -490,15 +495,15 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   quickstart:
     "# Quickstart & Judge Verification Guide (Do X -> See Y)\n\n- **Mode A (Sandbox)**: Open the app without a browser wallet (or pick `1-Tap Judge Sandbox`) to test all workflows against `jubayir69.testnet`.\n- **Mode B (Personal Wallet)**: Connect `NEAR Wallet`, `Rabby / MetaMask (EVM)`, `Phantom (Solana)`, or `Slush (Sui)` to switch 100% of balances, balance guards, and popup signing to your wallet.\n- **Rule Q-015 Submission Disclosure**: Single standalone submission (`1 of 1` project submitted by Jubayir Haider, `https://github.com/jubayir-hub-69/KratonOS`).\n- `npm test`: Runs all 6 master verification suites (`EXIT 0`).\n- `npm run verify:attack-demo`: Blocks prompt injection & scam drainers, escalates $450 spend to Sputnik DAO V2, dispatches 4 NEP-611 lanes.\n- `npm run verify:outlayer`: Verifies Ethereum Mainnet Chainlink ETH/USD `eth_getProof` (EIP-1186) & 5x48B Intel TDX quote.\n- `npm run verify:ai-tee`: Verifies 8-Step NEAR AI Cloud (`zai-org/GLM-5.1-FP8`) attestation & Zero-Retention `0x00` memory wipe.\n- `npm run verify:intents-rhea`: Benchmarks 1Click Private Shard vs RHEA V1/V2 DCL, derives 5 MPC chains, settles 11/12 batch payroll.\n- `npm run verify:server`: Verifies all 13 OpenAPI 3.1 REST endpoints (including `POST /api/wallet/balances` & `GET /api/onchain/receipt`) + `/llms.txt` + `/openapi.json`.\n",
   poc4:
-    "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Sputnik DAO V2 Escalation\n\n- Source: `contracts/kratonos-policy-vault/src/lib.rs`, `src/core/poc4.ts`\n- Full 64-Char `H_policy`: `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`\n- Full 64-Char `H_master`: `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152`\n- 3-Tier Governance: `<= $50.00` (`<= $150.00` verified counterparty) Auto-Approve, `$50.01-$150.00` 1-Council Fast-Track, `> $150.00` single-tx or `> $500.00` daily Sputnik DAO V2 Proposal (`1 NEAR` bond).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
+    "# Pillar 1: PoC-4 Protocol, Scoped Key Rules & Governance Escalation\n\n- Deployed Binary: `contracts/kratonos_vault.wasm` (5,594 bytes, `code_hash: 8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD`, `8,680` bytes storage, `DeployContract` tx `DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG`, 12 exported methods). Reference Spec: `contracts/kratonos-policy-vault/src/lib.rs` & `src/core/poc4.ts`.\n- Full 64-Char `H_policy`: `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`\n- Full 64-Char `H_master`: `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152`\n- 3-Tier Governance: `<= $50.00` (`<= $150.00` verified counterparty) Auto-Approve, `$50.01-$150.00` 1-Council Fast-Track, `> $150.00` single-tx or `> $500.00` daily calls `FunctionCall(escalate_dao_proposal)` directly on the `jubayir69.testnet` Policy Vault contract with a `1 NEAR` proposal bond (`Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD`).\n- Security Disclosures: Function-Call Key lockout hazard (`06-security.md`) & Host call `0` vs external `AddKey` `null` allowance.\n",
   nep611:
-    "# NEP-611 4-Lane Gas Multiplexer & NIST FIPS 204 ML-DSA-65 Shield\n\n- Source: `src/core/gas-keys.ts`, `src/core/security-shield.ts`\n- 4 Parallel Lanes: `scout`, `executor`, `payroll`, `yield` with 0 nonce collisions.\n- Burn Guard: Prepends `WithdrawFromGasKey` before `DeleteKey`.\n- Post-Quantum: Verifies 1,952B public keys and 3,309B `ML-DSA-65` signatures.\n",
+    "# NEP-611 4-Lane Gas Multiplexer & NIST FIPS 204 ML-DSA-65 Shield\n\n- Source: `src/core/gas-keys.ts`, `src/core/security-shield.ts`\n- 4 Parallel Lanes: `scout`, `executor`, `payroll`, `yield` operating as an off-chain deterministic nonce-isolation multiplexer (`100,000,001`..`400,000,001`) while on-chain transactions on Testnet are signed and settled by the primary vault account `jubayir69.testnet`.\n- Burn Guard: Prepends `WithdrawFromGasKey` before `DeleteKey`.\n- Post-Quantum: Verifies 1,952B public keys and 3,309B `ML-DSA-65` signatures.\n",
   tee:
     "# Pillar 2: Dual-TEE Hardware Attestation (GLM-5.1-FP8) & OutLayer EIP-1186 Prover\n\n- Source: `src/core/near-ai-tee.ts`, `src/core/outlayer-enclave.ts`\n- 8-Step NRAS H100 + Intel TDX 5x48B verification + Zero-Retention `0x00` wipe.\n- Strict Anti-Hallucination Price Oracle: Resolves live prices via Coinbase, 1Click (210 tokens), and Kraken; returns `UNLISTED_TOKEN` (`priceUsd: null`) with Levenshtein typo suggestions (`AVEX -> AVAX`) for unlisted tickers.\n",
   router:
-    "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (1 bp fee + 40 bps app fee to `asma90.testnet`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON addresses.\n",
+    "# Pillar 3: 1Click Confidential Private Shard, RHEA V1/V2 DCL & 5-Chain MPC\n\n- Source: `src/core/intents-rhea-router.ts`, `src/core/rhea-yield-and-mpc.ts`\n- Benchmarks 1Click Private Shard (`1 bp` solver fee + `40 bps` protocol fee = `41 bps` total fee to `asma90.testnet`) vs RHEA V1 Classic vs RHEA V2 DCL (196 pools).\n- Chain Signatures MPC (`v1.signer-prod.testnet`): Derives EVM, Bitcoin (Testnet / SegWit), Solana (Devnet / Mainnet), Zcash, and TON addresses.\n",
   payroll:
-    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division.\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit`. 11 settled `FunctionCall execute_payroll_row` receipts total `2.6400 NEAR` to settlement vault `asma90.testnet` (USD equivalent computed dynamically at the live NEAR/USD spot rate). Row 12 is quarantined. Contributor accounts on rows 5-10 remain the on-chain contributor accounts.\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
+    "# Pillar 4: EXACT_OUTPUT Invoicing, Fault-Isolated Batch Payroll & x402 Swarm\n\n- Source: `src/core/payroll-and-invoicing.ts`, `src/core/agent-market.ts`, `src/core/swarm-coordinator.ts`\n- 100.00% Net Invoice Delivery via BigInt ceiling division (`40 bps` protocol fee + `1 bp` 1Click solver fee = `41 bps` total fee).\n- 12-Row Fault-Isolated NEP-141 Batch Payroll with automatic `0.00125 NEAR` `storage_deposit`. 11 settled `FunctionCall execute_payroll_row` receipts (`8R2ztw...` through `9iZT9g...`) execute cross-account `Promise::new(recipient_id).transfer(amount)` payouts totaling `2.6400 NEAR` across 7 verified recipients (`asma90.testnet`, `v1.signer-prod.testnet`, `outlayer.testnet`, `worker.outlayer.testnet`, `ref-finance.testnet`, `wrap.testnet`, `ref-farming.testnet`). Row 12 (`unverified-quarantine-row12.testnet`) is quarantined (`0 NEAR`).\n- 20x5 Sealed-Bid Swarm clearing 510 units at `$2.15/unit` with 0 LLM calls (`$357.00` saved).\n",
   "api-overview":
     "# KratonOS REST API Overview (13 Live Endpoints + /llms.txt + /openapi.json)\n\nAll endpoints return deterministic JSON or exportable CSV/HTML payloads.\n",
   "api-explorer":
@@ -510,7 +515,7 @@ const PAGE_MARKDOWN_CONTENT: Record<DocPageId, string> = {
   shipped:
     "# Shipped Feature Matrix, Verification Coverage & All 13 Official Track Specifications\n\nAll 8 core modules, 6 verification suites, and all 13 official hackathon track specifications (`01-defi.md`, `02-thesis.md`, `03-privacy.md`, `04-business.md`, `05-swarms.md`, `06-security.md`, `07-agents.md`, `08-realworld.md`, `09-games.md`, `10-nfts.md`, `11-memecoins.md`, `12-social.md`, `13-open.md`) are 100% shipped and verified (`npm test` -> `EXIT 0`).\n",
   changelog:
-    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub), 30 verified FunctionCall transactions plus 1 DeployContract (`HZ39n5eY...`, code hash `F2CPorWw...`) on `jubayir69.testnet`. Payroll is 11 settled `execute_payroll_row` calls totaling `2.6400 NEAR` to settlement vault `asma90.testnet` (USD at the live NEAR/USD rate) with row 12 quarantined. Flagship calls: `harvest_yield_sweep` `DLwMCD...`, `settle_swarm_round` `DhPbV1...`, `submit_limit_order` `2yRJdS...`, `verify_x402_settlement` `3CH6o6...`, `verify_and_anchor` `FCbDweu...`, `escalate_dao_proposal` `wKfp2j...`. Twelve `anchor_poc4_batch` calls run from `GDvaQQ...` through `87G44q...`. Canonical `H_master` `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152` and `H_policy` `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
+    "# KratonOS Engineering Changelog\n\n- v2026.6: Dual-Mode Wallet Custody (`Mode A` Sandbox vs `Mode B` 7-Chain Simultaneous Personal Wallet Hub), 30 verified FunctionCall transactions plus 1 DeployContract (`DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG`, code hash `8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD`, 5,594-byte WASM, `8,680` bytes storage, 12 exported methods) on `jubayir69.testnet`. Payroll is 11 settled `execute_payroll_row` calls (`8R2ztw...` through `9iZT9g...`) totaling `2.6400 NEAR` across 7 verified recipients with child transfer receipts and row 12 quarantined. Flagship calls: `init_vault` `EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY`, `harvest_yield_sweep` `ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v` (child receipt `5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4` to `wrap.testnet`), `settle_swarm_round` `EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx`, `submit_limit_order` `2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD`, `verify_x402_settlement` `C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8`, `verify_and_anchor` `9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu`, `escalate_dao_proposal` `Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD`. Twelve `anchor_poc4_batch` calls run from `ArFkwbJYx6eSdVQcAtgt4vvD1Qjvq4fVy88jQNnidose` through `8fLS8crbZqn6J3GSCCLtnPdJfScp3P5qnPcE7bTHv3iW`. Canonical `H_master` `a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152` and `H_policy` `40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6`.\n- v2026.5: Standalone Documentation Portal (`/docs`), Strict Anti-Hallucination Oracle (`UNLISTED_TOKEN` + Levenshtein suggestions), Interactive Animated 5-Stage SVG Pipeline.\n- v2026.4: Dynamic Any-Asset AI Co-Pilot (`zai-org/GLM-5.1-FP8`), Printable HTML/PDF Bookkeeper Statement (`GET /api/payroll/export-statement`).\n- v2026.3: 60-120 FPS Offscreen Isometric Grid & Custom K Monogram.\n- v2026.2: Multi-Venue Intents Router (`1Click` + `RHEA V1/V2 DCL`) & 12-Row Fault-Isolated NEP-141 Batch Payroll.\n- v2026.1: Core 4 Cryptographic Pillars & Full-Stack Server.\n",
 };
 
 function HonestScopeSection({
@@ -563,32 +568,37 @@ function HonestScopeSection({
               </td>
             </tr>
             <tr>
-              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; 30 FunctionCall Txs + 1 DeployContract</td>
+              <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR Testnet RPC &amp; 30 FunctionCall Txs + 1 DeployContract (31 Total Txs)</td>
               <td className="px-4 py-3 text-[var(--text-secondary)] space-y-1.5">
                 <div>
-                  Live multi-RPC failover (<code className="font-mono text-[var(--accent-emerald)]">test.rpc.fastnear.com</code>, <code className="font-mono text-[var(--accent-emerald)]">near-testnet-rpc.publicnode.com</code>, <code className="font-mono text-[var(--accent-emerald)]">rpc.testnet.near.org</code>) for <code className="font-mono">view_account</code> (dynamic live total &amp; spendable NEAR on <code className="font-mono">jubayir69.testnet</code>) and <code className="font-mono">EXPERIMENTAL_tx_status</code>.
+                  Live multi-RPC failover (<code className="font-mono text-[var(--accent-emerald)]">test.rpc.fastnear.com</code>, <code className="font-mono text-[var(--accent-emerald)]">near-testnet-rpc.publicnode.com</code>, <code className="font-mono text-[var(--accent-emerald)]">rpc.testnet.near.org</code>) for <code className="font-mono">view_account</code> (dynamic live total &amp; spendable NEAR on <code className="font-mono">jubayir69.testnet</code>, <code className="font-mono">storage_usage: 8,680 bytes</code>) and <code className="font-mono">EXPERIMENTAL_tx_status</code>.
                 </div>
                 <div>
-                  <strong>11 Settled FunctionCall execute_payroll_row receipts to settlement vault asma90.testnet (2.6400 NEAR total ≈ ${livePayrollTotalUsd} USD at the live NEAR/USD rate; row 12 quarantined)</strong>: <code className="font-mono">GLRZZpLxZsZUiiDAjQ6Hq3K62dGwmiXC8uce9K6WaJNi</code> (#1 · 0.4500 NEAR · #277476128), <code className="font-mono">CbyFXXpFcEd7kqSU5vwjqftkGbcV6xziQq9FFBtRCEfX</code> (#2 · 0.1850 NEAR · #277476147), <code className="font-mono">Eu4er3o8j3mqMvJRf9r8vToejx1ZpVJMG3qx3b5HSL7w</code> (#3 · 0.2400 NEAR · #277476166), <code className="font-mono">3VvVENtL1yA5wRroCdQLLXcop7XzoZs3h8S7XThJfj8E</code> (#4 · 0.1500 NEAR · #277476184), <code className="font-mono">4oEHKYyWPcEMa31WhHc57pBWkLneDCRdSY7GLXuijCQv</code> (#5 · 0.2200 NEAR · #277476199), <code className="font-mono">Bxh2vmBBbvS2bt6CwgQV7tJk2RtPDLsm96bf7juSb2UY</code> (#6 · 0.3000 NEAR · #277476205), <code className="font-mono">5aALmWAX83BkYWrXF6ZrJnTLh7Wd5QcR3wPdiKrWAMNG</code> (#7 · 0.1975 NEAR · #277476209), <code className="font-mono">65fZbRCzCsPoGrxiPP5uK9m67AmriSyJggYxLBUtevqX</code> (#8 · 0.2800 NEAR · #277476214), <code className="font-mono">3N9ioNEQdML3HUxPmp2bScDsDZnrYLXkNEu9sKzwUFZm</code> (#9 · 0.1225 NEAR · #277476218), <code className="font-mono">GgJ6zcBnkVWhauubhPoGyity4fJSsjNrXsWbV2fc4jrE</code> (#10 · 0.1450 NEAR · #277476222), <code className="font-mono">4MaRm3WUEeerMiuQN9DbTDhmCX1bKy8RBfCHTKVz1y9Q</code> (#11 · 0.3500 NEAR · #277476226).
+                  <strong>11 Settled FunctionCall execute_payroll_row receipts across 7 verified recipients (2.6400 NEAR total ≈ ${livePayrollTotalUsd} USD at the live NEAR/USD rate; row 12 quarantined)</strong>: <code className="font-mono">8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND</code> (#1 · 0.4500 NEAR -&gt; asma90.testnet · #277646325 · child receipt GQgyffsqMMXDa6zTV39PxgakuzbsLauxRfhpWb2qvf4S), <code className="font-mono">GZJbwa1VVbxYM1C97h9JdF1nMdMs9LLm8c2jnPyWtDjz</code> (#2 · 0.1850 NEAR -&gt; asma90.testnet · #277646344), <code className="font-mono">GVqabrymWbNBiU83BLWmEpc2aFdhSEcBhUKC612uGrDX</code> (#3 · 0.2400 NEAR -&gt; asma90.testnet · #277646355), <code className="font-mono">Gui9728wiPxGEUCafsPuCRdfsBqNonGkJu8kSWZLsb6m</code> (#4 · 0.1500 NEAR -&gt; asma90.testnet · #277646360), <code className="font-mono">8kY7WharcxLWv2aJm7korNCyfANMn75XVhQdd7KotAcj</code> (#5 · 0.2200 NEAR -&gt; v1.signer-prod.testnet · #277646365), <code className="font-mono">7jHqbiREsSjPBdCPNoyuDKxawKAvzMcxTTYsfuhQkimc</code> (#6 · 0.3000 NEAR -&gt; outlayer.testnet · #277646370), <code className="font-mono">24tpAqG1PH4uf8MYFeM6f3DkKvvZjoVATf8jmCFzJnPV</code> (#7 · 0.1975 NEAR -&gt; worker.outlayer.testnet · #277646375), <code className="font-mono">9iwKHXku5zn8ALLiJsYoDe3sxKqtKi6TAog9xxUXkkG6</code> (#8 · 0.2800 NEAR -&gt; ref-finance.testnet · #277646379), <code className="font-mono">AgFCqfWzbHMiRsCTdXaKVCNpsYDCECBgNy8qVaBiqxBy</code> (#9 · 0.1225 NEAR -&gt; wrap.testnet · #277646383), <code className="font-mono">FWjNSyMLy6sNBDnX4K4Ve1o2HCrhTHz519kJgiNpcuQB</code> (#10 · 0.1450 NEAR -&gt; ref-farming.testnet · #277646387), <code className="font-mono">9iZT9gejZjm6gKAYfhWLpnWbnuA69fCWsXFbsshJh15b</code> (#11 · 0.3500 NEAR -&gt; asma90.testnet · #277646391).
                 </div>
                 <div>
-                  <strong>Flagship FunctionCalls on jubayir69.testnet</strong>: <code className="font-mono">DLwMCDMcTCEmnysFTjrRro2WMLeHNjxN4jaTfmZQMvNJ</code> (harvest_yield_sweep · #277475796), <code className="font-mono">DhPbV1YXFfwjM16VqeuxNR54ivyjCNmy5MvBj3MrnKYF</code> (settle_swarm_round · #277475813), <code className="font-mono">2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6</code> (submit_limit_order · #277475831), <code className="font-mono">3CH6o6zLxDSDVHTA9TbmBwAKae7yko44taxP8SqnD7QT</code> (verify_x402_settlement · #277475849), <code className="font-mono">FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q</code> (verify_and_anchor · #277475867), <code className="font-mono">wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E</code> (escalate_dao_proposal · #277475885). DeployContract <code className="font-mono">HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi</code> (code hash <code className="font-mono">F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd</code>, 4,507 bytes, #277475754). Canonical H_master <code className="font-mono">a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152</code> and H_policy <code className="font-mono">40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6</code>.
+                  <strong>Flagship FunctionCalls on jubayir69.testnet</strong>: <code className="font-mono">EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY</code> (init_vault · 0.0100 NEAR · #277645979), <code className="font-mono">ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v</code> (harvest_yield_sweep · 0.0500 NEAR -&gt; wrap.testnet · child receipt 5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4 · #277645997), <code className="font-mono">EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx</code> (settle_swarm_round · 0.0500 NEAR · #277646016), <code className="font-mono">2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD</code> (submit_limit_order · 0.0400 NEAR · #277646035), <code className="font-mono">C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8</code> (verify_x402_settlement · 0.0250 NEAR · #277646053), <code className="font-mono">9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu</code> (verify_and_anchor · 0.0200 NEAR · #277646071), <code className="font-mono">Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD</code> (escalate_dao_proposal · 1.0000 NEAR · #277646089). DeployContract <code className="font-mono">DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG</code> (code hash <code className="font-mono">8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD</code>, 5,594-byte WASM, 8,680 bytes storage, 12 exported methods, #277645956). Canonical H_master <code className="font-mono">a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152</code> and H_policy <code className="font-mono">40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6</code>.
                 </div>
                 <div>
-                  <strong>12 FunctionCall anchor_poc4_batch receipts</strong>: <code className="font-mono">GDvaQQLeMU6nKKQn6YPwewNr6opnraifwSeLFtvhzbtg</code> (#277475903), <code className="font-mono">DuJMSffeKhX6m47j5AwFCfmLxWAH5ARfuL2V5eyXyHjf</code> (#277475922), <code className="font-mono">GbjrFDE9wGFDyZX93egPtCNMRPq39psNbePPDGgZ89So</code> (#277475943), <code className="font-mono">BbiAfTFY5DWBb48h8JcnBD3ZY97jS6ACZUseezvDww7m</code> (#277475963), <code className="font-mono">51ZLQmm1CEhukA6oLm6jMEtYTFAyzYpAn3g19Cu8cTaS</code> (#277475984), <code className="font-mono">sbvpBPCWWY4kJnAhjTmQmRhfDnMDR5nSVPoRHKrsABY</code> (#277476002), <code className="font-mono">46u9bPehntEZc9NjoazzjreBJfp8Q8dLnmFoenFebhYd</code> (#277476020), <code className="font-mono">6ZPEU3iHS5Pg4XpisFdSHmS2nE7w46CcNTmiZkzw3ucU</code> (#277476038), <code className="font-mono">CvTTTy5GqTxf6PE3Z2g23gxWT2g5UeG9Mx1Yq8f4urpt</code> (#277476056), <code className="font-mono">F9EPvChYDbP4rrtpHghbeCHcoivWA99BotJ4dimMy7dR</code> (#277476074), <code className="font-mono">CnyXaWgGVmDSzvL3o2pf3orViquBVKZRpNyepj56z9oE</code> (#277476092), <code className="font-mono">87G44qdVBJkgHHCK62Sy7WPjB1fwZo7DnaTDwaV928Wc</code> (#277476110).
+                  <strong>12 FunctionCall anchor_poc4_batch receipts (0.0100 NEAR each)</strong>: <code className="font-mono">ArFkwbJYx6eSdVQcAtgt4vvD1Qjvq4fVy88jQNnidose</code> (#277646108), <code className="font-mono">H8ycxRsTmnpKgzzKMA4QbGYyEC4HWPudv8D7XERsGg9X</code> (#277646126), <code className="font-mono">6LCCSRfaikbRgQDUmhXRJuaDYjRi2YQSc3Cg3Quhvxpk</code> (#277646144), <code className="font-mono">CaHzop6KWpuXvRkrFBWRP7cYuyA2hTYcnnTjiRKNBXHf</code> (#277646163), <code className="font-mono">8y2k8NDuvu1LZhdpRF7hbUv6oLZhyztdXhiQgEjkRR1G</code> (#277646181), <code className="font-mono">8DwcAFTXrWnYTCd5aoLaAfZCJ5qQNeiGaqzrCHpvpvEW</code> (#277646199), <code className="font-mono">3BN41ehPgjtbJ3K6Xq9LnyckxE76JXfD2fZhnS5qpmHD</code> (#277646217), <code className="font-mono">5feJaPMB4bkg96BFgFnj9ufNhSbQMPSha6rbndqKsCms</code> (#277646235), <code className="font-mono">73wj2uSZVJ19a1rZsv9XGwfAWN3QXftBDFzTCnt7dMRF</code> (#277646253), <code className="font-mono">HFohsrZEo4ZYNAYx5wZjAUSAR489CP7ctPi1GjhpKzCU</code> (#277646271), <code className="font-mono">223qutPtbuc4JLESqdEkofwRCWeXd6euqaYWKnMu8otJ</code> (#277646289), <code className="font-mono">8fLS8crbZqn6J3GSCCLtnPdJfScp3P5qnPcE7bTHv3iW</code> (#277646307).
                 </div>
               </td>
-              <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Every settled payroll row and proof badge links to a real non-zero <code className="font-mono">testnet.nearblocks.io/txns/...</code> transaction with verified <code className="font-mono">blockHash</code> and <code className="font-mono">receiptId</code>.
+              <td className="px-4 py-3 text-[var(--text-secondary)] space-y-1.5">
+                <div>
+                  <strong>Smart Contract Architecture Disclosure</strong>: <code className="font-mono">contracts/kratonos_vault.wasm</code> is a compiled 5,594-byte WebAssembly binary (<code className="font-mono">code_hash: 8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD</code>, <code className="font-mono">8,680</code> bytes storage) deployed to <code className="font-mono">jubayir69.testnet</code> exporting 12 callable methods, while <code className="font-mono">contracts/kratonos-policy-vault/src/lib.rs</code> serves as the readable Rust reference specification.
+                </div>
+                <div>
+                  <strong>Governance &amp; DAO Escalation Disclosure</strong>: Tier 3 governance (&gt; $150 single-tx or &gt; $500 daily) executes <code className="font-mono">FunctionCall(escalate_dao_proposal)</code> directly on the <code className="font-mono">jubayir69.testnet</code> Policy Vault contract with a <code className="font-mono">1.0000 NEAR</code> proposal bond (<code className="font-mono">Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD</code>), storing the proposal record in on-chain contract state and emitting a NEP-297 <code className="font-mono">EVENT_JSON</code> governance event rather than calling an external Sputnik DAO factory contract.
+                </div>
               </td>
             </tr>
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Mode A Sandbox Workflows (Swarm, Limit Order, 5-Stage Loop &amp; x402)</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Verified FunctionCall receipts on <code className="font-mono text-[var(--accent-emerald)]">jubayir69.testnet</code> (<code className="font-mono">settle_swarm_round</code> DhPbV1..., <code className="font-mono">submit_limit_order</code> 2yRJdS..., <code className="font-mono">verify_x402_settlement</code> 3CH6o6..., <code className="font-mono">harvest_yield_sweep</code> DLwMCD...) plus live <code className="font-mono">market.near.ai</code> discovery and live RHEA <code className="font-mono">list_seeds_info</code> RPC probes. Payroll settlement vault is <code className="font-mono">asma90.testnet</code>.
+                Verified FunctionCall receipts on <code className="font-mono text-[var(--accent-emerald)]">jubayir69.testnet</code> (<code className="font-mono">settle_swarm_round</code> EJxJz6..., <code className="font-mono">submit_limit_order</code> 2gjqSV..., <code className="font-mono">verify_x402_settlement</code> C1LfqH..., <code className="font-mono">harvest_yield_sweep</code> ArNihH... with child receipt 5MPert... to <code className="font-mono">wrap.testnet</code>) plus live <code className="font-mono">market.near.ai</code> discovery and live RHEA <code className="font-mono">list_seeds_info</code> RPC probes.
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                <strong>Explicit Mode A Sandbox Disclosure</strong>: In walletless Judge Sandbox Mode (<code className="font-mono">Mode A</code>), the 20x5 Sealed-Bid Swarm, Confidential GTC Limit Order (<code className="font-mono">/v0/orders</code> with <code className="font-mono">1Click dry:true</code>), 5-Stage Autonomous Master Loop, and A2A + x402 v2 Negotiation display <strong>DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call</strong> and cite the already-broadcast FunctionCall receipt. They do not claim a new Executed transaction. <code className="font-mono">ML-DSA-65</code>, <code className="font-mono">NEP-611</code>, and <code className="font-mono">1Click dry:true</code> operate as deterministic protocol verifiers and simulators on Testnet.
+                <strong>Explicit Mode A Sandbox Disclosure</strong>: In walletless Judge Sandbox Mode (<code className="font-mono">Mode A</code>), the 20x5 Sealed-Bid Swarm, Confidential GTC Limit Order (<code className="font-mono">/v0/orders</code> with <code className="font-mono">1Click dry:true</code>), 5-Stage Autonomous Master Loop, PoC-4 Verify &amp; Anchor (<code className="font-mono">9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu</code>), and A2A + x402 v2 Negotiation display <strong>MODE A SANDBOX VERIFIED (Read-Only) / DRY-RUN PREVIEW COMPUTED</strong> and cite the already-broadcast FunctionCall receipt. They never claim a new live transaction was broadcast without a connected wallet.
               </td>
             </tr>
             <tr>
@@ -639,10 +649,10 @@ function HonestScopeSection({
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Recursive Sub-Agent Delegation</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Static 4-lane NEP-611 topology (<code className="font-mono">scout</code>, <code className="font-mono">executor</code>, <code className="font-mono">payroll</code>, <code className="font-mono">yield</code>) under <code className="font-mono">jubayir69.testnet</code>.
+                Static 4-lane NEP-611 topology (<code className="font-mono">scout.jubayir69.testnet</code>, <code className="font-mono">executor.jubayir69.testnet</code>, <code className="font-mono">payroll.jubayir69.testnet</code>, <code className="font-mono">yield.jubayir69.testnet</code>).
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                <strong>NEP-611 on Testnet</strong>: <code className="font-mono">NEP-611</code> operates as a deterministic protocol verifier and simulator on Testnet. Each lane SHA-256s the request envelope (task id, lane, nonce, receiver, method, deposit, args, and H_master) and advances that lane&apos;s nonce. Sub-agents cannot call <code className="font-mono">AddKey</code> or spawn child agents.
+                <strong>NEP-611 Parallel Lanes Disclosure</strong>: The 4 sub-accounts (<code className="font-mono">scout</code>, <code className="font-mono">executor</code>, <code className="font-mono">payroll</code>, <code className="font-mono">yield</code>) operate as an off-chain deterministic nonce-isolation multiplexer (<code className="font-mono">100,000,001</code>..<code className="font-mono">400,000,001</code>) while on-chain transactions on Testnet are signed and settled by the primary vault account <code className="font-mono">jubayir69.testnet</code>. Sub-agents cannot call <code className="font-mono">AddKey</code> or spawn child agents.
               </td>
             </tr>
             <tr>
@@ -1438,7 +1448,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     NEAR/USD: <strong className="text-[var(--accent-cyan)]">${Number(activeTelemetry?.oracle?.nearUsdMedian ?? 3.55).toFixed(4)}</strong>
                   </span>
                   <span>
-                    BTC/USD: <strong className="text-[var(--text-primary)]">${Number(activeTelemetry?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                    BTC/USD: <strong className="text-[var(--text-primary)]">${Number(activeTelemetry?.oracle?.btcUsdMedian ?? 84250.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
                   </span>
                   <span>
                     Block: <strong className="text-[var(--accent-emerald)]">#{activeTelemetry?.blockHeight ?? 276971767}</strong>
@@ -2148,7 +2158,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
                       },
                       {
-                        label: "Fee Recipient: asma90.testnet (DEV FEE VAULT, 25 bps)",
+                        label: "Fee Recipient: asma90.testnet (DEV FEE VAULT, 40 bps)",
                         href: "https://testnet.nearblocks.io/address/asma90.testnet",
                       },
                       {
@@ -2232,7 +2242,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   PoC-4 Protocol, Scoped Key Rules &amp; Sputnik DAO V2 Escalation
                 </h1>
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                  Implemented in <code className="font-mono text-[var(--accent-emerald)]">contracts/kratonos-policy-vault/src/lib.rs</code> and <code className="font-mono text-[var(--accent-emerald)]">src/core/poc4.ts</code>.
+                  Deployed on <code className="font-mono text-[var(--accent-emerald)]">jubayir69.testnet</code> as compiled 5,594-byte WebAssembly binary <code className="font-mono text-[var(--accent-emerald)]">contracts/kratonos_vault.wasm</code> (<code className="font-mono">code_hash: 8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD</code>, <code className="font-mono">8,680</code> bytes storage, 12 exported methods, <code className="font-mono">DeployContract</code> tx <code className="font-mono">DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG</code>), with <code className="font-mono text-[var(--accent-emerald)]">contracts/kratonos-policy-vault/src/lib.rs</code> serving as the readable Rust reference specification and <code className="font-mono text-[var(--accent-emerald)]">src/core/poc4.ts</code> handling enclave verification.
                 </p>
               </div>
 
@@ -2372,7 +2382,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                 </div>
 
                 <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
-                  Every autonomous payout or rebalance enforces 3-Tier Earned-Trust Governance: <code className="font-mono">&lt;= $50.00</code> (<code className="font-mono">&lt;= $150.00</code> verified counterparty) executes autonomously, <code className="font-mono">$50.01 - $150.00</code> queues for 1-Council Fast-Track co-signature, and <code className="font-mono">&gt; $150.00</code> single-tx (or <code className="font-mono">&gt; $500.00</code> daily) calls <code className="font-mono">escalate_dao_proposal</code> on <code className="font-mono">jubayir69.testnet</code> with a <code className="font-mono">1 NEAR</code> bond. Verified reference transaction <code className="font-mono">wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E</code>.
+                  Every autonomous payout or rebalance enforces 3-Tier Earned-Trust Governance: <code className="font-mono">&lt;= $50.00</code> (<code className="font-mono">&lt;= $150.00</code> verified counterparty) executes autonomously, <code className="font-mono">$50.01 - $150.00</code> queues for 1-Council Fast-Track co-signature, and <code className="font-mono">&gt; $150.00</code> single-tx (or <code className="font-mono">&gt; $500.00</code> daily) executes <code className="font-mono">FunctionCall(escalate_dao_proposal)</code> directly on the <code className="font-mono">jubayir69.testnet</code> Policy Vault contract with a <code className="font-mono">1.0000 NEAR</code> proposal bond (<code className="font-mono">Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD</code>, Block <code className="font-mono">#277646089</code>), storing the proposal record in on-chain contract state and emitting a NEP-297 <code className="font-mono">EVENT_JSON</code> governance event rather than calling an external Sputnik DAO factory contract.
                 </p>
               </div>
 
@@ -2833,7 +2843,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--text-primary)]">RHEA Finance V1 &amp; Farming</td>
                       <td className="px-4 py-3 font-mono">v2.ref-finance.near / ref-farming.testnet</td>
-                      <td className="px-4 py-3 text-[var(--text-secondary)]">On-chain list_seeds_info + get_unclaimed_rewards with single-tx withdraw_reward(&#123; amount: &quot;0&quot; &#125;) sweep (TX: DLwMCDMcTC...) and MCA Lending Health Factor 3.13 (($12,500 * 0.80) / $3,200)</td>
+                      <td className="px-4 py-3 text-[var(--text-secondary)]">On-chain list_seeds_info + get_unclaimed_rewards with single-tx withdraw_reward(&#123; amount: &quot;0&quot; &#125;) action specification and harvest_yield_sweep on jubayir69.testnet (TX: ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v, 0.0500 NEAR cross-account transfer to wrap.testnet, child receipt 5MPert5BFEAUDdAaTkPkPWoRjLu4z1R3BANRZDB7zdt4) and MCA Lending Health Factor 3.13 (($12,500 * 0.80) / $3,200)</td>
                     </tr>
                     <tr>
                       <td className="px-4 py-3 font-bold text-[var(--accent-cyan)]">Chain Signatures MPC</td>
@@ -3321,7 +3331,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   { pair: "NEAR/USDT", val: `$${Number(liveStatusData?.oracle?.nearUsdMedian ?? 3.55).toFixed(4)}` },
                   { pair: "XRP/USDT", val: `$${Number(liveStatusData?.oracle?.xrpUsdMedian ?? 1.09).toFixed(4)}` },
                   { pair: "SOL/USDT", val: `$${Number(liveStatusData?.oracle?.solUsdMedian ?? 86.5).toFixed(2)}` },
-                  { pair: "BTC/USDT", val: `$${Number(liveStatusData?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                  { pair: "BTC/USDT", val: `$${Number(liveStatusData?.oracle?.btcUsdMedian ?? 84250.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
                 ].map((item) => (
                   <div key={item.pair} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3.5">
                     <div className="font-mono text-[10px] font-bold text-[var(--text-secondary)]">{item.pair}</div>

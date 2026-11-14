@@ -47,20 +47,37 @@
   },
   "x-onchain-proofs": {
     "accountId": "jubayir69.testnet",
-    "deployTxHash": "HZ39n5eYzxGbsvafERh7B6qQ3p7hhqUzpHjK8TJ3yiGi",
-    "codeHash": "F2CPorWwHWejFi3BKrzjgjQejQ4JrKWdRoyp4vvpVSvd",
-    "wasmByteLength": 4507,
+    "deployTxHash": "DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG",
+    "codeHash": "8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD",
+    "storageUsageBytes": 8680,
+    "wasmByteLength": 5594,
+    "exportedMethodCount": 12,
     "functionCallCount": 30,
+    "totalOnChainTxCount": 31,
     "hMaster": "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
     "hPolicy": "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6",
     "payrollSettledNear": "2.6400",
     "payrollSettledRows": 11,
     "payrollQuarantinedRow": 12,
+    "payrollRecipientAccounts": [
+      "asma90.testnet",
+      "v1.signer-prod.testnet",
+      "outlayer.testnet",
+      "worker.outlayer.testnet",
+      "ref-finance.testnet",
+      "wrap.testnet",
+      "ref-farming.testnet"
+    ],
     "settlementVault": "asma90.testnet",
-    "verifyAndAnchorTx": "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q",
+    "initVaultTx": "EnyqgGwCzaeD4tZsMXcZGFxP24VaVsichoHif2oR59eY",
+    "harvestYieldSweepTx": "ArNihHTyPzom5jHveNMcZSt3bkvzQCxFZUozfSpawT8v",
+    "settleSwarmRoundTx": "EJxJz6ta1hWbvFDxe135CoehKSXRr2dZXDNdnwX4Fmpx",
+    "submitLimitOrderTx": "2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD",
+    "verifyX402SettlementTx": "C1LfqHuH2Da43Zc1doayJvoaafbpvo9qhjPwKVK7gRz8",
+    "verifyAndAnchorTx": "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     "daoMethod": "escalate_dao_proposal",
     "daoContract": "jubayir69.testnet",
-    "daoReferenceTx": "wKfp2jNxpFzEfryepmjsESVE2XiDfzXzFDtGWEeHZ9E"
+    "daoReferenceTx": "Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD"
   },
   "servers": [
     {
@@ -71,7 +88,7 @@
   "paths": {
     "/api/overview": {
       "get": {
-        "summary": "Live Vault, RPC, NEP-611, 30 FunctionCall Txs & 5-Asset Oracle Telemetry (60s Refresh)",
+        "summary": "Live Vault, RPC, NEP-611, 31 On-Chain Txs (1 DeployContract + 30 FunctionCall) & 5-Asset Oracle Telemetry",
         "responses": {
           "200": {
             "description": "Live status snapshot"
@@ -89,12 +106,22 @@
         }
       }
     },
-    "/api/security/evaluate": {
+    "/api/policy/verify": {
       "post": {
-        "summary": "Evaluate 4-signal counterparty risk, Sputnik DAO V2 escalation & ML-DSA-65 PQ signature",
+        "summary": "Invoke compute_policy_hash, verify_poc4_enclave_gate, and get_vault_state on jubayir69.testnet via NEAR RPC",
         "responses": {
           "200": {
-            "description": "Risk verdict, Sputnik proposal & PQ verification"
+            "description": "Live contract view outputs and Mode A reference proof"
+          }
+        }
+      }
+    },
+    "/api/security/evaluate": {
+      "post": {
+        "summary": "Evaluate 4-signal counterparty risk, escalate_dao_proposal governance gate & ML-DSA-65 PQ signature",
+        "responses": {
+          "200": {
+            "description": "Risk verdict, DAO proposal commitment & PQ verification"
           }
         }
       }
@@ -111,7 +138,7 @@
     },
     "/api/router/quote": {
       "post": {
-        "summary": "Compare 1Click Confidential Intents vs RHEA V1 Classic vs RHEA V2 DCL & derive 5-chain MPC addresses",
+        "summary": "Compare 1Click Confidential Intents vs RHEA V1 Classic vs RHEA V2 DCL (40 bps fee) & derive 5-chain MPC addresses",
         "responses": {
           "200": {
             "description": "Winning venue quote, 5-chain MPC addresses, limit order & dust sweep"
@@ -121,7 +148,17 @@
     },
     "/api/payroll/run": {
       "post": {
-        "summary": "Execute EXACT_OUTPUT invoice and 11 settled execute_payroll_row FunctionCalls (2.6400 NEAR to asma90.testnet, row 12 quarantined)",
+        "summary": "Execute EXACT_OUTPUT invoice and 11 settled execute_payroll_row FunctionCalls (2.6400 NEAR across 7 verified recipients, row 12 quarantined)",
+        "responses": {
+          "200": {
+            "description": "Invoice math + 12-row batch outcomes"
+          }
+        }
+      }
+    },
+    "/api/payroll/execute-batch": {
+      "post": {
+        "summary": "Alias for /api/payroll/run returning the 12-row batch payroll settlement and Mode A sandbox toast",
         "responses": {
           "200": {
             "description": "Invoice math + 12-row batch outcomes"
@@ -171,17 +208,17 @@
     },
     "/api/onchain/commit-proof": {
       "post": {
-        "summary": "Return anchored FunctionCall verify_and_anchor receipt FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q on jubayir69.testnet",
+        "summary": "Verify and return anchored FunctionCall verify_and_anchor receipt 9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu on jubayir69.testnet (MODE_A_SANDBOX_VERIFIED)",
         "responses": {
           "200": {
-            "description": "On-chain signed transaction receipt & explorer URL"
+            "description": "On-chain verified transaction receipt & explorer URL"
           }
         }
       }
     },
     "/api/onchain/receipt": {
       "get": {
-        "summary": "Retrieve a verified FunctionCall receipt and the 30 FunctionCall catalog on jubayir69.testnet",
+        "summary": "Retrieve a verified FunctionCall receipt and the 31-tx catalog on jubayir69.testnet",
         "responses": {
           "200": {
             "description": "FunctionCall receipt, settlement account, H_master, and H_policy"

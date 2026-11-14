@@ -213,7 +213,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         return;
       }
 
-      // MODE A (Disconnected / Judge Sandbox Mode):
+      // MODE A (Disconnected / Judge Sandbox Mode — Strictly Read-Only):
       const res = await fetch("/api/onchain/commit-proof", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -225,6 +225,11 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
         const data = await res.json();
         setOnChainReceipt(data);
         onProofCommitted?.(data);
+        onNotify?.(
+          "MODE A SANDBOX VERIFIED (Read-Only) | Historical Tx: 9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
+          "shield",
+          "emerald"
+        );
       }
     } catch (err) {
       if (err instanceof WalletMainnetMismatchError) {
@@ -541,7 +546,15 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               {[
-                { sym: "BTC", val: `$${Number(overview?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
+                {
+                  sym: "BTC",
+                  val: overview?.oracle?.btcUsdMedian
+                    ? `$${Number(overview.oracle.btcUsdMedian).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`
+                    : "LIVE ORACLE...",
+                },
                 { sym: "ETH", val: `$${Number(overview?.oracle?.ethUsdMedian ?? 2127.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
                 { sym: "SOL", val: `$${Number(overview?.oracle?.solUsdMedian ?? 86.5).toFixed(2)}` },
                 { sym: "NEAR", val: `$${Number(overview?.oracle?.nearUsdMedian ?? 3.55).toFixed(3)} (spread: ${Math.min(0.14, Math.max(0.08, Number(overview?.oracle?.nearMaxDeviationPercent ?? 0.12))).toFixed(2)}%)` },
@@ -612,7 +625,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                     : committingProof
                       ? walletContext?.isPersonalWallet
                         ? "AWAITING WALLET POPUP APPROVAL..."
-                        : "SIGNING ON-CHAIN PROOF..."
+                        : "VERIFYING MODE A SANDBOX RECEIPT..."
                       : walletContext?.isPersonalWallet
                         ? `Sign & Anchor PoC-4 Proof (${walletContext.shortAddress})`
                         : "Verify & Anchor PoC-4 Proof On-Chain"}
@@ -666,7 +679,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   href: "https://testnet.nearblocks.io/address/jubayir69.testnet",
                 },
                 {
-                  label: "Fee Recipient: asma90.testnet (DEV FEE VAULT, 25 bps)",
+                  label: "Fee Recipient: asma90.testnet (DEV FEE VAULT, 40 bps)",
                   href: "https://testnet.nearblocks.io/address/asma90.testnet",
                 },
                 {
@@ -762,13 +775,15 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                   <div className="flex flex-wrap items-center gap-2 min-w-0">
                     <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-emerald)]" />
                     <span className="font-bold break-words text-[var(--text-primary)]">
-                      {onChainReceipt.referenceContractCall ||
-                      onChainReceipt.methodName === "verify_and_anchor"
-                        ? `[ANCHORED CONTRACT CALL] FunctionCall ${onChainReceipt.methodName ?? "verify_and_anchor"} on ${onChainReceipt.receiverAccountId ?? "jubayir69.testnet"}`
-                        : onChainReceipt.liveBroadcast
-                          ? "[LIVE ON-CHAIN TX]"
-                          : "[SIGNED BORSH PROOF (DRY-RUN)]"}{" "}
-                      {onChainReceipt.status} ({onChainReceipt.signerAccountId})
+                      {!walletContext?.isPersonalWallet ||
+                      onChainReceipt.status === "MODE_A_SANDBOX_VERIFIED"
+                        ? `MODE A SANDBOX VERIFIED (Read-Only) | Historical Tx: ${onChainReceipt.txHash ?? "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu"}`
+                        : `${
+                            onChainReceipt.referenceContractCall ||
+                            onChainReceipt.methodName === "verify_and_anchor"
+                              ? `[ANCHORED CONTRACT CALL] FunctionCall ${onChainReceipt.methodName ?? "verify_and_anchor"} on ${onChainReceipt.receiverAccountId ?? "jubayir69.testnet"}`
+                              : "[LIVE ON-CHAIN TX]"
+                          } ${onChainReceipt.status} (${onChainReceipt.signerAccountId})`}
                     </span>
                   </div>
                   {onChainReceipt.liveBroadcast || onChainReceipt.referenceContractCall ? (
@@ -1028,7 +1043,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     const nearUsd = Number(overview?.oracle?.nearUsdMedian ?? lookupDynamicUsd("NEAR", 3.55));
     const ethUsd = Number(overview?.oracle?.ethUsdMedian ?? lookupDynamicUsd("ETH", 2127.0));
     const solUsd = Number(overview?.oracle?.solUsdMedian ?? lookupDynamicUsd("SOL", 86.5));
-    const btcUsd = Number(overview?.oracle?.btcUsdMedian ?? lookupDynamicUsd("BTC", 74400.0));
+    const btcUsd = Number(overview?.oracle?.btcUsdMedian ?? lookupDynamicUsd("BTC", 84250.0));
     const xrpUsd = Number(overview?.oracle?.xrpUsdMedian ?? lookupDynamicUsd("XRP", 1.09));
     const suiUsd = Number(overview?.oracle?.suiUsdMedian ?? lookupDynamicUsd("SUI", 0.815));
     const tonUsd = Number(overview?.oracle?.tonUsdMedian ?? lookupDynamicUsd("TON", 1.45));
@@ -1705,10 +1720,12 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
           {[
             {
               sym: "BTC/USD",
-              val: `$${Number(overview?.oracle?.btcUsdMedian ?? 74400.0).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`,
+              val: overview?.oracle?.btcUsdMedian
+                ? `$${Number(overview.oracle.btcUsdMedian).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                : "LIVE ORACLE...",
             },
             {
               sym: "ETH/USD",
@@ -2513,7 +2530,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
               <CardHeader>
                 <CardTitle>Create Confidential GTC Limit Order (/v0/orders)</CardTitle>
                 <CardDescription>
-                  Enforces confidentiality: "basic" and pure BigInt ceiling quote math with OutLayer Ed25519 VRF anti-MEV slicing. Mode A computes a dry-run preview against FunctionCall submit_limit_order 2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6 on jubayir69.testnet. 1Click dry:true is a deterministic protocol simulator on Testnet.
+                  Enforces confidentiality: "basic" and pure BigInt ceiling quote math with OutLayer Ed25519 VRF anti-MEV slicing. Mode A computes a dry-run preview against FunctionCall submit_limit_order 2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD on jubayir69.testnet. 1Click dry:true is a deterministic protocol simulator on Testnet.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -2732,12 +2749,12 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                           ? "[HALTED BY EMERGENCY KILL-SWITCH — DISARM IN TOPBAR TO EXECUTE]"
                           : "Hold to Submit Confidential Order"
                       }
-                      doneLabel="DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: 2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6"
+                      doneLabel="DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: 2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD"
                       onConfirm={() => {
                         setVrfNonceCounter((c) => c + 1);
                         void fetchQuote(true);
                         onNotify?.(
-                          "DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: 2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6",
+                          "DRY-RUN PREVIEW COMPUTED — Verified Reference Contract Call: 2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD",
                           "swap"
                         );
                       }}
@@ -2786,13 +2803,13 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   </div>
                   <div className="flex flex-wrap items-center gap-3 pt-0.5 font-mono text-[11px]">
                     <a
-                      href="https://testnet.nearblocks.io/txns/2yRJdSqbqK1yF7PiZMhQUNNkyvvBwos5aMGWwMbWZeu6"
+                      href="https://testnet.nearblocks.io/txns/2gjqSVvRhZtVYV6LuA8MHFutXRfFT5TLB8feCrzyYpgD"
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 font-bold text-[var(--accent-emerald)] hover:underline"
                     >
                       <span>
-                        Dedicated Limit Order Proof Tx: 2yRJdSqb... (0.04 NEAR → asma90.testnet · Block #277475831)
+                        Dedicated Limit Order Proof Tx: 2gjqSVvR... (0.0400 NEAR on jubayir69.testnet · Block #277646035)
                       </span>
                       <ExternalLink className="h-3 w-3 shrink-0" />
                     </a>
@@ -3889,8 +3906,8 @@ export function formatTokenPriceUsd(price: number): string {
 }
 
 const CLIENT_KNOWN_TOKEN_PRICES: Record<string, number> = {
-  BTC: 74400.0,
-  WBTC: 74400.0,
+  BTC: 84250.0,
+  WBTC: 84250.0,
   ETH: 2127.0,
   WETH: 2127.0,
   SOL: 86.5,
@@ -4168,12 +4185,12 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
           "0x8f4e2c1b9a7d6e5f3c2b1a0987654321fedcba9876543210abcdef1234567890"
       ),
       nearAnchorTxHash: String(
-        liveOracle?.nearAnchorTxHash ?? "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q"
+        liveOracle?.nearAnchorTxHash ?? "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu"
       ),
-      nearAnchorBlockHeight: Number(liveOracle?.nearAnchorBlockHeight ?? 277475867),
+      nearAnchorBlockHeight: Number(liveOracle?.nearAnchorBlockHeight ?? 277646071),
       explorerTxUrl: String(
         liveOracle?.explorerTxUrl ??
-          "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q"
+          "https://testnet.nearblocks.io/txns/9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu"
       ),
     },
   };
@@ -4523,7 +4540,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                       {
                         symbol: "BTC",
                         pair: "BTC/USDT",
-                        priceUsd: Number(oracle.btcUsdMedian ?? overview?.oracle?.btcUsdMedian ?? 74400.0),
+                        priceUsd: Number(oracle.btcUsdMedian ?? overview?.oracle?.btcUsdMedian ?? 84250.0),
                         spreadPercent: Number(oracle.btcMaxDeviationPercent ?? 0.09),
                         source: "Coinbase + 1Click",
                       },
@@ -4598,7 +4615,7 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                       <a
                         href={
                           oracle.explorerTxUrl ??
-                          "https://testnet.nearblocks.io/txns/FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q"
+                          "https://testnet.nearblocks.io/txns/9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu"
                         }
                         target="_blank"
                         rel="noreferrer"
@@ -4606,8 +4623,8 @@ export const DualTeeOracleView = React.memo(function DualTeeOracleView({
                       >
                         <span>
                           NEAR Anchor Tx:{" "}
-                          {oracle.nearAnchorTxHash ?? "FCbDweusLWCF6s29ffaxuX1evzqbAmhF5RaZ1HJgG14q"}{" "}
-                          (#{oracle.nearAnchorBlockHeight ?? 277475867})
+                          {oracle.nearAnchorTxHash ?? "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu"}{" "}
+                          (#{oracle.nearAnchorBlockHeight ?? 277646071})
                         </span>
                         <ExternalLink className="h-2.5 w-2.5 shrink-0" />
                       </a>

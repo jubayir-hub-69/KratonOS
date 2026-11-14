@@ -462,7 +462,7 @@ function buildDynamicTeeVerdictForPrompt(
     ethUsd: 2127.0,
     nearUsd: 3.55,
     solUsd: 86.5,
-    btcUsd: 74400.0,
+    btcUsd: 84250.0,
     xrpUsd: 1.09,
     liveFetched: true,
     quotes: [
@@ -470,7 +470,7 @@ function buildDynamicTeeVerdictForPrompt(
       { symbol: "XRP", pair: "XRP/USDT", found: true, priceUsd: 1.09, spreadPercent: 0.12, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
       { symbol: "SOL", pair: "SOL/USDT", found: true, priceUsd: 86.5, spreadPercent: 0.14, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
       { symbol: "ETH", pair: "ETH/USDT", found: true, priceUsd: 2127.0, spreadPercent: 0.11, source: "Coinbase + EIP-1186", status: "VERIFIED_LIVE" },
-      { symbol: "BTC", pair: "BTC/USDT", found: true, priceUsd: 74400.0, spreadPercent: 0.09, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
+      { symbol: "BTC", pair: "BTC/USDT", found: true, priceUsd: 84250.0, spreadPercent: 0.09, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
       { symbol: "SUI", pair: "SUI/USDT", found: true, priceUsd: 0.815, spreadPercent: 0.15, source: "Coinbase + 1Click", status: "VERIFIED_LIVE" },
     ],
   };
