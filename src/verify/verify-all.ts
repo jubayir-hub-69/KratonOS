@@ -407,8 +407,6 @@ async function runMasterVerificationSuite(): Promise<void> {
     "https://testnet.nearblocks.io/address/ref-finance.testnet",
     "https://testnet.nearblocks.io/address/ref-farming.testnet",
     "https://docs.hotdao.ai/",
-    "https://github.com/near-daos/sputnik-dao-contract",
-    "https://trezu.org/",
     "https://testnet.nearblocks.io/address/v1.signer-prod.testnet",
     "https://testnet.nearblocks.io/address/jubayir69.testnet",
     "https://testnet.nearblocks.io/address/asma90.testnet",
@@ -417,6 +415,20 @@ async function runMasterVerificationSuite(): Promise<void> {
   for (const url of requiredReferenceUrls) {
     assert.ok(readmeText.includes(url), `README.md must reference official URL: ${url}`);
   }
+  assert.ok(
+    readmeText.includes(
+      "No external DAO exists. Governance uses an internal method on jubayir69.testnet where the 1 NEAR bond remains locked."
+    ),
+    "README.md must include honest internal governance statement"
+  );
+  assert.ok(
+    readmeText.includes("Harvest executes a 0.05 NEAR transfer on-chain (no wNEAR interactions)."),
+    "README.md must include honest harvest statement"
+  );
+  assert.ok(
+    readmeText.includes("1 of 1 solo submission with no companion projects."),
+    "README.md must include solo submission statement"
+  );
 
   // Ensure .env.example has empty secret placeholders
   const envExampleText = fs.readFileSync(path.join(rootDir, ".env.example"), "utf8");

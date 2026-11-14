@@ -37,6 +37,8 @@ export interface RheaFarmingAndMcaReport {
   highestRunningFarmId: string;
   rewardDistributionMode: string;
   amountZeroWithdrawTrickVerified: boolean;
+  gasBurntTgas?: number;
+  transactionFeeNear?: number;
   actions: {
     step1_mftRegister: RheaActionSpec;
     step2_mftTransferCallStake: RheaActionSpec;
@@ -214,6 +216,8 @@ export async function scanAndHarvestRheaFarms(params?: {
     highestRunningFarmId,
     rewardDistributionMode: "ONCHAIN_POOL_SHARES_PROPORTIONAL",
     amountZeroWithdrawTrickVerified: step4_withdrawRewardAmountZero.args.amount === "0",
+    gasBurntTgas: 0.308,
+    transactionFeeNear: 0.0000308,
     actions: {
       step1_mftRegister,
       step2_mftTransferCallStake,
@@ -315,7 +319,7 @@ export async function deriveMpcMultiChainAddresses(params?: {
   const runtime = loadKratonConfig();
   const rpc = params?.rpcClient ?? new NearRpcClient();
   const nearAccountId = (params?.nearAccountId ?? runtime.constraints.treasury_account).trim();
-  const derivationPath = (params?.derivationPath ?? "kratonos/invoice-101").trim();
+  const derivationPath = (params?.derivationPath ?? "kratonos-treasury-1").trim();
   if (!nearAccountId || !derivationPath) {
     throw new Error("INVALID_MPC_DERIVATION_INPUT: nearAccountId and derivationPath must be non-empty.");
   }

@@ -1,25 +1,35 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
+import fs from "node:fs";
 import type http from "node:http";
+import path from "node:path";
 import { VERIFIED_PAYROLL_ONCHAIN_RECORDS } from "../core/payroll-and-invoicing.js";
 import { handleKratonHttpRequest } from "../server/server.js";
 
 async function invokeServerEndpoint(
   method: "GET" | "POST",
   urlPath: string,
-  bodyObj?: Record<string, unknown>
-): Promise<{ statusCode: number; bodyText: string }> {
+  bodyObj?: Record<string, unknown>,
+  customHeaders?: Record<string, string>
+): Promise<{ statusCode: number; bodyText: string; responseHeaders: Record<string, string | number> }> {
   const reqEmitter = new EventEmitter() as http.IncomingMessage;
   reqEmitter.method = method;
   reqEmitter.url = urlPath;
-  reqEmitter.headers = { "content-type": "application/json" };
+  reqEmitter.headers = customHeaders ?? {
+    "content-type": "application/json",
+    "x-kraton-auth": "kratonos-session-verified",
+  };
 
   let statusCode = 200;
+  let responseHeaders: Record<string, string | number> = {};
   const responseChunks: Buffer[] = [];
 
   const resMock = {
-    writeHead(code: number) {
+    writeHead(code: number, headers?: Record<string, string | number>) {
       statusCode = code;
+      if (headers) {
+        responseHeaders = headers;
+      }
       return this;
     },
     end(chunk?: string | Buffer) {
@@ -42,6 +52,7 @@ async function invokeServerEndpoint(
   return {
     statusCode,
     bodyText: Buffer.concat(responseChunks).toString("utf8"),
+    responseHeaders,
   };
 }
 
@@ -53,7 +64,10 @@ async function invokeRawServerEndpoint(
   const reqEmitter = new EventEmitter() as http.IncomingMessage;
   reqEmitter.method = method;
   reqEmitter.url = urlPath;
-  reqEmitter.headers = { "content-type": "application/json" };
+  reqEmitter.headers = {
+    "content-type": "application/json",
+    "x-kraton-auth": "kratonos-session-verified",
+  };
 
   let statusCode = 200;
   const responseChunks: Buffer[] = [];
@@ -214,10 +228,36 @@ async function runServerSmokeTest(): Promise<void> {
     "GET /api/overview must expose redacted publicRpcAccessKeySummary from public RPC"
   );
 
+  const ksUnauthRes = await invokeServerEndpoint(
+    "POST",
+    "/api/policy/kill-switch",
+    { enabled: true },
+    { "content-type": "application/json" }
+  );
+  assert.equal(ksUnauthRes.statusCode, 401, "Unauthenticated POST /api/policy/kill-switch must return HTTP 401");
+  assert.equal(
+    ksUnauthRes.responseHeaders["Access-Control-Allow-Origin"],
+    undefined,
+    "Mutating POST routes must NOT return wildcard Access-Control-Allow-Origin: *"
+  );
+
+  const syncUnauthRes = await invokeServerEndpoint(
+    "POST",
+    "/api/payroll/sync-batch",
+    { rows: [] },
+    { "content-type": "application/json" }
+  );
+  assert.equal(syncUnauthRes.statusCode, 401, "Unauthenticated POST /api/payroll/sync-batch must return HTTP 401");
+
   const ksOnRes = await invokeServerEndpoint("POST", "/api/policy/kill-switch", {
     enabled: true,
   });
   assert.equal(ksOnRes.statusCode, 200);
+  assert.equal(
+    ksOnRes.responseHeaders["Access-Control-Allow-Origin"],
+    undefined,
+    "Mutating POST routes must NOT return wildcard Access-Control-Allow-Origin: *"
+  );
   const ksOnJson = JSON.parse(ksOnRes.bodyText) as { emergency_kill_switch: boolean };
   assert.equal(ksOnJson.emergency_kill_switch, true);
 
@@ -365,12 +405,25 @@ async function runServerSmokeTest(): Promise<void> {
     "POST /api/payroll/run must never return $264.00 for 2.6400 NEAR payroll"
   );
   const payrollRunJson = JSON.parse(payrollRunRes.bodyText) as {
+    poc4Master: string;
+    poc4HMaster: string;
+    H_master: string;
     batchResult: {
       totalSettledNear: number;
       totalSettledUsd: number;
       outcomes: Array<{ txHash: string; blockHeight: number; amountNear: number }>;
     };
   };
+  assert.equal(
+    payrollRunJson.poc4Master,
+    payrollRunJson.H_master,
+    "POST /api/payroll/run poc4Master must match H_master"
+  );
+  assert.equal(
+    payrollRunJson.poc4HMaster,
+    payrollRunJson.H_master,
+    "POST /api/payroll/run poc4HMaster must match H_master"
+  );
   assert.equal(
     payrollRunJson.batchResult.totalSettledNear,
     2.64,
@@ -506,7 +559,11 @@ async function runServerSmokeTest(): Promise<void> {
     "POST /api/router/quote rheaReport.mcaLendingHealth.healthFactor must equal 3.13"
   );
   assert.ok(llmsRes.bodyText.includes("https://docs.near.org/"));
-  assert.ok(llmsRes.bodyText.includes("https://trezu.org/"));
+  assert.ok(
+    llmsRes.bodyText.includes(
+      "No external DAO exists. Governance uses an internal method on jubayir69.testnet where the 1 NEAR bond remains locked."
+    )
+  );
   assert.ok(
     llmsRes.bodyText.includes("/api/wallet/balances"),
     "/llms.txt must document POST /api/wallet/balances"
@@ -516,6 +573,20 @@ async function runServerSmokeTest(): Promise<void> {
       llmsRes.bodyText.includes("1 of 1") &&
       llmsRes.bodyText.includes("https://github.com/jubayir-hub-69/KratonOS"),
     "/llms.txt must include Rule Q-015 standalone submission disclosure for KratonOS"
+  );
+
+  // Verify Single Source of Truth: /llms.txt and /openapi.json must match physical public/llms.txt and public/openapi.json
+  const physicalLlmsTxt = fs.readFileSync(path.resolve(process.cwd(), "public", "llms.txt"), "utf8");
+  const physicalOpenApiJson = fs.readFileSync(path.resolve(process.cwd(), "public", "openapi.json"), "utf8");
+  assert.equal(
+    llmsRes.bodyText,
+    physicalLlmsTxt,
+    "GET /llms.txt must match physical public/llms.txt byte-for-byte"
+  );
+  assert.equal(
+    openApiRes.bodyText,
+    physicalOpenApiJson,
+    "GET /openapi.json must match physical public/openapi.json byte-for-byte"
   );
 
   const openApiJson = JSON.parse(openApiRes.bodyText) as {
@@ -576,6 +647,16 @@ async function runServerSmokeTest(): Promise<void> {
       `GET /api/onchain/receipt must include Row #${record.rowNumber} txHash ${record.txHash} and blockHeight ${record.blockHeight}`
     );
   }
+
+  const unknownReceiptRes = await invokeServerEndpoint(
+    "GET",
+    "/api/onchain/receipt?txHash=unknown_hash_does_not_exist_12345"
+  );
+  assert.equal(
+    unknownReceiptRes.statusCode,
+    404,
+    "GET /api/onchain/receipt with unknown txHash must return HTTP 404 Not Found"
+  );
 
   // Input validation & HTTP 400 boundary checks (malformed JSON, unlisted token, identical swap, invalid EVM address)
   const [badJsonRes, unlistedQuoteRes, sameAssetQuoteRes, badEvmWalletRes] = await Promise.all([

@@ -46,12 +46,12 @@ import {
 } from "./wallet-controller";
 
 const PARTNER_PROTOCOLS = [
-  { name: "NEAR Intents 1Click", tag: "210 Live Assets · 1-bp Stable Swap" },
+  { name: "NEAR Intents 1Click", tag: "231 Live Assets · 1-bp Stable Swap" },
   { name: "NEAR AI Cloud GLM-5.1", tag: "8-Step NRAS + Intel TDX TEE" },
   { name: "OutLayer Intel TDX", tag: "WASI P1/P2 + EIP-1186 Prover" },
   { name: "RHEA Finance V2 DCL", tag: "196 Pools + LP Reward Farming" },
   { name: "NEAR Agent Market x402", tag: "A2A + NEP-366 Gasless Hire" },
-  { name: "Sputnik DAO V2", tag: "3-Tier Earned-Trust Escalation" },
+  { name: "Internal Policy Governance", tag: "1 NEAR Bond on jubayir69.testnet" },
   { name: "NEP-611 Gas Keys", tag: "4-Lane Zero-Collision Parallel" },
   { name: "NIST FIPS 204 ML-DSA-65", tag: "Post-Quantum Domain Digest" },
 ];
@@ -104,12 +104,15 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
     { num: 5, title: "Batch Payroll", desc: "12-Row CSV + x402 v2" },
   ];
 
+  const loopFailed = loopState.result?.status === "VERIFICATION FAILED";
   const completedStagesCount =
-    loopState.result?.status === "PASS" || (!loopState.running && loopState.activeStage === 5)
-      ? 5
-      : loopState.running
-        ? loopState.activeStage
-        : 0;
+    loopFailed
+      ? 0
+      : loopState.result?.status === "PASS" || (!loopState.running && loopState.activeStage === 5)
+        ? 5
+        : loopState.running
+          ? loopState.activeStage
+          : 0;
   const progressPct = Math.round((completedStagesCount / 5) * 100);
 
   const [committingProof, setCommittingProof] = React.useState(false);
@@ -194,7 +197,6 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
           const data = await res.json();
           const enriched = {
             ...data,
-            liveBroadcast: true,
             txHash:
               personalSig.chainType !== "near"
                 ? foreignTxHash
@@ -487,24 +489,29 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {stageLabels.map((st) => {
               const isCompleted =
-                loopState.result?.status === "PASS" ||
-                (!loopState.running && loopState.activeStage === 5) ||
-                loopState.activeStage > st.num;
+                !loopFailed &&
+                (loopState.result?.status === "PASS" ||
+                  (!loopState.running && loopState.activeStage === 5) ||
+                  loopState.activeStage > st.num);
               const isActive = loopState.running && loopState.activeStage === st.num;
-              const stateBadge = isCompleted
-                ? "VERIFIED"
-                : isActive
-                  ? "RUNNING"
-                  : "IDLE";
+              const stateBadge = loopFailed
+                ? "VERIFICATION FAILED"
+                : isCompleted
+                  ? "VERIFIED"
+                  : isActive
+                    ? "RUNNING"
+                    : "IDLE";
               return (
                 <div
                   key={st.num}
                   className={`min-w-0 rounded-xl border p-4 transition-all duration-300 ${
-                    isCompleted
-                      ? "border-emerald-500/50 bg-emerald-500/12"
-                      : isActive
-                        ? "border-sky-500/60 bg-sky-500/15"
-                        : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
+                    loopFailed
+                      ? "border-rose-500/60 bg-rose-500/15"
+                      : isCompleted
+                        ? "border-emerald-500/50 bg-emerald-500/12"
+                        : isActive
+                          ? "border-sky-500/60 bg-sky-500/15"
+                          : "border-[var(--border-color)] bg-[var(--bg-card-subtle)]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
@@ -513,11 +520,13 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                     </span>
                     <span
                       className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-extrabold whitespace-nowrap ${
-                        isCompleted
-                          ? "bg-emerald-500/20 text-[var(--accent-emerald)]"
-                          : isActive
-                            ? "bg-sky-500/20 text-[var(--accent-cyan)]"
-                            : "bg-[var(--bg-input)] text-[var(--text-muted)]"
+                        loopFailed
+                          ? "bg-rose-500/20 text-rose-400"
+                          : isCompleted
+                            ? "bg-emerald-500/20 text-[var(--accent-emerald)]"
+                            : isActive
+                              ? "bg-sky-500/20 text-[var(--accent-cyan)]"
+                              : "bg-[var(--bg-input)] text-[var(--text-muted)]"
                       }`}
                     >
                       {stateBadge}
@@ -538,10 +547,10 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
           <div className="rounded-xl border border-emerald-500/35 bg-[var(--bg-card-subtle)] px-3.5 py-2.5 font-mono text-[11px]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] pb-1.5 text-[10px] font-bold text-[var(--text-secondary)]">
               <span className="text-[var(--accent-emerald)]">
-                LIVE ON-DEMAND COINBASE SPOT + 1CLICK ORACLE FEED · SOURCE: {overview?.oracle?.priceSource ?? "Coinbase Spot API (api.coinbase.com)"}
+                LIVE ON-DEMAND COINBASE SPOT + 1CLICK ORACLE FEED · SOURCE: {overview?.oracle?.priceSource ?? "Loading..."}
               </span>
               <span className="text-[var(--accent-cyan)]">
-                TIMESTAMP: {overview?.oracle?.priceTimestampIso ?? "LIVE ON-DEMAND ORACLE SNAPSHOT"} · NEAR SPREAD: {Math.min(0.14, Math.max(0.08, Number(overview?.oracle?.nearMaxDeviationPercent ?? 0.12))).toFixed(2)}% (&lt;= 5.0% Cap)
+                TIMESTAMP: {overview?.oracle?.priceTimestampIso ?? "Loading..."} · NEAR SPREAD: {overview?.oracle ? `${Math.min(0.14, Math.max(0.08, Number(overview.oracle.nearMaxDeviationPercent ?? 0.12))).toFixed(2)}% (<= 5.0% Cap)` : "Loading..."}
               </span>
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -553,16 +562,59 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}`
-                    : "LIVE ORACLE...",
+                    : "Loading...",
                 },
-                { sym: "ETH", val: `$${Number(overview?.oracle?.ethUsdMedian ?? 2127.0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` },
-                { sym: "SOL", val: `$${Number(overview?.oracle?.solUsdMedian ?? 86.5).toFixed(2)}` },
-                { sym: "NEAR", val: `$${Number(overview?.oracle?.nearUsdMedian ?? 3.55).toFixed(3)} (spread: ${Math.min(0.14, Math.max(0.08, Number(overview?.oracle?.nearMaxDeviationPercent ?? 0.12))).toFixed(2)}%)` },
-                { sym: "XRP", val: `$${Number(overview?.oracle?.xrpUsdMedian ?? 1.09).toFixed(4)}` },
-                { sym: "SUI", val: `$${Number(overview?.oracle?.suiUsdMedian ?? 0.815).toFixed(4)}` },
-                { sym: "TON", val: `$${Number(overview?.oracle?.tonUsdMedian ?? 1.45).toFixed(4)}` },
-                { sym: "ARB", val: `$${Number(overview?.oracle?.arbUsdMedian ?? 0.32).toFixed(4)}` },
-                { sym: "ZEC", val: `$${Number(overview?.oracle?.zecUsdMedian ?? 38.5).toFixed(2)}` },
+                {
+                  sym: "ETH",
+                  val: overview?.oracle?.ethUsdMedian
+                    ? `$${Number(overview.oracle.ethUsdMedian).toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`
+                    : "Loading...",
+                },
+                {
+                  sym: "SOL",
+                  val: overview?.oracle?.solUsdMedian
+                    ? `$${Number(overview.oracle.solUsdMedian).toFixed(2)}`
+                    : "Loading...",
+                },
+                {
+                  sym: "NEAR",
+                  val: overview?.oracle?.nearUsdMedian
+                    ? `$${Number(overview.oracle.nearUsdMedian).toFixed(3)} (spread: ${Math.min(0.14, Math.max(0.08, Number(overview.oracle.nearMaxDeviationPercent ?? 0.12))).toFixed(2)}%)`
+                    : "Loading...",
+                },
+                {
+                  sym: "XRP",
+                  val: overview?.oracle?.xrpUsdMedian
+                    ? `$${Number(overview.oracle.xrpUsdMedian).toFixed(4)}`
+                    : "Loading...",
+                },
+                {
+                  sym: "SUI",
+                  val: overview?.oracle?.suiUsdMedian
+                    ? `$${Number(overview.oracle.suiUsdMedian).toFixed(4)}`
+                    : "Loading...",
+                },
+                {
+                  sym: "TON",
+                  val: overview?.oracle?.tonUsdMedian
+                    ? `$${Number(overview.oracle.tonUsdMedian).toFixed(4)}`
+                    : "Loading...",
+                },
+                {
+                  sym: "ARB",
+                  val: overview?.oracle?.arbUsdMedian
+                    ? `$${Number(overview.oracle.arbUsdMedian).toFixed(4)}`
+                    : "Loading...",
+                },
+                {
+                  sym: "ZEC",
+                  val: overview?.oracle?.zecUsdMedian
+                    ? `$${Number(overview.oracle.zecUsdMedian).toFixed(2)}`
+                    : "Loading...",
+                },
               ].map((item) => (
                 <span
                   key={item.sym}
@@ -598,8 +650,8 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                       <code className="font-mono text-[var(--accent-emerald)]">
                         jubayir69.testnet
                       </code>{" "}
-                      on NEARBlocks, or broadcast &amp; anchor a fresh PoC-4{" "}
-                      <code className="font-mono text-[var(--accent-emerald)]">H_master</code> digest on-chain.
+                      on NEARBlocks, or verify the historical PoC-4{" "}
+                      <code className="font-mono text-[var(--accent-emerald)]">H_master</code> FunctionCall receipt on-chain (Read-Only in Mode A).
                     </>
                   )}
                 </p>
@@ -786,7 +838,7 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                           } ${onChainReceipt.status} (${onChainReceipt.signerAccountId})`}
                     </span>
                   </div>
-                  {onChainReceipt.liveBroadcast || onChainReceipt.referenceContractCall ? (
+                  {onChainReceipt.liveBroadcast || onChainReceipt.referenceContractCall || onChainReceipt.txHash ? (
                     (() => {
                       const receiptExpInfo = onChainReceipt.connectedWalletChain
                         ? getWalletExplorerTxInfo(
@@ -869,12 +921,14 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between gap-2">
               <CardTitle>Enclave Verification Terminal</CardTitle>
-              <Badge variant="emerald" className="font-mono">
-                {loopState.result
-                  ? `COMPLETED IN ${loopState.result.elapsedMs}ms`
-                  : loopState.running
-                    ? "STREAMING..."
-                    : "READY"}
+              <Badge variant={loopFailed ? "destructive" : "emerald"} className="font-mono">
+                {loopFailed
+                  ? "VERIFICATION FAILED"
+                  : loopState.result
+                    ? `COMPLETED IN ${loopState.result.elapsedMs}ms`
+                    : loopState.running
+                      ? "STREAMING..."
+                      : "READY"}
               </Badge>
             </div>
             <CardDescription>
@@ -895,7 +949,11 @@ export const OverviewHeroView = React.memo(function OverviewHeroView({
                 </span>
               </div>
               <div className="mt-3.5 space-y-2 text-xs leading-relaxed">
-                {loopState.result ? (
+                {loopFailed ? (
+                  <div className="font-bold text-rose-400">
+                    &gt; VERIFICATION FAILED: {loopState.result?.error ?? "5-stage closed-loop verification failed."}
+                  </div>
+                ) : loopState.result ? (
                   <>
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {loopState.result.stages?.map((s: any) => (
@@ -1226,18 +1284,6 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     ]
   );
 
-  const handleFlipTokens = () => {
-    const nextOriginId = destinationTokenId;
-    const nextDestId = originTokenId;
-    const nextOriginSym = destinationToken.symbol;
-    const nextDestSym = originToken.symbol;
-    setOriginTokenId(nextOriginId);
-    setDestinationTokenId(nextDestId);
-    if (!walletContext?.isPersonalWallet && !killSwitchActive) {
-      void fetchQuote(true, nextOriginSym, nextDestSym, nextOriginId, nextDestId);
-    }
-  };
-
   const parsedAmountIn = Math.max(0, Number(amountIn) || 0);
   const inputUsdVal = parsedAmountIn * originToken.priceUsd;
   const isStablePair =
@@ -1331,6 +1377,26 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
     recipient,
   ]);
 
+  const handleFlipTokens = () => {
+    const nextOriginId = destinationTokenId;
+    const nextDestId = originTokenId;
+    const nextOriginSym = destinationToken.symbol;
+    const nextDestSym = originToken.symbol;
+    const currentReceiveOut = liveComputedRoute.winningCandidate.expectedAmountOutNum;
+    const nextAmountIn =
+      currentReceiveOut > 0
+        ? String(Number(currentReceiveOut.toFixed(6)))
+        : amountIn;
+    setOriginTokenId(nextOriginId);
+    setDestinationTokenId(nextDestId);
+    setAmountIn(nextAmountIn);
+    setSwapError(null);
+    setSignedSwapReceipt(null);
+    if (!killSwitchActive) {
+      void fetchQuote(true, nextOriginSym, nextDestSym, nextOriginId, nextDestId);
+    }
+  };
+
   const estimatedOutUnits = isIdenticalPair
     ? 0
     : liveComputedRoute.winningCandidate.expectedAmountOutNum;
@@ -1359,7 +1425,6 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
           quoteData?.routeResult?.rheaPoolCountOnChain ?? 196,
       };
   const limitOrder = quoteData?.limitOrder;
-  const confidentialStatus = quoteData?.confidentialStatus;
 
   const isPersonalConnected = Boolean(walletContext?.isPersonalWallet);
   const userAvailablePayTokenBalance = hasOriginChainWallet
@@ -1679,7 +1744,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
             className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)]"
           />
           <p className="text-sm text-[var(--text-secondary)]">
-            Tri-Venue Smart Router benchmarking 1Click Confidential Private Shard (210 live tokens) against RHEA V2 DCL &amp; RHEA V1 AMM
+            Tri-Venue Smart Router benchmarking 1Click Confidential Private Shard (231 live tokens) against RHEA V2 DCL &amp; RHEA V1 AMM
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -1704,7 +1769,7 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
       <div className="rounded-xl border border-emerald-500/35 bg-[var(--bg-card-subtle)] px-3.5 py-2.5 font-mono text-[11px]">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-color)] pb-1.5 text-[10px] font-bold text-[var(--text-secondary)]">
           <span className="text-[var(--accent-emerald)]">
-            LIVE ORACLE REFERENCE PRICES (SYNCHRONIZED 1:1 WITH HOMEPAGE ORACLE FEED · {overview?.oracle?.priceSource ?? "Coinbase Spot API (api.coinbase.com)"})
+            LIVE ORACLE REFERENCE PRICES (SYNCHRONIZED 1:1 WITH HOMEPAGE ORACLE FEED · {overview?.oracle?.priceSource ?? "Loading..."})
           </span>
           <a
             href="/api/router/quote"
@@ -1725,42 +1790,58 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
                   })}`
-                : "LIVE ORACLE...",
+                : "Loading...",
             },
             {
               sym: "ETH/USD",
-              val: `$${Number(overview?.oracle?.ethUsdMedian ?? 2127.0).toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`,
+              val: overview?.oracle?.ethUsdMedian
+                ? `$${Number(overview.oracle.ethUsdMedian).toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`
+                : "Loading...",
             },
             {
               sym: "SOL/USD",
-              val: `$${Number(overview?.oracle?.solUsdMedian ?? 86.5).toFixed(2)}`,
+              val: overview?.oracle?.solUsdMedian
+                ? `$${Number(overview.oracle.solUsdMedian).toFixed(2)}`
+                : "Loading...",
             },
             {
               sym: "NEAR/USD",
-              val: `$${Number(overview?.oracle?.nearUsdMedian ?? 3.55).toFixed(3)}`,
+              val: overview?.oracle?.nearUsdMedian
+                ? `$${Number(overview.oracle.nearUsdMedian).toFixed(3)}`
+                : "Loading...",
             },
             {
               sym: "XRP/USD",
-              val: `$${Number(overview?.oracle?.xrpUsdMedian ?? 1.09).toFixed(4)}`,
+              val: overview?.oracle?.xrpUsdMedian
+                ? `$${Number(overview.oracle.xrpUsdMedian).toFixed(4)}`
+                : "Loading...",
             },
             {
               sym: "SUI/USD",
-              val: `$${Number(overview?.oracle?.suiUsdMedian ?? 0.815).toFixed(4)}`,
+              val: overview?.oracle?.suiUsdMedian
+                ? `$${Number(overview.oracle.suiUsdMedian).toFixed(4)}`
+                : "Loading...",
             },
             {
               sym: "TON/USD",
-              val: `$${Number(overview?.oracle?.tonUsdMedian ?? 1.45).toFixed(4)}`,
+              val: overview?.oracle?.tonUsdMedian
+                ? `$${Number(overview.oracle.tonUsdMedian).toFixed(4)}`
+                : "Loading...",
             },
             {
               sym: "ARB/USD",
-              val: `$${Number(overview?.oracle?.arbUsdMedian ?? 0.32).toFixed(4)}`,
+              val: overview?.oracle?.arbUsdMedian
+                ? `$${Number(overview.oracle.arbUsdMedian).toFixed(4)}`
+                : "Loading...",
             },
             {
               sym: "ZEC/USD",
-              val: `$${Number(overview?.oracle?.zecUsdMedian ?? 38.5).toFixed(2)}`,
+              val: overview?.oracle?.zecUsdMedian
+                ? `$${Number(overview.oracle.zecUsdMedian).toFixed(2)}`
+                : "Loading...",
             },
           ].map((item) => (
             <span
@@ -2488,38 +2569,6 @@ export const CrossChainSwapView = React.memo(function CrossChainSwapView({
                   </Card>
                 );
               })}
-
-              {/* On-Chain Settlement & Block/Receipt Proof Card */}
-              {confidentialStatus && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CardTitle className="text-sm">
-                        On-Chain Settlement &amp; Block/Receipt Proof Telemetry
-                      </CardTitle>
-                      <Badge variant="emerald">Verified On-Chain</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="grid grid-cols-1 gap-3 font-mono text-xs md:grid-cols-2">
-                    <div className="min-w-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
-                      <div className="text-[var(--text-secondary)]">
-                        On-Chain Settlement Tx Hash:
-                      </div>
-                      <div className="mt-1 truncate font-bold text-[var(--accent-emerald)]">
-                        {confidentialStatus.shieldTxHash}
-                      </div>
-                    </div>
-                    <div className="min-w-0 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card-subtle)] p-3">
-                      <div className="text-[var(--text-secondary)]">
-                        On-Chain Block &amp; Receipt Proof:
-                      </div>
-                      <div className="mt-1 truncate font-bold text-[var(--accent-cyan)]">
-                        {confidentialStatus.unshieldTxHash}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </div>
           </div>
         </TabsContent>
@@ -3075,7 +3124,7 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
             className="font-display text-2xl font-bold tracking-tight text-[var(--text-primary)]"
           />
           <p className="text-sm text-[var(--text-secondary)]">
-            Live NEAR RPC Counterparty Risk Scorer, Prompt-Injection Firewall, 4-Lane NEP-611 Gas Keys &amp; Sputnik DAO V2 Escalator
+            Live NEAR RPC Counterparty Risk Scorer, Prompt-Injection Firewall, 4-Lane NEP-611 Gas Keys &amp; Internal Vault Governance (No external DAO exists. Governance uses an internal method on jubayir69.testnet where the 1 NEAR bond remains locked.)
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -3230,10 +3279,9 @@ export const PolicyShieldView = React.memo(function PolicyShieldView({
                     <CardDescription>
                       Governance Tier:{" "}
                       <span className="font-mono font-bold text-[var(--text-primary)]">
-                        {escalation?.tier}
                         {escalation?.tier === "SPUTNIK_DAO_PROPOSAL"
-                          ? " (1.0 NEAR Bond Required)"
-                          : ""}
+                          ? "INTERNAL_POLICY_VAULT_ESCALATION (1.0 NEAR Bond Locked on jubayir69.testnet — No External DAO)"
+                          : escalation?.tier}
                       </span>
                     </CardDescription>
                   </div>
@@ -4082,7 +4130,7 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
             sugLabel && q.suggestionPriceUsd
               ? ` Did you mean **${sugLabel}** (${formatTokenPriceUsd(q.suggestionPriceUsd)} USD)?`
               : "";
-          return `| **${q.pair}** | **TOKEN NOT FOUND (UNLISTED)** | — | No verified listing for '${q.symbol}' on 1Click (210 tokens), Coinbase, or Kraken.${sug} |`;
+          return `| **${q.pair}** | **TOKEN NOT FOUND (UNLISTED)** | — | No verified listing for '${q.symbol}' on 1Click (231 tokens), Coinbase, or Kraken.${sug} |`;
         }
         const fmt = formatTokenPriceUsd(q.priceUsd);
         const spreadFmt = Math.min(0.14, Math.max(0.08, Number(q.spreadPercent ?? 0.12))).toFixed(2);
@@ -4103,7 +4151,7 @@ function buildClientFallbackTeeData(promptText: string, liveOracle?: any, liveNe
       rows,
       "",
       "## Live Enclave Market Intelligence & News",
-      `- **Requested Asset Orderbook & Spread Telemetry**: ${dynamicSummary} verified with <= 0.14% cross-venue spread across Coinbase Spot, 1Click (210 tokens), and Kraken.`,
+      `- **Requested Asset Orderbook & Spread Telemetry**: ${dynamicSummary} verified with <= 0.14% cross-venue spread across Coinbase Spot, 1Click (231 tokens), and Kraken.`,
       `- **1Click Confidential Private Shard & RHEA V2 DCL**: Cross-chain execution for ${symbols.join(", ")} routes through \`intents.near\` Private Shard (20 bps volatile cross-chain spread and 1 bp for stablecoin pairs) and 196 live RHEA V2 DCL pools.`,
       "",
       "## PoC-4 Enclave Verification Verdict",

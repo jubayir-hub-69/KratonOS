@@ -303,7 +303,7 @@ export interface PayrollRecipientOutcome {
   receiptId?: string;
   childTransferReceiptId?: string;
   timestampIso?: string;
-  status: "SETTLED" | "ISOLATED_QUARANTINED";
+  status: "SETTLED" | "ISOLATED_QUARANTINED" | "UNVERIFIED";
   batchChunkIndex: number;
   storageRegisteredPrior: boolean;
   storageDepositPrependedYocto: string;
@@ -315,8 +315,8 @@ export interface PayrollRecipientOutcome {
     gas: string;
   }>;
   confidentialShardShieldUnshieldHashes: string;
-  settlementTxHash?: string;
-  explorerTxUrl?: string;
+  settlementTxHash?: string | null;
+  explorerTxUrl?: string | null;
   failureReason?: string;
 }
 
@@ -779,6 +779,8 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
         retryAttemptsUsed: 1,
         actionsBuilt: [],
         confidentialShardShieldUnshieldHashes: "NONE_BLOCKED",
+        settlementTxHash: null,
+        explorerTxUrl: null,
         failureReason,
       });
       continue;
@@ -817,11 +819,34 @@ export async function executeFaultIsolatedBatchPayroll(params?: {
       gas: "15000000000000", // 15 TGas
     });
 
-    const onchainRec =
-      VERIFIED_PAYROLL_ONCHAIN_RECORDS.find((r) => r.invoiceRef === row.invoiceRef) ??
-      VERIFIED_PAYROLL_ONCHAIN_RECORDS[totalSettledCount % VERIFIED_PAYROLL_ONCHAIN_RECORDS.length];
+    const onchainRec = VERIFIED_PAYROLL_ONCHAIN_RECORDS.find((r) => r.invoiceRef === row.invoiceRef);
+    if (!onchainRec) {
+      totalIsolatedFailedCount++;
+      outcomes.push({
+        rowNumber: row.rowNumber,
+        recipientId: row.recipientId,
+        invoiceRef: row.invoiceRef,
+        amountNear: row.amountNear,
+        usdEquivalentAtLiveRate: Number((row.amountNear * nearPriceUsd).toFixed(2)),
+        amountAtomicUsdc: row.amountAtomicUsdc,
+        depositNear: "0",
+        depositYocto: "0",
+        status: "UNVERIFIED",
+        batchChunkIndex,
+        storageRegisteredPrior,
+        storageDepositPrependedYocto,
+        retryAttemptsUsed,
+        actionsBuilt,
+        confidentialShardShieldUnshieldHashes: "UNVERIFIED_NO_ONCHAIN_RECEIPT",
+        settlementTxHash: null,
+        explorerTxUrl: null,
+        failureReason: `No verified on-chain receipt exists for invoiceRef "${row.invoiceRef}" (hash recycling strictly forbidden).`,
+      });
+      continue;
+    }
+
     const rowTxHash = onchainRec.txHash;
-    const rowNear = onchainRec.invoiceRef === row.invoiceRef ? onchainRec.amountNear : row.amountNear;
+    const rowNear = onchainRec.amountNear;
     const depositNear = rowNear.toFixed(4);
     const rowUsd = Number((rowNear * nearPriceUsd).toFixed(2));
     totalSettledCount++;
@@ -1037,8 +1062,8 @@ export function generateVisualAuditStatementHtml(params: {
       const safeRecipientId = escapeHtml(o.recipientId);
       const safeStatus = escapeHtml(o.status);
       const safeProofHashes = escapeHtml(o.confidentialShardShieldUnshieldHashes);
-      const rowTxHash = o.settlementTxHash && o.settlementTxHash.trim() ? o.settlementTxHash.trim() : activeTxHash;
-      const rowExplorerUrl = `https://testnet.nearblocks.io/txns/${encodeURIComponent(rowTxHash)}`;
+      const rowTxHash = o.settlementTxHash && o.settlementTxHash.trim() ? o.settlementTxHash.trim() : "";
+      const rowExplorerUrl = rowTxHash ? `https://testnet.nearblocks.io/txns/${encodeURIComponent(rowTxHash)}` : "#";
       const safeRowShortTxHash = escapeHtml(rowTxHash.slice(0, 10));
       const rowNearNum = o.amountNear ?? (Number(o.depositNear) || 0);
       const rowNearTransfer = rowNearNum.toFixed(4);
@@ -1201,7 +1226,7 @@ export function generateVisualAuditStatementHtml(params: {
       <div style="text-align:right;font-family:monospace;font-size:12px;color:#374151;">
         <div><strong>Generated:</strong> ${nowIso}</div>
         <div><strong>Treasury Vault:</strong> <a href="https://testnet.nearblocks.io/address/${encodeURIComponent(treasuryAccount)}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeTreasuryAccount} &#8599;</a></div>
-        <div><strong>Fee Recipient (41 bps):</strong> <a href="${feeRecipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeFeeRecipient} &#8599;</a></div>
+        <div><strong>Fee Recipient (40 bps):</strong> <a href="${feeRecipientExplorerUrl}" target="_blank" rel="noreferrer" style="color:#047857;text-decoration:underline;">${safeFeeRecipient} &#8599;</a></div>
       </div>
     </div>
 

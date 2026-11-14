@@ -20,7 +20,7 @@
     "liveDocs": "https://kraton-os-taupe.vercel.app/docs",
     "liveLlmsTxt": "https://kraton-os-taupe.vercel.app/llms.txt",
     "repository": "https://github.com/jubayir-hub-69/KratonOS",
-    "submissionStatus": "Single standalone submission (1 of 1 project submitted by Jubayir Haider)",
+    "submissionStatus": "1 of 1 solo submission with no companion projects",
     "nearDocs": "https://docs.near.org/",
     "oneClickApi": "https://1click.chaindefuser.com",
     "oneClickExplorer": "https://explorer.near-intents.org/api/v0/transactions",
@@ -77,7 +77,36 @@
     "verifyAndAnchorTx": "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu",
     "daoMethod": "escalate_dao_proposal",
     "daoContract": "jubayir69.testnet",
-    "daoReferenceTx": "Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD"
+    "daoReferenceTx": "Dn1S4PjMxLeXX7EihmLLrLiPohv9cNFvEmhjnx7nUwoD",
+    "daoNote": "No external DAO exists. Governance uses an internal method on jubayir69.testnet where the 1 NEAR bond remains locked.",
+    "harvestNote": "Harvest executes a 0.05 NEAR transfer on-chain (no wNEAR interactions).",
+    "poc4BatchTxHashes": [
+      "ArFkwbJYx6eSdVQcAtgt4vvD1Qjvq4fVy88jQNnidose",
+      "H8ycxRsTmnpKgzzKMA4QbGYyEC4HWPudv8D7XERsGg9X",
+      "6LCCSRfaikbRgQDUmhXRJuaDYjRi2YQSc3Cg3Quhvxpk",
+      "CaHzop6KWpuXvRkrFBWRP7cYuyA2hTYcnnTjiRKNBXHf",
+      "8y2k8NDuvu1LZhdpRF7hbUv6oLZhyztdXhiQgEjkRR1G",
+      "8DwcAFTXrWnYTCd5aoLaAfZCJ5qQNeiGaqzrCHpvpvEW",
+      "3BN41ehPgjtbJ3K6Xq9LnyckxE76JXfD2fZhnS5qpmHD",
+      "5feJaPMB4bkg96BFgFnj9ufNhSbQMPSha6rbndqKsCms",
+      "73wj2uSZVJ19a1rZsv9XGwfAWN3QXftBDFzTCnt7dMRF",
+      "HFohsrZEo4ZYNAYx5wZjAUSAR489CP7ctPi1GjhpKzCU",
+      "223qutPtbuc4JLESqdEkofwRCWeXd6euqaYWKnMu8otJ",
+      "8fLS8crbZqn6J3GSCCLtnPdJfScp3P5qnPcE7bTHv3iW"
+    ],
+    "payrollTxHashes": [
+      "8R2ztwbnYHCBnpB1WwVwdR1JHBtiEdHJimhn4K64i9ND",
+      "GZJbwa1VVbxYM1C97h9JdF1nMdMs9LLm8c2jnPyWtDjz",
+      "GVqabrymWbNBiU83BLWmEpc2aFdhSEcBhUKC612uGrDX",
+      "Gui9728wiPxGEUCafsPuCRdfsBqNonGkJu8kSWZLsb6m",
+      "8kY7WharcxLWv2aJm7korNCyfANMn75XVhQdd7KotAcj",
+      "7jHqbiREsSjPBdCPNoyuDKxawKAvzMcxTTYsfuhQkimc",
+      "24tpAqG1PH4uf8MYFeM6f3DkKvvZjoVATf8jmCFzJnPV",
+      "9iwKHXku5zn8ALLiJsYoDe3sxKqtKi6TAog9xxUXkkG6",
+      "AgFCqfWzbHMiRsCTdXaKVCNpsYDCECBgNy8qVaBiqxBy",
+      "FWjNSyMLy6sNBDnX4K4Ve1o2HCrhTHz519kJgiNpcuQB",
+      "9iZT9gejZjm6gKAYfhWLpnWbnuA69fCWsXFbsshJh15b"
+    ]
   },
   "servers": [
     {

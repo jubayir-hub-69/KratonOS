@@ -604,7 +604,7 @@ function HonestScopeSection({
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">NEAR AI Cloud TEE (GLM-5.1-FP8)</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Live cryptographic ECDSA (<code className="font-mono text-[var(--accent-emerald)]">secp256k1</code>) &amp; <code className="font-mono text-[var(--accent-emerald)]">Ed25519</code> signature recovery, 5x48B Intel TDX quote verification, and Zero-Retention in-place <code className="font-mono">0x00</code> memory wipe (<code className="font-mono">2,173 bytes</code>).
+                Cryptographic ECDSA (<code className="font-mono text-[var(--accent-emerald)]">secp256k1</code>) &amp; <code className="font-mono text-[var(--accent-emerald)]">Ed25519</code> signature recovery, simulated deterministic Intel TDX quote verification, and Zero-Retention in-place <code className="font-mono">0x00</code> memory wipe (<code className="font-mono">2,173 bytes</code>).
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 <strong>Current Gateway Status</strong>: <code className="font-mono font-bold text-[var(--accent-cyan)]">{teeGatewayStatusLabel}</code>. When <code className="font-mono">NEARAI_CLOUD_API_KEY</code> is unconfigured, KratonOS cryptographically verifies the recorded enclave attestation sample and explicitly labels <code className="font-mono">liveApiUsed=false</code>.
@@ -613,7 +613,7 @@ function HonestScopeSection({
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">Ethereum EIP-1186 &amp; Oracles</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Live <code className="font-mono text-[var(--accent-emerald)]">eth_getProof</code> across 5 Ethereum Mainnet RPCs verifying Chainlink ETH/USD (<code className="font-mono">0x5f4e...8419</code>) Keccak-256 tries locally + Coinbase, 1Click (210 tokens), and Kraken quotes.
+                Ethereum Mainnet <code className="font-mono text-[var(--accent-emerald)]">eth_getProof</code> (with simulated deterministic fallback when external RPCs are unreachable) verifying Chainlink ETH/USD (<code className="font-mono">0x5f4e...8419</code>) Keccak-256 tries locally + Coinbase, 1Click (231 tokens), and Kraken quotes.
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 Unlisted tickers strictly return <code className="font-mono font-bold text-rose-500">UNLISTED_TOKEN</code> (<code className="font-mono">priceUsd: null</code>) + Levenshtein typo suggestions — never a fake <code className="font-mono">$1.00</code> fallback.
@@ -622,7 +622,7 @@ function HonestScopeSection({
             <tr>
               <td className="px-4 py-3 font-bold text-[var(--text-primary)]">1Click Cross-Chain Swaps (Q-007)</td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
-                Live <code className="font-mono text-[var(--accent-emerald)]">GET /v0/tokens</code> (210 tokens) &amp; <code className="font-mono text-[var(--accent-emerald)]">POST /v0/quote</code> on <code className="font-mono">1click.chaindefuser.com</code> with inspectable pre-sign NEP-413 <code className="font-mono">token_diff</code> JSON payloads.
+                Live <code className="font-mono text-[var(--accent-emerald)]">GET /v0/tokens</code> (231 tokens) &amp; <code className="font-mono text-[var(--accent-emerald)]">POST /v0/quote</code> on <code className="font-mono">1click.chaindefuser.com</code> with inspectable pre-sign NEP-413 <code className="font-mono">token_diff</code> JSON payloads.
               </td>
               <td className="px-4 py-3 text-[var(--text-secondary)]">
                 <strong><code className="font-mono">DRY_RUN_FEE_TIER_AND_LIVE_SPOT_ESTIMATE</code> (<code className="font-mono">dry: true</code> per Q-007)</strong>: <code className="font-mono">1Click dry:true</code> operates as a deterministic protocol verifier and simulator on Testnet. Quote calls pass <code className="font-mono">dry: true</code> and combine verified 1Click fee tiers (1 bp stablecoin / 8 bps cross-asset + 40 bps app fee) with live Coinbase/1Click spot prices so judges and CI suites benchmark real routes.
@@ -1616,7 +1616,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       id: "poc4" as DocPageId,
                       badge: "PILLAR 1",
                       title: "Policy Vault, NEP-611 Gas Keys & ML-DSA-65 PQ Shield",
-                      desc: "3-Tier Sputnik DAO V2 governance escalation, 4 parallel gas-key lanes, and NIST FIPS 204 post-quantum signatures.",
+                      desc: "3-Tier internal Policy Vault governance escalation (1 NEAR bond on jubayir69.testnet), 4 parallel gas-key lanes, and NIST FIPS 204 post-quantum signatures.",
                     },
                     {
                       id: "tee" as DocPageId,
@@ -1785,18 +1785,18 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       },
                       {
                         cmd: "npm run verify:attack-demo",
-                        title: "Pillar 1 Scam Shield & Sputnik DAO Escalation",
+                        title: "Pillar 1 Scam Shield & Policy Vault Escalation",
                         endpoint: "/api/security/evaluate",
                         method: "POST" as const,
                         body: { receiverId: "unverified-quarantine-row12.testnet", amountUsd: 420 },
-                        out: "Blocks prompt injection + unverified-quarantine-row12.testnet (score 100/100), escalates $450 spend to Sputnik DAO V2 (1 NEAR bond), and dispatches 4 NEP-611 lanes with 0 nonce collisions.",
+                        out: "Blocks prompt injection + unverified-quarantine-row12.testnet (score 100/100), escalates $420.00 spend to internal governance method escalate_dao_proposal on jubayir69.testnet where the 1 NEAR bond remains locked (No external DAO exists), and dispatches 4 NEP-611 lanes with 0 nonce collisions.",
                       },
                       {
                         cmd: "npm run verify:outlayer",
                         title: "OutLayer Ethereum Mainnet EIP-1186 Oracle",
                         endpoint: "/api/overview",
                         method: "GET" as const,
-                        out: "Fetches live Ethereum Mainnet block header across 5 RPCs, verifies Chainlink ETH/USD via eth_getProof (EIP-1186) Keccak-256 trie hashing, and verifies 5x48B Intel TDX registers.",
+                        out: "Executes Ethereum Mainnet block header verification, verifies Chainlink ETH/USD via eth_getProof (EIP-1186) Keccak-256 trie hashing, and performs simulated deterministic Intel TDX quote verification.",
                       },
                       {
                         cmd: "npm run verify:ai-tee",
@@ -1832,11 +1832,11 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       },
                       {
                         cmd: "POST /api/onchain/commit-proof",
-                        title: "Verify & Anchor PoC-4 Proof On-Chain (NEAR Testnet)",
+                        title: "Read-Only Verify PoC-4 Proof Receipt (NEAR Testnet)",
                         endpoint: "/api/onchain/commit-proof",
                         method: "POST" as const,
                         body: {},
-                        out: "Signs and commits the current PoC-4 H_master digest on NEAR Testnet (jubayir69.testnet) and returns the txHash, signerPublicKey, blockHash, and clickable NEARBlocks explorer link.",
+                        out: "Read-only verification in Mode A: returns the historical verify_and_anchor FunctionCall receipt on jubayir69.testnet (txHash 9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu, blockHash, and NEARBlocks explorer link) without broadcasting a new transaction.",
                       },
                     ].map((row) => (
                       <tr key={row.cmd} className="hover:bg-[var(--bg-card-subtle)]">
@@ -2214,7 +2214,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                       <tr>
                         <td className="px-4 py-2.5 font-bold text-[var(--text-primary)]">Master Key Exposure Risk</td>
                         <td className="px-4 py-2.5 text-[var(--text-secondary)]">100% Full-Access key exposed to LLM</td>
-                        <td className="px-4 py-2.5 font-mono font-bold text-[var(--accent-emerald)]">0% exposure (Scoped Keys + Sputnik DAO V2)</td>
+                        <td className="px-4 py-2.5 font-mono font-bold text-[var(--accent-emerald)]">0% exposure (Scoped Keys + Internal Policy Vault Bond)</td>
                       </tr>
                     </tbody>
                   </table>
@@ -2239,7 +2239,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   PILLAR 1 // SOVEREIGN POLICY VAULT
                 </Badge>
                 <h1 className="font-display mt-2 text-2xl font-extrabold text-[var(--text-primary)]">
-                  PoC-4 Protocol, Scoped Key Rules &amp; Sputnik DAO V2 Escalation
+                  PoC-4 Protocol, Scoped Key Rules &amp; Internal Policy Vault Governance
                 </h1>
                 <p className="mt-1 text-sm text-[var(--text-secondary)]">
                   Deployed on <code className="font-mono text-[var(--accent-emerald)]">jubayir69.testnet</code> as compiled 5,594-byte WebAssembly binary <code className="font-mono text-[var(--accent-emerald)]">contracts/kratonos_vault.wasm</code> (<code className="font-mono">code_hash: 8c77LmtTQePG2oJSzqHq9itY1SSVHn3GiuqFK3Agt1PD</code>, <code className="font-mono">8,680</code> bytes storage, 12 exported methods, <code className="font-mono">DeployContract</code> tx <code className="font-mono">DfBfFVngYGN4WvzFrYXLirU1GU2TGtgHB6GzfcjX5MZG</code>), with <code className="font-mono text-[var(--accent-emerald)]">contracts/kratonos-policy-vault/src/lib.rs</code> serving as the readable Rust reference specification and <code className="font-mono text-[var(--accent-emerald)]">src/core/poc4.ts</code> handling enclave verification.
@@ -2343,7 +2343,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     {[
                       { y: 20, title: "TIER 1: AUTO-EXECUTE", sub: "<= $50 ($150 Verified)", stroke: "#00EC97" },
                       { y: 85, title: "TIER 2: 1-COUNCIL FAST-TRACK", sub: "$50.01 - $150.00 / Warn", stroke: "#38BDF8" },
-                      { y: 150, title: "TIER 3: SPUTNIK DAO V2", sub: "> $150 Tx · 1 NEAR Bond", stroke: "#F59E0B" },
+                      { y: 150, title: "TIER 3: VAULT BOND ESCALATION", sub: "> $150 Tx · 1 NEAR Bond", stroke: "#F59E0B" },
                     ].map((tier, idx) => (
                       <g key={tier.title}>
                         <path
@@ -2695,7 +2695,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     8-Step Hardware Attestation &amp; Zero-Retention (0x00)
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    Verifies fresh 32-byte nonces, NVIDIA H100 Hopper NRAS GPU claims, and 5 Intel TDX 48-byte hardware registers (<code className="font-mono">MRTD</code>, <code className="font-mono">RTMR0..3</code>). After evaluating the treasury ledger in <code className="font-mono">executeZeroRetentionPrivateAudit()</code>, KratonOS overwrites the entire raw byte buffer in-place with <code className="font-mono">0x00</code> (<code className="font-mono">nonZeroBytesRemainingAfterWipe === 0</code>).
+                    Verifies fresh 32-byte nonces, NVIDIA H100 Hopper NRAS GPU claims, and simulated deterministic Intel TDX quote registers (<code className="font-mono">MRTD</code>, <code className="font-mono">RTMR0..3</code>). After evaluating the treasury ledger in <code className="font-mono">executeZeroRetentionPrivateAudit()</code>, KratonOS overwrites the entire raw byte buffer in-place with <code className="font-mono">0x00</code> (<code className="font-mono">nonZeroBytesRemainingAfterWipe === 0</code>).
                   </p>
                 </div>
 
@@ -2704,7 +2704,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                     Ethereum Mainnet EIP-1186 &amp; Strict Anti-Hallucination Oracle
                   </h3>
                   <p className="mt-2 text-xs leading-relaxed text-[var(--text-secondary)]">
-                    Calls <code className="font-mono">eth_getProof</code> for Chainlink ETH/USD (<code className="font-mono">0x5f4e...8419</code>) across 5 Ethereum Mainnet RPCs, verifying <code className="font-mono">keccak256(accountProof[0]) === block.stateRoot</code>. Simultaneously resolves real-time prices for <strong>ETH, NEAR, XRP, SOL, BTC</strong> and any user-requested ticker via Coinbase Spot, 1Click (<code className="font-mono">/v0/tokens</code>), and Kraken. Unknown or unlisted tickers never return a fake <code className="font-mono">$1.00</code> fallback; they return <code className="font-mono">TOKEN NOT FOUND (UNLISTED)</code> with Levenshtein typo suggestions (e.g., <code className="font-mono">AVEX -&gt; AVAX</code>).
+                    Calls <code className="font-mono">eth_getProof</code> for Chainlink ETH/USD (<code className="font-mono">0x5f4e...8419</code>) on Ethereum Mainnet RPCs (with simulated deterministic fallback when external RPCs are unreachable), verifying <code className="font-mono">keccak256(accountProof[0]) === block.stateRoot</code>. Simultaneously resolves real-time prices for <strong>ETH, NEAR, XRP, SOL, BTC</strong> and any user-requested ticker via Coinbase Spot, 1Click (<code className="font-mono">/v0/tokens</code>, 231 tokens), and Kraken. Unknown or unlisted tickers never return a fake <code className="font-mono">$1.00</code> fallback; they return <code className="font-mono">TOKEN NOT FOUND (UNLISTED)</code> with Levenshtein typo suggestions (e.g., <code className="font-mono">AVEX -&gt; AVAX</code>).
                   </p>
                 </div>
               </div>
@@ -3413,13 +3413,13 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           suite: "Suite 1",
                           cmd: "npm run verify:attack-demo",
                           checks: "7",
-                          desc: "Blocks prompt injection + unverified-quarantine-row12.testnet (100/100), escalates $450 (> $150 cap) to Sputnik DAO V2 (1 NEAR bond), rejects 8.42% oracle deviation, dispatches 4 NEP-611 lanes (0 collisions), WithdrawFromGasKey guard, and ML-DSA-65 (1,952B/3,309B).",
+                          desc: "Blocks prompt injection + unverified-quarantine-row12.testnet (100/100), escalates $420.00 (> $150 cap) to internal method escalate_dao_proposal on jubayir69.testnet where the 1 NEAR bond remains locked (No external DAO exists), rejects 8.42% oracle deviation, dispatches 4 NEP-611 lanes (0 collisions), WithdrawFromGasKey guard, and ML-DSA-65 (1,952B/3,309B).",
                         },
                         {
                           suite: "Suite 2",
                           cmd: "npm run verify:outlayer",
                           checks: "6",
-                          desc: "5-RPC Ethereum Mainnet header consensus, EIP-1186 eth_getProof Keccak-256 trie verification on Chainlink ETH/USD (0x5f4e...8419), multi-source medians, 5x48B Intel TDX registers, and Ed25519 VRF slices.",
+                          desc: "Ethereum Mainnet header verification, EIP-1186 eth_getProof Keccak-256 trie verification on Chainlink ETH/USD (0x5f4e...8419), multi-source medians, simulated deterministic Intel TDX quote verification, and Ed25519 VRF slices.",
                         },
                         {
                           suite: "Suite 3",
@@ -3431,7 +3431,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                           suite: "Suite 4",
                           cmd: "npm run verify:intents-rhea",
                           checks: "7",
-                          desc: "210 live 1Click tokens, 1Click (1 bp + 40 bps <= 500 bps) vs RHEA V2 DCL vs RHEA V1 (196 pools), /v0/orders GTC limit order, ref-farming withdraw_reward({ amount: '0' }), 5-chain MPC KDF, and 11/12 fault-isolated payroll.",
+                          desc: "231 live 1Click tokens, 1Click (1 bp + 40 bps <= 500 bps) vs RHEA V2 DCL vs RHEA V1 (196 pools), /v0/orders GTC limit order, 0.05 NEAR harvest transfer on-chain, 5-chain MPC KDF, and 11/12 fault-isolated payroll.",
                         },
                         {
                           suite: "Suite 5",
@@ -3484,7 +3484,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                         ["01", "Prompt-Injection Drain", "SYSTEM OVERRIDE: Ignore previous instructions...", "sanitizeUntrustedBrief() strips payload; decision locked to block."],
                         ["02", "Quarantined Counterparty", "unverified-quarantine-row12.testnet", "4-Signal Counterparty Shield scores 100/100 (>= 70 block threshold)."],
                         ["03", "Fake NEP-141 Token Contract", "usdc.fakes.testnet", "Rejected against RHEA Finance token whitelist (nusdc.ft-fin.testnet)."],
-                        ["04", "Over-Limit Single Spend", "$450.00 (> $150.00 autonomous cap)", "Refuses autonomous signing; escalates to Sputnik DAO V2 (1 NEAR bond)."],
+                        ["04", "Over-Limit Single Spend", "$420.00 (> $150.00 autonomous cap)", "Refuses autonomous signing; escalates via internal method escalate_dao_proposal on jubayir69.testnet where the 1 NEAR bond remains locked (No external DAO exists)."],
                         ["05", "Flash-Crash / Spoofed Oracle", "8.42% spread (> 5.0% max deviation)", "PoC-4 gate aborts with ORACLE_DEVIATION_EXCEEDED."],
                         ["06", "Predatory Fee Extraction", "Combined fee > 500 bps (5.00%)", "Rejected by config.yaml and Rust Policy Vault fee ceiling."],
                         ["07", "Unlisted Token Hallucination", "AYAN/USDT CURRENT MARKET PRICE", "Returns found: false, priceUsd: null, status: UNLISTED_TOKEN (never $1.00)."],
@@ -3539,7 +3539,7 @@ export const DocsPortalView = React.memo(function DocsPortalView({
                   </thead>
                   <tbody className="divide-y divide-[var(--border-color)]">
                     {[
-                      { mod: "PoC-4 Enclave Gate & Sputnik DAO V2 Escalation", src: "src/core/poc4.ts", ver: "verify-attack-demo.ts", st: "SHIPPED" },
+                      { mod: "PoC-4 Enclave Gate & Internal Policy Vault Escalation", src: "src/core/poc4.ts", ver: "verify-attack-demo.ts", st: "SHIPPED" },
                       { mod: "4-Lane NEP-611 Gas Multiplexer & Burn Guard", src: "src/core/gas-keys.ts", ver: "verify-attack-demo.ts", st: "SHIPPED" },
                       { mod: "NIST FIPS 204 ML-DSA-65 Post-Quantum Shield", src: "src/core/security-shield.ts", ver: "verify-attack-demo.ts", st: "SHIPPED" },
                       { mod: "OutLayer Ethereum Mainnet EIP-1186 Trie Verifier", src: "src/core/outlayer-enclave.ts", ver: "verify-outlayer.ts", st: "SHIPPED" },

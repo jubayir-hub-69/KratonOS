@@ -14,6 +14,7 @@ import {
 export type VerificationBadgeType =
   | "LIVE ON-CHAIN TX"
   | "LIVE RPC & TEE VERIFIED"
+  | "MODE A SANDBOX VERIFIED"
   | "DRY-RUN QUOTE PREVIEW";
 
 export interface TelemetryFeedItem {

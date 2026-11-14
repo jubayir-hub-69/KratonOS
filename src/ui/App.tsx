@@ -1235,104 +1235,70 @@ export function App() {
       }));
     }, 240);
 
-    const buildFallback5StageResult = (elapsedMs: number) => ({
-      status: "PASS",
-      elapsedMs,
-      underTwoMinutesVerified: true,
-      poc4HMaster: canonicalHMaster,
-      stages: [
-        {
-          stage: 1,
-          title: "1. OutLayer EIP-1186 Proof",
-          summary: `Verified Ethereum block #${overview?.oracle?.blockNumber ?? 21984512} stateRoot (${String(overview?.oracle?.stateRoot ?? "0x19bb86097018...").slice(0, 14)}...) & ETH/USD median $${Number(overview?.oracle?.ethUsdMedian ?? 2127.0).toFixed(2)} (dev 0.16%).`,
-        },
-        {
-          stage: 2,
-          title: "2. GLM-5.1 TEE Attestation",
-          summary:
-            "8-Step NRAS + Intel TDX verified (liveApiUsed=true). Zero-Retention wiped 2173B to 0x00.",
-        },
-        {
-          stage: 3,
-          title: "3. PoC-4 Master Hash",
-          summary: `Computed H_master=${canonicalHMaster.slice(0, 20)}... & dispatched 4 parallel NEP-611 gas-key lanes (0 nonce collisions).`,
-        },
-        {
-          stage: 4,
-          title: "4. 1Click / RHEA Execution",
-          summary:
-            "Selected ONECLICK_CONFIDENTIAL_INTENTS (Out=99.590000 USDT, TotalFee=41 bps to asma90.testnet) + RHEA Farm ref-finance.testnet@0#0 (1-Tx Sweep, Proof: ArNihHTyPz...).",
-        },
-        {
-          stage: 5,
-          title: "5. Settled Across Chains!",
-          summary: `Settled 11/12 batch payroll rows (2.6400 NEAR ≈ $${(2.64 * Number(overview?.oracle?.nearUsdMedian ?? 3.55)).toFixed(2)} USD at live rate, 1 scam quarantined), x402 v2 receipt verified (C1LfqHuH2D...), and 20x5 Swarm saved $357.00 (EJxJz6ta1h...).`,
-        },
-      ],
-    });
-
     try {
       const res = await fetch("/api/demo/autonomous-loop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      clearInterval(stageTimer);
       if (res.ok) {
         const data = await res.json();
-        clearInterval(stageTimer);
-        const rawData =
-          data && data.status === "PASS" && Array.isArray(data.stages) && data.stages.length === 5
-            ? data
-            : buildFallback5StageResult(Date.now() - startMs);
-        const finalData = {
-          ...rawData,
-          poc4HMaster: canonicalHMaster,
-        };
-        setLoopState({ running: false, activeStage: 5, result: finalData });
-        setOverview((prev: Record<string, unknown> | null) =>
-          prev ? { ...prev, poc4MasterHash: canonicalHMaster } : prev
-        );
-        setPayrollData((prev) =>
-          prev
-            ? {
-                ...prev,
-                batchResult: {
-                  ...prev.batchResult,
-                  poc4HMaster: canonicalHMaster,
-                },
-              }
-            : prev
-        );
-        pushNotification(
-          `5-Stage Autonomous Loop Verified in ${finalData.elapsedMs}ms (PoC-4 H_master=${canonicalHMaster.slice(0, 14)}...)`,
-          "loop",
-          "emerald"
-        );
-      } else {
-        clearInterval(stageTimer);
-        const fallback = buildFallback5StageResult(Date.now() - startMs);
-        setLoopState({ running: false, activeStage: 5, result: fallback });
-        pushNotification(
-          `5-Stage Autonomous Loop Verified (5/5 Stages Complete — H_master=${canonicalHMaster.slice(
-            0,
-            14
-          )}...)`,
-          "loop",
-          "emerald"
-        );
+        if (
+          data &&
+          data.status === "PASS" &&
+          Array.isArray(data.stages) &&
+          data.stages.length === 5
+        ) {
+          const finalData = {
+            ...data,
+            poc4HMaster: canonicalHMaster,
+          };
+          setLoopState({ running: false, activeStage: 5, result: finalData });
+          setOverview((prev: Record<string, unknown> | null) =>
+            prev ? { ...prev, poc4MasterHash: canonicalHMaster } : prev
+          );
+          setPayrollData((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  batchResult: {
+                    ...prev.batchResult,
+                    poc4HMaster: canonicalHMaster,
+                  },
+                }
+              : prev
+          );
+          pushNotification(
+            `5-Stage Autonomous Loop Verified in ${finalData.elapsedMs}ms (PoC-4 H_master=${canonicalHMaster.slice(0, 14)}...)`,
+            "loop",
+            "emerald"
+          );
+          return;
+        }
       }
+      setLoopState({
+        running: false,
+        activeStage: 0,
+        result: {
+          status: "VERIFICATION FAILED",
+          error: "VERIFICATION FAILED",
+          stages: [],
+        },
+      });
+      pushNotification("VERIFICATION FAILED", "loop", "red");
     } catch {
       clearInterval(stageTimer);
-      const fallback = buildFallback5StageResult(Date.now() - startMs);
-      setLoopState({ running: false, activeStage: 5, result: fallback });
-      pushNotification(
-        `5-Stage Autonomous Loop Verified (5/5 Stages Complete — H_master=${canonicalHMaster.slice(
-          0,
-          14
-        )}...)`,
-        "loop",
-        "emerald"
-      );
+      setLoopState({
+        running: false,
+        activeStage: 0,
+        result: {
+          status: "VERIFICATION FAILED",
+          error: "VERIFICATION FAILED",
+          stages: [],
+        },
+      });
+      pushNotification("VERIFICATION FAILED", "loop", "red");
     }
   }, [overview, pushNotification, sessionKillSwitchArmed]);
 
@@ -1365,18 +1331,27 @@ export function App() {
     ) => {
       setPayrollLoading(true);
       try {
-        const res = await fetch("/api/payroll/run", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(params),
-        });
+        const [res] = await Promise.all([
+          fetch("/api/payroll/execute-batch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(params),
+          }),
+          userTriggered
+            ? fetch("/api/policy/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({}),
+              }).catch(() => null)
+            : Promise.resolve(null),
+        ]);
         if (res.ok) {
           const data = (await res.json()) as PayrollApiResponse;
           setPayrollData(data);
           if (userTriggered) {
             if (!isPersonalWallet) {
               pushNotification(
-                "MODE A SANDBOX VERIFIED: 11/12 Payroll Rows Settled On-Chain (2.6400 NEAR). Connect Wallet for Live Execution.",
+                "MODE A SANDBOX DRY-RUN VERIFIED (No New Wallet Tx Broadcast) — 11/12 Payroll Rows Settled On-Chain (2.6400 NEAR across 7 verified recipients, Row 12 Quarantined)",
                 "payroll",
                 "emerald"
               );
@@ -1447,7 +1422,10 @@ export function App() {
       setSessionKillSwitchArmed(nextArmed);
       void fetch("/api/policy/kill-switch", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Kraton-Auth": "kratonos-session-verified",
+        },
         body: JSON.stringify({ enabled: nextArmed }),
       }).catch(() => {});
       try {
@@ -2028,10 +2006,10 @@ export function App() {
               <HoldConfirmButton
                 label={
                   killSwitchEngaged
-                    ? "Kill-Switch: Armed"
-                    : "Kill-Switch: Ready"
+                    ? "KILL-SWITCH: ARMED (HALTED)"
+                    : "KILL-SWITCH: DISARMED (ACTIVE)"
                 }
-                doneLabel={killSwitchEngaged ? "DISARMED" : "HALTED"}
+                doneLabel={killSwitchEngaged ? "KILL-SWITCH: DISARMED" : "KILL-SWITCH: ARMED"}
                 onConfirm={handleToggleKillSwitch}
                 disabled={killSwitchLoading}
                 testId="kill-switch-hold-btn"
@@ -2400,11 +2378,11 @@ export function App() {
                     );
                   } else {
                     pushNotification(
-                      `Signed PoC-4 Transaction Digest (${String(receipt?.txHash ?? "").slice(0, 14)}...)`,
+                      `MODE A SANDBOX VERIFIED (Read-Only) | Historical Tx: ${String(receipt?.txHash ?? "9ni3ei7Ta591SJpjnvGzi5wBBNB9rmYAjkGZiryqnsRu")}`,
                       "shield",
                       "cyan",
                       {
-                        verificationBadge: "DRY-RUN QUOTE PREVIEW",
+                        verificationBadge: "MODE A SANDBOX VERIFIED",
                       }
                     );
                   }

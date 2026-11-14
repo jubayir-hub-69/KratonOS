@@ -1000,6 +1000,35 @@
       "eventJsonLog": "EVENT_JSON:{\"standard\":\"kratonos-payroll\",\"version\":\"2026.6\",\"event\":\"execute_payroll_row\",\"status\":\"VERIFIED\",\"data\":{\"recipientId\":\"asma90.testnet\",\"rowNumber\":11,\"invoiceRef\":\"PAY-2026-111\",\"contributorAccount\":\"asma90.testnet\",\"amountNear\":\"0.3500\",\"hMaster\":\"a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152\"}}",
       "timestampIso": "2026-11-14T10:46:18.686Z",
       "explorerTxUrl": "https://testnet.nearblocks.io/txns/9iZT9gejZjm6gKAYfhWLpnWbnuA69fCWsXFbsshJh15b"
+    },
+    {
+      "category": "payroll",
+      "key": "PAY-2026-112",
+      "rowNumber": 12,
+      "methodName": "execute_payroll_row",
+      "signerId": "jubayir69.testnet",
+      "receiverId": "jubayir69.testnet",
+      "recipientTransferredTo": "unverified-quarantine-row12.testnet",
+      "contributorAccount": "unverified-quarantine-row12.testnet",
+      "status": "quarantined",
+      "hash": null,
+      "txHash": null,
+      "blockHeight": null,
+      "blockHash": null,
+      "receiptId": null,
+      "childTransferReceiptId": null,
+      "depositNear": "0 NEAR",
+      "depositYocto": "0",
+      "argsJson": {
+        "recipientId": "unverified-quarantine-row12.testnet",
+        "rowNumber": 12,
+        "invoiceRef": "PAY-2026-112",
+        "contributorAccount": "unverified-quarantine-row12.testnet",
+        "amountNear": "0",
+        "status": "quarantined"
+      },
+      "actionTypeVerified": "QuarantinedOffChain",
+      "explorerTxUrl": null
     }
   ]
 }

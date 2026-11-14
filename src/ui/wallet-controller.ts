@@ -2184,40 +2184,15 @@ export async function signMessageWithPersonalWallet(params: {
       }
     }
     try {
-      let txHashOrSig = "";
-      const account = address;
-      const vaultAddress = params.vaultAddress || account;
-      const amount =
-        params.amount !== undefined && Number(params.amount) > 0
-          ? params.amount
-          : extractIntentAmountFromMessage(message, "0.0001");
-      const valueHex = "0x" + BigInt(Math.floor(Number(amount) * 1e18)).toString(16);
-      try {
-        const txRes = await ethProvider.request({
-          method: "eth_sendTransaction",
-          params: [{ from: account, to: vaultAddress, value: valueHex, gas: "0x5208" }],
-        });
-        if (typeof txRes === "string" && txRes.startsWith("0x") && txRes.length >= 20) {
-          txHashOrSig = txRes.trim();
-        }
-      } catch (txErr) {
-        if (isUserRejectionError(txErr)) {
-          throw new WalletSignatureRejectedError();
-        }
-        // Fallback to personal_sign if eth_sendTransaction is unsupported or account has 0 ETH for gas
+      const hexMessage = utf8ToHex(message);
+      const sig = await ethProvider.request({
+        method: "personal_sign",
+        params: [hexMessage, address],
+      });
+      if (typeof sig !== "string" || !sig.startsWith("0x") || sig.length < 20) {
+        throw new WalletSignatureRejectedError();
       }
-
-      if (!txHashOrSig) {
-        const hexMessage = utf8ToHex(message);
-        const sig = await ethProvider.request({
-          method: "personal_sign",
-          params: [hexMessage, address],
-        });
-        if (typeof sig !== "string" || !sig.startsWith("0x") || sig.length < 20) {
-          throw new WalletSignatureRejectedError();
-        }
-        txHashOrSig = sig.trim();
-      }
+      const cleanSig = sig.trim();
 
       const detectedNet =
         cidHex === "0x14a34"
@@ -2225,10 +2200,9 @@ export async function signMessageWithPersonalWallet(params: {
           : cidHex === "0x66eee"
             ? "Arbitrum Sepolia"
             : "Ethereum Sepolia";
-      const expInfo = getWalletExplorerTxInfo(txHashOrSig, "evm", detectedNet);
+      const expInfo = getWalletExplorerTxInfo(cleanSig, "evm", detectedNet);
       return {
-        signature: txHashOrSig,
-        txHash: txHashOrSig,
+        signature: cleanSig,
         explorerTxUrl: expInfo.url,
         signerAddress: address,
         chainType: "evm",
@@ -2554,17 +2528,45 @@ export async function signMessageWithPersonalWallet(params: {
   }
   try {
     const wallet = await nearConnector.wallet();
-    const amount =
-      params.amount !== undefined && Number(params.amount) > 0
-        ? params.amount
-        : extractIntentAmountFromMessage(message, "0.001");
-    const depositYocto = BigInt(Math.floor(Number(amount) * 1e24)).toString();
+
+    if (typeof wallet.signMessage === "function") {
+      const nonce = new Uint8Array(32);
+      crypto.getRandomValues(nonce);
+      const signedMsg = await wallet.signMessage({
+        message,
+        recipient: params.vaultAddress || "intents.near",
+        nonce,
+      });
+      if (!signedMsg || !signedMsg.signature) {
+        throw new WalletSignatureRejectedError();
+      }
+      return {
+        signature: signedMsg.signature,
+        signerAddress: signedMsg.accountId || address,
+        chainType: "near",
+      };
+    }
 
     if (typeof wallet.signAndSendTransaction === "function") {
       const txOutcome = await wallet.signAndSendTransaction({
         signerId: address,
         receiverId: params.vaultAddress || "jubayir69.testnet",
-        actions: [{ type: "Transfer", params: { deposit: depositYocto } }],
+        actions: [
+          {
+            type: "FunctionCall",
+            params: {
+              methodName: "verify_and_anchor",
+              args: {
+                hMaster: "a9ada695b7f0859fe205c64a7f246b4851d82526002778ece337338e20ffb152",
+                hPolicy: "40b4ec314cdeec041edf22d20c4bb059ad9b288c055a4c8d463c57de1c3d68f6",
+                eip1186Verified: true,
+                intentMessage: message,
+              },
+              gas: "30000000000000",
+              deposit: "0",
+            },
+          },
+        ],
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const txHash = String(
@@ -2581,24 +2583,6 @@ export async function signMessageWithPersonalWallet(params: {
           chainType: "near",
         };
       }
-    }
-
-    if (typeof wallet.signMessage === "function") {
-      const nonce = new Uint8Array(32);
-      crypto.getRandomValues(nonce);
-      const signedMsg = await wallet.signMessage({
-        message,
-        recipient: "intents.near",
-        nonce,
-      });
-      if (!signedMsg || !signedMsg.signature) {
-        throw new WalletSignatureRejectedError();
-      }
-      return {
-        signature: signedMsg.signature,
-        signerAddress: signedMsg.accountId || address,
-        chainType: "near",
-      };
     }
 
     throw new WalletSignatureRejectedError();

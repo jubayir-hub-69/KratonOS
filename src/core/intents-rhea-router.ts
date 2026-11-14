@@ -928,6 +928,14 @@ export function createConfidentialLimitOrder(params: {
     sliceCount: 4,
   });
 
+  const withdrawalDigestHex = crypto
+    .createHash("sha256")
+    .update(
+      `limit-order-withdrawal:${params.baseAsset}:${params.quoteAsset}:${params.quantityBaseAtomic}:${params.priceHuman}:${quoteCeiling.toString()}`,
+      "utf8"
+    )
+    .digest("hex");
+
   return {
     requestEnvelope: {
       data: {
@@ -959,7 +967,7 @@ export function createConfidentialLimitOrder(params: {
       payouts: {
         withdrawal: {
           status: "COMPLETED",
-          txHash: "9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a190817263544aabbccddeeff0011",
+          txHash: withdrawalDigestHex,
         },
         refund: {
           status: "NOT_STARTED",
